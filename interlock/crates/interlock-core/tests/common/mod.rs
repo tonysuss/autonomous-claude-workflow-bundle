@@ -22,10 +22,11 @@ pub fn criterion(id: &str, min: MinStrength, producer: Producer) -> Criterion {
     Criterion {
         id: id.into(),
         statement: format!("{id} holds"),
-        check: Some(format!("checks/{id}.sh")),
+        check: None,
         check_version: "1".into(),
         min_strength: min,
         producer,
+        baseline: Baseline::Any,
     }
 }
 
@@ -111,5 +112,41 @@ pub fn evidence(task: &Task, id: &str, criterion: &str, attempt: &str, strength:
         evidence_refs: vec![],
         note: None,
         recorded_at: t(5),
+    }
+}
+
+/// Evaluates claims and assessments with no check runs.
+pub fn eval(task: &Task, claims: &[Evidence], assessments: &[Evidence]) -> interlock_core::EvidenceReport {
+    interlock_core::evidence::evaluate(task, interlock_core::evidence::Records { claims, assessments, runs: &[] })
+}
+
+/// A check run interlock recorded.
+pub fn run(
+    task: &Task,
+    id: &str,
+    criterion: &str,
+    producer: RunProducer,
+    target: RunTarget,
+    tree: &str,
+    exit: i32,
+) -> CheckRun {
+    CheckRun {
+        id: id.into(),
+        task_id: task.id.clone(),
+        criterion_id: criterion.into(),
+        attempt_id: Some("att".into()),
+        producer,
+        target,
+        tree: tree.into(),
+        check_version: "1".into(),
+        environment: task.environment.clone(),
+        command: format!("sh checks/{criterion}.sh"),
+        exit_code: Some(exit),
+        timed_out: false,
+        vacuous: None,
+        duration_ms: 10,
+        output_ref: None,
+        output_tail: if exit == 0 { "ok".into() } else { "assertion failed".into() },
+        recorded_at: t(4),
     }
 }

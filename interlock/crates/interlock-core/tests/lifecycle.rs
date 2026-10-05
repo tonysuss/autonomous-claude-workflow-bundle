@@ -2,13 +2,17 @@ mod common;
 
 use common::*;
 use interlock_core::capability::{Capability, CapabilitySet};
-use interlock_core::evidence::evaluate;
 use interlock_core::lifecycle::{self, MergeReport, RefusalCode, Signal, Start, Submission};
 use interlock_core::workflow::Mode;
 use interlock_schema::*;
 
 fn snapshot() -> Snapshot {
-    Snapshot { repository: "/work/repo".into(), base_commit: "e43c7ee".into(), untracked_hash: None }
+    Snapshot {
+        repository: "/work/repo".into(),
+        base_commit: "e43c7ee".into(),
+        untracked_hash: None,
+        protected_paths: vec![],
+    }
 }
 
 /// Moves a fresh task to awaiting verification with TREE_A, returning the worker attempt.
@@ -29,7 +33,7 @@ fn to_awaiting() -> (Task, Attempt) {
     assert_eq!(epoch, 1);
     let task = out.task;
     let worker = attempt(&task, "w1", Role::Worker, 1);
-    let Submission::Accepted(out) = lifecycle::submit_result(&task, &worker, 1, TREE_A, t(3)).unwrap() else {
+    let Submission::Accepted(out) = lifecycle::submit_result(&task, &worker, 1, TREE_A, &[], t(3)).unwrap() else {
         panic!("expected acceptance")
     };
     assert_eq!(out.mv.signal, Signal::G3);
@@ -42,7 +46,7 @@ fn bug_fix_happy_path_reaches_done_through_g7() {
     assert_eq!(task.state, State::AwaitingVerification);
     let claims = vec![evidence(&task, "c1", "regression", "w1", Strength::Tested, TREE_A)];
     let assessments = vec![evidence(&task, "a1", "repro", "v1", Strength::Observed, TREE_A)];
-    let report = evaluate(&task, &claims, &assessments);
+    let report = eval(&task, &claims, &assessments);
     assert!(report.all_pass, "{report:?}");
     let out = lifecycle::advance(&task, &report, t(6)).unwrap();
     assert_eq!((out.mv.signal, out.task.state), (Signal::G4, State::Verified));
@@ -119,7 +123,7 @@ fn a_missing_independent_verifier_blocks_and_keeps_the_work() {
 fn failed_check_sends_work_back_through_r1_then_fails_when_budget_is_spent() {
     let (task, _) = to_awaiting();
     let assessments = vec![evidence(&task, "a1", "repro", "v1", Strength::Failed, TREE_A)];
-    let out = lifecycle::advance(&task, &evaluate(&task, &[], &assessments), t(6)).unwrap();
+    let out = lifecycle::advance(&task, &eval(&task, &[], &assessments), t(6)).unwrap();
     assert_eq!((out.mv.signal, out.task.state), (Signal::R1, State::Ready));
     assert_eq!(out.task.current_attempt, None);
 
@@ -139,12 +143,12 @@ fn failed_check_sends_work_back_through_r1_then_fails_when_budget_is_spent() {
     };
     assert_eq!(epoch, 2);
     let w2 = attempt(&out.task, "w2", Role::Worker, 2);
-    let Submission::Accepted(out) = lifecycle::submit_result(&out.task, &w2, 2, TREE_B, t(8)).unwrap() else {
+    let Submission::Accepted(out) = lifecycle::submit_result(&out.task, &w2, 2, TREE_B, &[], t(8)).unwrap() else {
         panic!()
     };
     let task = out.task;
     let assessments = vec![evidence(&task, "a2", "repro", "v2", Strength::Failed, TREE_B)];
-    let out = lifecycle::advance(&task, &evaluate(&task, &[], &assessments), t(9)).unwrap();
+    let out = lifecycle::advance(&task, &eval(&task, &[], &assessments), t(9)).unwrap();
     assert_eq!((out.mv.signal, out.task.state), (Signal::Fail, State::Failed));
 }
 
@@ -156,7 +160,7 @@ fn g5_without_landing_authority_blocks_at_verified() {
         evidence(&task, "a1", "repro", "v1", Strength::Observed, TREE_A),
         evidence(&task, "a2", "regression", "v1", Strength::Tested, TREE_A),
     ];
-    let report = evaluate(&task, &[], &assessments);
+    let report = eval(&task, &[], &assessments);
     let task = lifecycle::advance(&task, &report, t(6)).unwrap().task;
     assert_eq!(task.state, State::Verified);
     assert!(lifecycle::advance(&task, &report, t(7)).is_none(), "G7 does not fire when integration is required");
@@ -216,7 +220,7 @@ fn terminal_tasks_refuse_every_move() {
     let task = lifecycle::cancel(&bug_fix_task(), "operator", t(1)).unwrap().task;
     assert_eq!(lifecycle::ready(&task, &[], snapshot(), t(2)).unwrap_err().code, RefusalCode::Terminal);
     assert_eq!(lifecycle::fail(&task, "x", t(2)).unwrap_err().code, RefusalCode::Terminal);
-    assert!(lifecycle::next_moves(&task, &evaluate(&task, &[], &[])).is_empty());
+    assert!(lifecycle::next_moves(&task, &eval(&task, &[], &[])).is_empty());
 }
 
 #[test]

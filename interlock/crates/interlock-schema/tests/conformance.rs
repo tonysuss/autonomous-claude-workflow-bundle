@@ -46,11 +46,13 @@ fn task() -> Task {
             check_version: "1".into(),
             min_strength: MinStrength::Observed,
             producer: Producer::Independent,
+            baseline: Baseline::Fails,
         }],
         input_snapshot: Some(Snapshot {
             repository: "/work/repo".into(),
             base_commit: "e43c7ee".into(),
             untracked_hash: None,
+            protected_paths: vec!["checks/export-retry.sh".into()],
         }),
         environment: "linux-x86_64".into(),
         policy_digest: "sha256:abc".into(),
@@ -209,4 +211,37 @@ fn evidence_must_carry_a_full_currency_key() {
     assert!(v.validate(RecordKind::Claim, &value).is_err(), "missing policy_digest");
     value["currency"]["policy_digest"] = json!("sha256:abc");
     v.validate(RecordKind::Claim, &value).unwrap();
+}
+
+#[test]
+fn check_runs_conform_and_pass_only_when_they_checked_something() {
+    let v = validators();
+    let mut run = CheckRun {
+        id: "run-1".into(),
+        task_id: "export-retry".into(),
+        criterion_id: "repro".into(),
+        attempt_id: Some("att-1".into()),
+        producer: RunProducer::Verifier,
+        target: RunTarget::Output,
+        tree: currency().tree,
+        check_version: "1".into(),
+        environment: "linux-x86_64".into(),
+        command: "sh checks/export-retry.sh".into(),
+        exit_code: Some(0),
+        timed_out: false,
+        vacuous: None,
+        duration_ms: 120,
+        output_ref: Some("artifacts/sha256/ab".into()),
+        output_tail: "ok".into(),
+        recorded_at: t0(),
+    };
+    v.check(RecordKind::CheckRun, &run).unwrap();
+    assert!(run.passed() && !run.failed());
+    run.vacuous = Some("unittest: Ran 0 tests".into());
+    assert!(!run.passed() && !run.failed(), "a run that checked nothing neither passes nor fails");
+    run.vacuous = None;
+    run.exit_code = None;
+    run.timed_out = true;
+    assert!(!run.passed() && !run.failed());
+    v.check(RecordKind::CheckRun, &run).unwrap();
 }

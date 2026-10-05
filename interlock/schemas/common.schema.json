@@ -82,7 +82,12 @@
       "properties": {
         "repository": { "type": "string", "minLength": 1 },
         "base_commit": { "$ref": "#/$defs/object_id" },
-        "untracked_hash": { "type": ["string", "null"] }
+        "untracked_hash": { "type": ["string", "null"] },
+        "protected_paths": {
+          "description": "Files the task's checks run, as they were at the snapshot. A result may not change them.",
+          "type": "array",
+          "items": { "type": "string", "minLength": 1 }
+        }
       }
     },
     "host_ref": {

@@ -148,6 +148,9 @@ pub struct Snapshot {
     pub base_commit: String,
     #[serde(default)]
     pub untracked_hash: Option<String>,
+    /// Files the task's checks run, as they were at the snapshot. A result may not change them.
+    #[serde(default)]
+    pub protected_paths: Vec<String>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -177,6 +180,18 @@ fn default_check_version() -> String {
     "1".to_string()
 }
 
+/// What a criterion's check must do on the task's input snapshot.
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum Baseline {
+    /// The check reproduces the problem: it must fail before the change.
+    Fails,
+    /// A regression guard: it must already pass before the change.
+    Passes,
+    #[default]
+    Any,
+}
+
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Criterion {
     pub id: Id,
@@ -187,6 +202,8 @@ pub struct Criterion {
     pub check_version: String,
     pub min_strength: MinStrength,
     pub producer: Producer,
+    #[serde(default)]
+    pub baseline: Baseline,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -268,6 +285,8 @@ pub struct Attempt {
 pub enum ResultStatus {
     Accepted,
     Superseded,
+    /// Changed files outside the task's scope or the task's own checks.
+    Rejected,
 }
 
 /// A worker's output (the `result` record).
@@ -402,4 +421,61 @@ pub struct Operation {
     pub outcome: Option<Value>,
     pub created_at: Timestamp,
     pub updated_at: Timestamp,
+}
+
+/// Who asked interlock to run a check.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum RunProducer {
+    Worker,
+    Verifier,
+    Operator,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum RunTarget {
+    /// The tree under verification.
+    Output,
+    /// The task's input snapshot.
+    Base,
+}
+
+/// interlock's own execution of a criterion's check on one tree.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct CheckRun {
+    pub id: Id,
+    pub task_id: Id,
+    pub criterion_id: Id,
+    #[serde(default)]
+    pub attempt_id: Option<Id>,
+    pub producer: RunProducer,
+    pub target: RunTarget,
+    pub tree: String,
+    pub check_version: String,
+    pub environment: String,
+    pub command: String,
+    #[serde(default)]
+    pub exit_code: Option<i32>,
+    pub timed_out: bool,
+    /// The detector that found the check ran nothing, if one did.
+    #[serde(default)]
+    pub vacuous: Option<String>,
+    pub duration_ms: u64,
+    #[serde(default)]
+    pub output_ref: Option<String>,
+    pub output_tail: String,
+    pub recorded_at: Timestamp,
+}
+
+impl CheckRun {
+    /// Exited 0, finished in time, and actually checked something.
+    pub fn passed(&self) -> bool {
+        self.exit_code == Some(0) && !self.timed_out && self.vacuous.is_none()
+    }
+
+    /// Ran to completion and reported failure.
+    pub fn failed(&self) -> bool {
+        !self.timed_out && self.exit_code.is_some_and(|c| c != 0) && self.vacuous.is_none()
+    }
 }

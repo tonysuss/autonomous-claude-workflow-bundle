@@ -1,6 +1,7 @@
 //! Runs interlock tasks on a host: git worktrees per attempt, worker and
 //! verifier sessions, the hooks both hosts call, and restart reconcile.
 
+pub mod checks;
 pub mod git;
 pub mod hook;
 pub mod prompts;

@@ -1,7 +1,7 @@
 //! The only writer of interlock state. Every change is one SQLite transaction:
 //! load the records, ask the policy core, write what it returns, commit.
 
-use std::path::Path;
+use std::path::{Path, PathBuf};
 
 use interlock_core::brief::{self, Brief};
 use interlock_core::capability::{CapabilitySet, Fallback};
@@ -14,7 +14,8 @@ use interlock_schema::*;
 use rusqlite::{Connection, OptionalExtension, Transaction, TransactionBehavior, params};
 use serde::{Deserialize, Serialize, de::DeserializeOwned};
 
-const MIGRATIONS: &[&str] = &[include_str!("migrations/001_initial.sql")];
+const MIGRATIONS: &[&str] =
+    &[include_str!("migrations/001_initial.sql"), include_str!("migrations/002_check_runs.sql")];
 
 #[derive(Debug, thiserror::Error)]
 pub enum StoreError {
@@ -51,6 +52,8 @@ pub struct Store {
     conn: Connection,
     validators: Validators,
     fault: Option<Fault>,
+    /// Where check output is kept, content-addressed. None for in-memory stores.
+    artifacts: Option<PathBuf>,
 }
 
 /// The outcome of an inbound report. A duplicate returns the first outcome unchanged.
@@ -70,8 +73,10 @@ pub struct ResultApplied {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct EvidenceApplied {
     pub evidence: Evidence,
-    /// Whether the evidence matches the task's current key when recorded.
-    pub current: bool,
+    /// Whether the evidence matches the tree under verification. `None` while
+    /// no result has been accepted yet: a worker's claim then counts once its
+    /// result is submitted with the same tree.
+    pub current: Option<bool>,
 }
 
 pub struct StartAttempt {
@@ -145,6 +150,35 @@ pub struct TransitionRow {
     pub reason: String,
     pub attempt_id: Option<String>,
     pub at: String,
+}
+
+/// What happened when a check ran. Everything else is derived by the store.
+pub struct NewCheckRun {
+    pub task_id: String,
+    pub criterion_id: String,
+    /// The attempt's id and token; `None` for the operator or supervisor.
+    pub attempt: Option<(String, String)>,
+    pub target: RunTarget,
+    pub tree: String,
+    pub exit_code: Option<i32>,
+    pub timed_out: bool,
+    pub duration_ms: u64,
+    pub output: Vec<u8>,
+}
+
+/// Writes `bytes` once under `dir/sha256/<hex>` and returns its relative path.
+fn write_artifact(dir: &Path, bytes: &[u8]) -> Result<String> {
+    let hex = sha256_hex(bytes);
+    let rel = format!("artifacts/sha256/{hex}");
+    let path = dir.join("sha256").join(&hex);
+    if !path.exists() {
+        let io = |e: std::io::Error| StoreError::Invalid(format!("cannot write artifact {}: {e}", path.display()));
+        std::fs::create_dir_all(path.parent().expect("artifact path has a parent")).map_err(io)?;
+        let tmp = path.with_extension("tmp");
+        std::fs::write(&tmp, bytes).map_err(io)?;
+        std::fs::rename(&tmp, &path).map_err(io)?;
+    }
+    Ok(rel)
 }
 
 pub fn new_id(prefix: &str) -> String {
@@ -282,10 +316,17 @@ fn evidence_of(c: &Connection, table: &str, task_id: &str) -> Result<Vec<Evidenc
     rows.map(|r| decode(r?)).collect()
 }
 
+fn check_runs_of(c: &Connection, task_id: &str) -> Result<Vec<CheckRun>> {
+    let mut stmt = c.prepare("SELECT record FROM check_runs WHERE task_id = ?1 ORDER BY seq")?;
+    let rows = stmt.query_map([task_id], |r| r.get::<_, String>(0))?;
+    rows.map(|r| decode(r?)).collect()
+}
+
 fn report_for(c: &Connection, task: &Task) -> Result<EvidenceReport> {
     let claims = evidence_of(c, "claims", &task.id)?;
     let assessments = evidence_of(c, "assessments", &task.id)?;
-    Ok(evidence::evaluate(task, &claims, &assessments))
+    let runs = check_runs_of(c, &task.id)?;
+    Ok(evidence::evaluate(task, evidence::Records { claims: &claims, assessments: &assessments, runs: &runs }))
 }
 
 fn all_grants(c: &Connection) -> Result<Vec<Grant>> {
@@ -341,18 +382,18 @@ impl Store {
             std::fs::create_dir_all(dir)
                 .map_err(|e| StoreError::Invalid(format!("cannot create {}: {e}", dir.display())))?;
         }
-        Store::init(Connection::open(path)?)
+        Store::init(Connection::open(path)?, path.parent().map(|d| d.join("artifacts")))
     }
 
     pub fn open_in_memory() -> Result<Store> {
-        Store::init(Connection::open_in_memory()?)
+        Store::init(Connection::open_in_memory()?, None)
     }
 
-    fn init(conn: Connection) -> Result<Store> {
+    fn init(conn: Connection, artifacts: Option<PathBuf>) -> Result<Store> {
         conn.pragma_update(None, "foreign_keys", "ON")?;
         conn.pragma_update(None, "journal_mode", "WAL")?;
         conn.busy_timeout(std::time::Duration::from_secs(5))?;
-        let mut store = Store { conn, validators: Validators::new()?, fault: None };
+        let mut store = Store { conn, validators: Validators::new()?, fault: None, artifacts };
         store.migrate()?;
         Ok(store)
     }
@@ -501,10 +542,11 @@ impl Store {
         }
         let mut attempt = authenticate(&tx, &req.attempt_id, &req.token)?;
         let task = get_task(&tx, &attempt.task_id)?;
-        let decision = lifecycle::submit_result(&task, &attempt, req.epoch, &req.output_tree, now)?;
+        let decision = lifecycle::submit_result(&task, &attempt, req.epoch, &req.output_tree, &req.changed_paths, now)?;
         let (status, superseded_reason) = match &decision {
             Submission::Accepted(_) => (ResultStatus::Accepted, None),
             Submission::Superseded { reason } => (ResultStatus::Superseded, Some(reason.clone())),
+            Submission::Rejected { reason } => (ResultStatus::Rejected, Some(reason.clone())),
         };
         let result = TaskResult {
             id: new_id("res"),
@@ -537,7 +579,7 @@ impl Store {
                 put_attempt(&tx, v, &attempt, false)?;
                 Some(apply(&tx, v, &out, Some(&attempt.id), now)?)
             }
-            Submission::Superseded { .. } => None,
+            Submission::Superseded { .. } | Submission::Rejected { .. } => None,
         };
         let outcome = ResultApplied { result, moved };
         check_fault(fault)?;
@@ -608,7 +650,7 @@ impl Store {
             params![record.id, record.task_id, record.criterion_id, record.attempt_id, json_str(&record)?],
         )?;
         let current =
-            evidence::currency_for(&task, criterion).is_some_and(|key| evidence::same_currency(&key, &record.currency));
+            evidence::currency_for(&task, criterion).map(|key| evidence::same_currency(&key, &record.currency));
         let outcome = EvidenceApplied { evidence: record, current };
         check_fault(fault)?;
         put_event(
@@ -697,6 +739,79 @@ impl Store {
         }
         tx.commit()?;
         Ok(attempt)
+    }
+
+    /// Records interlock's own run of a criterion's check. The store derives
+    /// everything trust depends on: the producer from the attempt's role, the
+    /// command and check version from the criterion, and whether the output
+    /// shows the check ran nothing. The caller supplies only what happened.
+    pub fn record_check_run(&mut self, req: NewCheckRun, now: Timestamp) -> Result<CheckRun> {
+        let artifacts = self.artifacts.clone();
+        let (tx, v) = self.begin()?;
+        let task = get_task(&tx, &req.task_id)?;
+        let criterion = task
+            .criteria
+            .iter()
+            .find(|c| c.id == req.criterion_id)
+            .ok_or_else(|| StoreError::NotFound(format!("criterion {}", req.criterion_id)))?;
+        let command = criterion
+            .check
+            .clone()
+            .ok_or_else(|| StoreError::Invalid(format!("criterion {} has no check to run", criterion.id)))?;
+        let (attempt_id, producer) = match &req.attempt {
+            Some((id, token)) => {
+                let attempt = authenticate(&tx, id, token)?;
+                if attempt.task_id != task.id {
+                    return Err(StoreError::Invalid("the attempt belongs to another task".into()));
+                }
+                if !matches!(attempt.status, AttemptStatus::Running | AttemptStatus::Submitted) {
+                    return Err(StoreError::Invalid(format!("attempt {} is {:?}", attempt.id, attempt.status)));
+                }
+                let producer = match attempt.role {
+                    Role::Worker => RunProducer::Worker,
+                    Role::Verifier | Role::Reviewer => RunProducer::Verifier,
+                };
+                (Some(attempt.id), producer)
+            }
+            None => (None, RunProducer::Operator),
+        };
+        let text = String::from_utf8_lossy(&req.output);
+        let output_ref = match &artifacts {
+            Some(dir) => Some(write_artifact(dir, &req.output)?),
+            None => None,
+        };
+        let tail_start = text.len().saturating_sub(2000);
+        let tail_start = (tail_start..text.len()).find(|i| text.is_char_boundary(*i)).unwrap_or(text.len());
+        let run = CheckRun {
+            id: new_id("run"),
+            task_id: task.id.clone(),
+            criterion_id: criterion.id.clone(),
+            attempt_id,
+            producer,
+            target: req.target,
+            tree: req.tree,
+            check_version: criterion.check_version.clone(),
+            environment: task.environment.clone(),
+            command,
+            exit_code: req.exit_code,
+            timed_out: req.timed_out,
+            vacuous: interlock_core::vacuity::detect(&text).map(str::to_string),
+            duration_ms: req.duration_ms,
+            output_ref,
+            output_tail: text[tail_start..].to_string(),
+            recorded_at: now,
+        };
+        v.check(RecordKind::CheckRun, &run)?;
+        tx.execute(
+            "INSERT INTO check_runs (id, task_id, criterion_id, attempt_id, target, record) VALUES (?1, ?2, ?3, ?4, ?5, ?6)",
+            params![run.id, run.task_id, run.criterion_id, run.attempt_id, enum_str(&run.target), json_str(&run)?],
+        )?;
+        tx.commit()?;
+        Ok(run)
+    }
+
+    pub fn check_runs(&self, task_id: &str) -> Result<Vec<CheckRun>> {
+        check_runs_of(&self.conn, task_id)
     }
 
     pub fn evaluate(&self, task_id: &str) -> Result<(Task, EvidenceReport)> {
@@ -964,8 +1079,11 @@ impl Store {
         let (task, report) = self.evaluate(task_id)?;
         let workflow = workflow_of(&task)?;
         let grant = grants::effective(&task.id, profile, &self.grants()?, host_policy, workflow.role(role), now);
-        let last = self.results(task_id)?.into_iter().rev().find(|r| r.status == ResultStatus::Accepted);
-        Ok(brief::build(&task, role, &report, last.as_ref(), Some(&grant)))
+        let results = self.results(task_id)?;
+        let last = results.iter().rev().find(|r| r.status == ResultStatus::Accepted);
+        let rejected = results.iter().rev().find(|r| r.status == ResultStatus::Rejected);
+        let runs = self.check_runs(task_id)?;
+        Ok(brief::build(&task, role, &report, last, rejected, &runs, Some(&grant)))
     }
 
     pub fn save_host_report(&mut self, host: &str, record: &serde_json::Value, now: Timestamp) -> Result<()> {

@@ -11,6 +11,7 @@ pub mod grants;
 pub mod lifecycle;
 pub mod scope;
 pub mod tools;
+pub mod vacuity;
 pub mod workflow;
 
 pub use capability::{Capability, CapabilityCheck, CapabilitySet, Fallback, Requirement};

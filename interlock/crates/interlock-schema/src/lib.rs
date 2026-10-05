@@ -24,10 +24,11 @@ pub enum RecordKind {
     Event,
     Grant,
     Operation,
+    CheckRun,
 }
 
 impl RecordKind {
-    pub const ALL: [RecordKind; 9] = [
+    pub const ALL: [RecordKind; 10] = [
         RecordKind::Task,
         RecordKind::Criterion,
         RecordKind::Attempt,
@@ -37,6 +38,7 @@ impl RecordKind {
         RecordKind::Event,
         RecordKind::Grant,
         RecordKind::Operation,
+        RecordKind::CheckRun,
     ];
 
     pub fn name(self) -> &'static str {
@@ -50,6 +52,7 @@ impl RecordKind {
             RecordKind::Event => "event",
             RecordKind::Grant => "grant",
             RecordKind::Operation => "operation",
+            RecordKind::CheckRun => "check_run",
         }
     }
 
@@ -73,6 +76,7 @@ impl RecordKind {
             RecordKind::Event => include_str!("../../../schemas/event.schema.json"),
             RecordKind::Grant => include_str!("../../../schemas/grant.schema.json"),
             RecordKind::Operation => include_str!("../../../schemas/operation.schema.json"),
+            RecordKind::CheckRun => include_str!("../../../schemas/check_run.schema.json"),
         }
     }
 }

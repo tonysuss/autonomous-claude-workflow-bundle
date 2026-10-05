@@ -79,8 +79,12 @@ fn classify_one(words: &[String]) -> ActionClass {
         match words.first() {
             Some(w) if WRAPPERS.contains(w) => {
                 let wrapper = words.remove(0);
-                while words.first().is_some_and(|w| w.starts_with('-')) {
+                while let Some(flag) = words.first().copied().filter(|w| w.starts_with('-')) {
                     words.remove(0);
+                    // Options such as `env -u NAME` or `sudo -u USER` take the next word.
+                    if wrapper_value_opts(wrapper).contains(&flag) && !words.is_empty() {
+                        words.remove(0);
+                    }
                 }
                 if wrapper == "timeout"
                     && words.first().is_some_and(|w| w.chars().next().is_some_and(|c| c.is_ascii_digit()))
@@ -127,6 +131,18 @@ fn classify_one(words: &[String]) -> ActionClass {
         _ => ActionClass::LocalReversible,
     };
     if redirects { class.max(ActionClass::LocalReversible) } else { class }
+}
+
+/// Options that take a separate value, per wrapper program.
+fn wrapper_value_opts(wrapper: &str) -> &'static [&'static str] {
+    match wrapper {
+        "env" => &["-u", "--unset", "-C", "--chdir", "-S", "--split-string"],
+        "sudo" => &["-u", "--user", "-g", "--group", "-C", "-h", "--host", "-p", "--prompt", "-D", "--chdir"],
+        "timeout" => &["-s", "--signal", "-k", "--kill-after"],
+        "nice" => &["-n", "--adjustment"],
+        "xargs" => &["-I", "-n", "-P", "-L", "-d", "-E", "-s", "-a"],
+        _ => &[],
+    }
 }
 
 fn positional<'a>(args: &[&'a str], value_opts: &[&str]) -> Vec<&'a str> {
@@ -196,6 +212,10 @@ fn classify_gh(args: &[&str]) -> ActionClass {
 /// itself authority or unblock its own task.
 fn classify_interlock(args: &[&str]) -> ActionClass {
     let pos = positional(args, &["--db", "--profile"]);
+    // A run recorded as the operator's counts as independent evidence.
+    if pos.starts_with(&["check", "run"]) && args.contains(&"--operator") {
+        return ActionClass::Irreversible;
+    }
     if OPERATOR_ONLY.iter().any(|cmd| pos.starts_with(cmd)) { ActionClass::Irreversible } else { ActionClass::Read }
 }
 
@@ -243,6 +263,9 @@ mod tests {
         assert_eq!(classify_shell("bash -c \"git push --force\""), Irreversible);
         assert_eq!(classify_shell("sudo -E env FOO=1 git push -f"), Irreversible);
         assert_eq!(classify_shell("timeout 30 gh pr merge 4"), Landing);
+        assert_eq!(classify_shell("timeout -s KILL 30 git push -f"), Irreversible);
+        assert_eq!(classify_shell("sudo -u deploy git push --force"), Irreversible);
+        assert_eq!(classify_shell("nice -n 5 gh pr merge 4"), Landing);
         assert_eq!(classify_shell("echo $(git push -f)"), Irreversible);
         assert_eq!(classify_shell("echo `gh pr merge 4`"), Landing);
         assert_eq!(classify_shell("find . -name x -exec git push -f \\;"), Irreversible);
@@ -262,6 +285,11 @@ mod tests {
         assert_eq!(classify_shell("interlock grant create --classes landing"), Irreversible);
         assert_eq!(classify_shell("interlock --db x task unblock t1"), Irreversible);
         assert_eq!(classify_shell("interlock status t1"), Read);
+        assert_eq!(classify_shell("interlock check run --criterion repro"), Read);
+        assert_eq!(
+            classify_shell("env -u INTERLOCK_ATTEMPT interlock check run --criterion repro --operator"),
+            Irreversible
+        );
         assert_eq!(classify_shell("interlock result submit --tree abc"), Read);
     }
 }

@@ -326,6 +326,30 @@ pub enum Submission {
     Superseded {
         reason: String,
     },
+    /// Stored but never applied: it changes files outside the task's scope or
+    /// the task's own checks. The attempt stays open and may submit again.
+    Rejected {
+        reason: String,
+    },
+}
+
+/// Changed paths a result may not contain: anything outside a non-empty
+/// scope, and any file the task's checks run.
+pub fn scope_violations(task: &Task, changed_paths: &[String]) -> Vec<String> {
+    let protected = task.input_snapshot.as_ref().map(|s| s.protected_paths.as_slice()).unwrap_or_default();
+    changed_paths
+        .iter()
+        .filter_map(|p| {
+            if protected.contains(p) {
+                Some(format!("{p} (a file the task's checks run)"))
+            } else if !task.scope.paths.is_empty() && !task.scope.paths.iter().any(|g| crate::scope::glob_matches(g, p))
+            {
+                Some(format!("{p} (outside the scope {})", task.scope.paths.join(", ")))
+            } else {
+                None
+            }
+        })
+        .collect()
 }
 
 /// G3, running to awaiting verification: only for the current attempt and epoch.
@@ -334,6 +358,7 @@ pub fn submit_result(
     attempt: &Attempt,
     epoch: u32,
     output_tree: &str,
+    changed_paths: &[String],
     now: Timestamp,
 ) -> Result<Submission, Refusal> {
     if attempt.task_id != task.id {
@@ -358,6 +383,10 @@ pub fn submit_result(
     }
     if task.state != State::Running {
         return superseded(format!("task is {}, not running", task.state));
+    }
+    let violations = scope_violations(task, changed_paths);
+    if !violations.is_empty() {
+        return Ok(Submission::Rejected { reason: format!("the result changes {}", violations.join(", ")) });
     }
     let mut out = transition(
         task,

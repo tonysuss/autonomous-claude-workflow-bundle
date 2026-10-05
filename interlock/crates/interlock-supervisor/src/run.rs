@@ -11,14 +11,15 @@ use std::time::Duration;
 use chrono::Utc;
 use interlock_adapter::{Exit, Host, HostReport, Probe, SessionSpec, write_hooks_plugin};
 use interlock_core::capability::CapabilitySet;
+use interlock_core::evidence;
 use interlock_core::grants::{HostPolicy, Profile};
 use interlock_core::lifecycle::Move;
 use interlock_core::workflow::Mode;
-use interlock_schema::{HostRef, Role, Snapshot, State};
+use interlock_schema::{Baseline, HostRef, ResultStatus, Role, RunTarget, Snapshot, State};
 use interlock_store::{StartAttempt, Started, Store, SubmitResult};
 use serde::Serialize;
 
-use crate::{git, prompts};
+use crate::{checks, git, prompts};
 
 #[derive(Debug, thiserror::Error)]
 pub enum RunError {
@@ -67,7 +68,18 @@ pub struct RunReport {
     pub final_state: State,
     pub stopped_because: String,
     pub reconciled: Vec<String>,
+    /// interlock's runs of each baseline check on the input snapshot.
+    pub baseline: Vec<BaselineRun>,
     pub sessions: Vec<SessionReport>,
+}
+
+#[derive(Debug, Clone, Serialize)]
+pub struct BaselineRun {
+    pub criterion_id: String,
+    pub run_id: String,
+    pub exit_code: Option<i32>,
+    pub vacuous: Option<String>,
+    pub problem: Option<String>,
 }
 
 /// One controller per repository checkout. A live holder is detected through
@@ -149,6 +161,7 @@ impl Supervisor {
             final_state: self.store.task(task_id)?.state,
             stopped_because: String::new(),
             reconciled: vec![],
+            baseline: vec![],
             sessions: vec![],
         };
 
@@ -161,6 +174,7 @@ impl Supervisor {
         }
 
         let mut verifier_runs: HashMap<String, u32> = HashMap::new();
+        let mut baseline_checked = false;
         let mut sessions = 0;
         let stopped = loop {
             if self.cancel.load(std::sync::atomic::Ordering::SeqCst) {
@@ -169,9 +183,11 @@ impl Supervisor {
             let task = self.store.task(task_id)?;
             match task.state {
                 State::Pending => {
+                    let base_commit = git::head(&self.repo)?;
                     let snapshot = Snapshot {
                         repository: self.repo.display().to_string(),
-                        base_commit: git::head(&self.repo)?,
+                        protected_paths: checks::protected_paths(&self.repo, &base_commit, &task.criteria),
+                        base_commit,
                         untracked_hash: None,
                     };
                     if let Err(e) = self.store.ready(task_id, snapshot, Utc::now()) {
@@ -180,6 +196,22 @@ impl Supervisor {
                 }
                 State::Ready | State::AwaitingVerification if sessions >= self.cfg.max_sessions => {
                     break format!("used all {} sessions this run allows", self.cfg.max_sessions);
+                }
+                State::Ready if !baseline_checked => {
+                    baseline_checked = true;
+                    report.baseline = self.baseline(task_id)?;
+                    let problems: Vec<String> = report
+                        .baseline
+                        .iter()
+                        .filter_map(|b| b.problem.as_ref().map(|p| format!("{}: {p}", b.criterion_id)))
+                        .collect();
+                    if !problems.is_empty() {
+                        self.store.block(
+                            task_id,
+                            &format!("fix the task's checks first. {}", problems.join("; ")),
+                            Utc::now(),
+                        )?;
+                    }
                 }
                 State::Ready => {
                     sessions += 1;
@@ -220,6 +252,45 @@ impl Supervisor {
         report.stopped_because = stopped;
         report.final_state = self.store.task(task_id)?.state;
         Ok(report)
+    }
+
+    /// Runs each baseline check on the input snapshot, once per task, before
+    /// any worker spends effort: a reproduction that already passes, or a
+    /// regression guard that fails or tests nothing, makes the task unsound.
+    fn baseline(&mut self, task_id: &str) -> Result<Vec<BaselineRun>> {
+        let task = self.store.task(task_id)?;
+        let existing = self.store.check_runs(task_id)?;
+        let scratch = self.dir().join("scratch");
+        let mut out = Vec::new();
+        for c in task.criteria.iter().filter(|c| c.check.is_some() && c.baseline != Baseline::Any) {
+            let done = existing
+                .iter()
+                .find(|r| r.criterion_id == c.id && r.target == RunTarget::Base && r.check_version == c.check_version);
+            let run = match done {
+                Some(r) => r.clone(),
+                None => checks::run_check(
+                    &mut self.store,
+                    checks::CheckRequest {
+                        task_id,
+                        criterion_id: &c.id,
+                        target: RunTarget::Base,
+                        attempt: None,
+                        dir: &self.repo,
+                        scratch: &scratch,
+                        timeout: self.cfg.timeout,
+                    },
+                )?,
+            };
+            let runs = self.store.check_runs(task_id)?;
+            out.push(BaselineRun {
+                criterion_id: c.id.clone(),
+                run_id: run.id.clone(),
+                exit_code: run.exit_code,
+                vacuous: run.vacuous.clone(),
+                problem: evidence::baseline_problem(&task, c, &runs),
+            });
+        }
+        Ok(out)
     }
 
     fn start(
@@ -304,7 +375,7 @@ impl Supervisor {
             }
             None => base.clone(),
         };
-        let start_tree = git::tree_of(&self.repo, &start_commit)?;
+        let base_tree = git::tree_of(&self.repo, &base)?;
         let wt = self.dir().join("worktrees").join(format!("{task_id}-worker-{}", task.attempts_used + 1));
         let (attempt, token) = match self.start(task_id, Role::Worker, &wt)? {
             Ok(v) => v,
@@ -319,7 +390,8 @@ impl Supervisor {
         let mut moves = Vec::new();
         if outcome.exit == Exit::Completed {
             let tree = git::worktree_tree(&wt)?;
-            let changed = git::changed_paths(&self.repo, &start_tree, &tree)?;
+            // Scope is judged on everything the output changes relative to the input.
+            let changed = git::changed_paths(&self.repo, &base_tree, &tree)?;
             let applied = self.store.submit_result(
                 SubmitResult {
                     attempt_id: attempt.id.clone(),
@@ -333,7 +405,15 @@ impl Supervisor {
                 },
                 Utc::now(),
             )?;
-            moves.extend(applied.outcome.moved);
+            moves.extend(applied.outcome.moved.clone());
+            if applied.outcome.result.status == ResultStatus::Rejected {
+                let note = format!(
+                    "result rejected: {}",
+                    applied.outcome.result.superseded_reason.clone().unwrap_or_default()
+                );
+                self.store.end_attempt(&attempt.id, &token, true, Some(note.clone()), Utc::now())?;
+                moves.push(self.store.retry(task_id, &note, Utc::now())?);
+            }
         } else {
             let note = format!("session ended: {:?}", outcome.exit);
             self.store.end_attempt(&attempt.id, &token, true, Some(note.clone()), Utc::now())?;

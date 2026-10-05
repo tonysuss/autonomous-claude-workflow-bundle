@@ -23,7 +23,6 @@ paths = ["src/export/**"]
 [[criterion]]
 id = "repro"
 statement = "Retrying an export produces no duplicate rows"
-check = "checks/export-retry.sh"
 min_strength = "observed"
 producer = "independent"
 
@@ -354,4 +353,66 @@ fn schema_validate_checks_files() {
     bad["state"] = "almost_done".into();
     std::fs::write(&file, bad.to_string()).unwrap();
     assert!(!env.run(&["schema", "validate", "task", file.to_str().unwrap()]).status.success());
+}
+
+fn git(dir: &std::path::Path, args: &[&str]) {
+    let out = Command::new("git").args(args).current_dir(dir).output().unwrap();
+    assert!(out.status.success(), "git {args:?}: {}", String::from_utf8_lossy(&out.stderr));
+}
+
+#[test]
+fn check_run_records_what_interlock_saw_and_baselines_catch_empty_checks() {
+    let env = Env::new();
+    let p = env.dir.path();
+    std::fs::write(p.join("calc.py"), "def add(a, b):\n    return a - b\n").unwrap();
+    std::fs::create_dir_all(p.join("checks")).unwrap();
+    std::fs::write(p.join("checks/add.sh"), "python3 -c 'import calc; assert calc.add(2, 3) == 5'\n").unwrap();
+    std::fs::create_dir_all(p.join("tests")).unwrap();
+    std::fs::write(p.join("tests/test_calc.py"), "import unittest\n").unwrap();
+    std::fs::write(
+        p.join("checked.toml"),
+        r#"
+id = "fix-add"
+repository = "."
+workflow = "bug-fix"
+intent = "add subtracts"
+
+[[criterion]]
+id = "repro"
+statement = "add(2, 3) == 5"
+check = "sh checks/add.sh"
+min_strength = "tested"
+producer = "independent"
+baseline = "fails"
+
+[[criterion]]
+id = "unit"
+statement = "unit tests pass"
+check = "python3 -m unittest -q"
+min_strength = "tested"
+producer = "self"
+baseline = "passes"
+"#,
+    )
+    .unwrap();
+    std::fs::write(p.join(".gitignore"), "state.db*\nscratch/\nartifacts/\n__pycache__/\n*.toml\n").unwrap();
+    git(p, &["init", "-q", "-b", "main"]);
+    git(p, &["add", "-A"]);
+    git(p, &["-c", "user.name=t", "-c", "user.email=t@t", "commit", "-q", "-m", "init"]);
+    env.ok(&["task", "create", "checked.toml"]);
+    let head =
+        String::from_utf8(Command::new("git").args(["rev-parse", "HEAD"]).current_dir(p).output().unwrap().stdout)
+            .unwrap();
+    env.ok(&["task", "ready", "fix-add", "--base", head.trim()]);
+    let task = env.ok(&["task", "show", "fix-add"]);
+    assert_eq!(task["input_snapshot"]["protected_paths"], serde_json::json!(["checks/add.sh"]));
+
+    // Outside an attempt, a run must be the operator's.
+    let out = env.run(&["check", "run", "--criterion", "repro"]);
+    assert!(!out.status.success());
+    let base = env.ok(&["check", "run", "--criterion", "repro", "--target", "base", "--operator", "--task", "fix-add"]);
+    assert_eq!(base["failed"], true, "{base:#}");
+    let empty = env.ok(&["check", "run", "--criterion", "unit", "--target", "base", "--operator", "--task", "fix-add"]);
+    assert_eq!(empty["checked_nothing"], "unittest ran 0 tests", "{empty:#}");
+    assert_eq!(empty["passed"], false);
 }

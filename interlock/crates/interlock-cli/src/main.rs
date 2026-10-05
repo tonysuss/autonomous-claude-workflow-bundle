@@ -107,11 +107,43 @@ enum Command {
         #[arg(long, value_delimiter = ',')]
         capabilities: Option<Vec<String>>,
     },
+    /// interlock runs a criterion's check itself and records what happened.
+    #[command(subcommand)]
+    Check(CheckCmd),
     /// Called by interlock's hooks plugin with the host's payload on stdin.
     Hook {
         #[arg(value_enum)]
         event: HookArg,
     },
+}
+
+#[derive(Subcommand)]
+enum CheckCmd {
+    /// Run a criterion's check on the current worktree (or the task's input snapshot) and record it.
+    Run {
+        #[arg(long)]
+        criterion: String,
+        #[arg(long, value_enum, default_value = "output")]
+        target: TargetArg,
+        /// Needed only outside an attempt.
+        #[arg(long)]
+        task: Option<String>,
+        /// Record the run as the operator's, outside any attempt. Agents may not.
+        #[arg(long)]
+        operator: bool,
+        #[arg(long, default_value = "10m")]
+        timeout: String,
+        #[arg(long, env = "INTERLOCK_ATTEMPT")]
+        attempt: Option<String>,
+        #[arg(long, env = "INTERLOCK_TOKEN")]
+        token: Option<String>,
+    },
+}
+
+#[derive(Clone, Copy, ValueEnum)]
+enum TargetArg {
+    Output,
+    Base,
 }
 
 #[derive(Clone, Copy, ValueEnum)]
@@ -619,9 +651,16 @@ fn run(cli: &Cli) -> Result<()> {
                         Some(r) => r.clone(),
                         None => store.task(task)?.repository,
                     };
+                    let criteria = store.task(task)?.criteria;
+                    let protected = std::env::current_dir()
+                        .ok()
+                        .and_then(|d| interlock_supervisor::git::toplevel(&d).ok())
+                        .map(|root| interlock_supervisor::checks::protected_paths(&root, base, &criteria))
+                        .unwrap_or_default();
                     let snapshot = Snapshot {
                         repository: repo,
                         base_commit: base.clone(),
+                        protected_paths: protected,
                         untracked_hash: untracked_hash.clone(),
                     };
                     print(&store.ready(task, snapshot, now()?)?)
@@ -809,6 +848,43 @@ fn run(cli: &Cli) -> Result<()> {
             }
         },
         Command::Run { .. } | Command::Hook { .. } => unreachable!("handled in main"),
+        Command::Check(CheckCmd::Run { criterion, target, task, operator, timeout, attempt, token }) => {
+            let mut store = open(cli)?;
+            let nonempty = |v: &Option<String>| v.clone().filter(|s| !s.is_empty());
+            let (attempt, task_id) = if *operator {
+                let task = task.clone().ok_or_else(|| anyhow!("--operator needs --task"))?;
+                (None, task)
+            } else {
+                let (Some(a), Some(t)) = (nonempty(attempt), nonempty(token)) else {
+                    bail!("outside an attempt, pass --operator and --task");
+                };
+                let task_id = store.attempt(&a)?.task_id;
+                (Some((a, t)), task_id)
+            };
+            let db = cli.db.clone().unwrap_or_else(default_db);
+            let scratch = db.parent().map(|d| d.join("scratch")).unwrap_or_else(|| PathBuf::from(".interlock/scratch"));
+            let run = interlock_supervisor::checks::run_check(
+                &mut store,
+                interlock_supervisor::checks::CheckRequest {
+                    task_id: &task_id,
+                    criterion_id: criterion,
+                    target: match target {
+                        TargetArg::Output => RunTarget::Output,
+                        TargetArg::Base => RunTarget::Base,
+                    },
+                    attempt,
+                    dir: &std::env::current_dir()?,
+                    scratch: &scratch,
+                    timeout: parse_duration(timeout)?.to_std()?,
+                },
+            )?;
+            print(&json!({
+                "passed": run.passed(),
+                "failed": run.failed(),
+                "checked_nothing": run.vacuous,
+                "run": run,
+            }))
+        }
         Command::Policy(PolicyCmd::Check { attempt, shell, tool }) => {
             let store = open(cli)?;
             let attempt = store.attempt(attempt)?;
@@ -905,7 +981,12 @@ fn main() -> ExitCode {
     match result {
         Ok(code) => code,
         Err(err) => {
-            let (code, body) = match err.downcast_ref::<StoreError>() {
+            // Store errors may arrive directly or wrapped by the supervisor.
+            let store_err = err.downcast_ref::<StoreError>().or_else(|| match err.downcast_ref() {
+                Some(interlock_supervisor::RunError::Store(e)) => Some(e),
+                _ => None,
+            });
+            let (code, body) = match store_err {
                 Some(StoreError::Refused(r)) => (2, json!({"error": "refused", "refusal": r})),
                 Some(StoreError::NotFound(what)) => {
                     (3, json!({"error": "not_found", "message": format!("not found: {what}")}))

@@ -51,7 +51,12 @@ fn store_with_task(max_attempts: u32) -> Store {
     store
         .ready(
             "export-retry",
-            Snapshot { repository: "/work/repo".into(), base_commit: "e43c7ee".into(), untracked_hash: None },
+            Snapshot {
+                repository: "/work/repo".into(),
+                base_commit: "e43c7ee".into(),
+                untracked_hash: None,
+                protected_paths: vec![],
+            },
             t(1),
         )
         .unwrap();
@@ -130,6 +135,26 @@ fn evidence(
     )
 }
 
+/// interlock's own run of a criterion's check, as the store records it.
+fn check_run(store: &mut Store, h: Option<&Handle>, criterion: &str, tree: &str, exit: i32, output: &str) -> CheckRun {
+    store
+        .record_check_run(
+            NewCheckRun {
+                task_id: "export-retry".into(),
+                criterion_id: criterion.into(),
+                attempt: h.map(|h| (h.id.clone(), h.token.clone())),
+                target: RunTarget::Output,
+                tree: tree.into(),
+                exit_code: Some(exit),
+                timed_out: false,
+                duration_ms: 5,
+                output: output.as_bytes().to_vec(),
+            },
+            t(7),
+        )
+        .unwrap()
+}
+
 fn state(store: &Store) -> State {
     store.task("export-retry").unwrap().state
 }
@@ -150,7 +175,7 @@ fn invariant_1_no_current_evidence_no_pass() {
     let v = start(&mut store, Role::Verifier, 5);
     // The verifier checked a different tree: kept, but it does not count.
     let applied = evidence(&mut store, EvidenceKind::Assessment, &v, "repro", Strength::Observed, TREE_B, 6).unwrap();
-    assert!(!applied.outcome.current);
+    assert_eq!(applied.outcome.current, Some(false));
     assert!(store.advance("export-retry", t(7)).unwrap().is_empty());
     assert_eq!(state(&store), State::AwaitingVerification);
     assert_eq!(store.assessments("export-retry").unwrap().len(), 1, "stale evidence is kept");
@@ -224,6 +249,7 @@ fn invariant_3_a_rebase_after_verification_sends_the_task_back() {
     to_awaiting(&mut store);
     let v = start(&mut store, Role::Verifier, 5);
     evidence(&mut store, EvidenceKind::Assessment, &v, "repro", Strength::Observed, TREE_A, 6).unwrap();
+    check_run(&mut store, Some(&v), "repro", TREE_A, 0, "ok: no duplicates\n");
     // Without delivery, verification finishes the task.
     assert!(!store.task("export-retry").unwrap().integration_required);
     let moves = store.advance("export-retry", t(7)).unwrap();
@@ -242,6 +268,7 @@ fn invariant_3_a_rebase_after_verification_sends_the_task_back() {
     to_awaiting(&mut store);
     let v = start(&mut store, Role::Verifier, 5);
     evidence(&mut store, EvidenceKind::Assessment, &v, "repro", Strength::Observed, TREE_A, 6).unwrap();
+    check_run(&mut store, Some(&v), "repro", TREE_A, 0, "ok: no duplicates\n");
     store.advance("export-retry", t(7)).unwrap();
     assert_eq!(state(&store), State::Verified);
     store.record_new_tree("export-retry", TREE_B, t(8)).unwrap();
@@ -341,4 +368,110 @@ fn reopening_a_file_store_keeps_everything() {
     }
     let store = Store::open(&path).unwrap();
     assert_eq!(store.task("t1").unwrap().workflow.name, "investigation");
+}
+
+#[test]
+fn check_runs_take_their_producer_from_the_attempt_and_spot_empty_runs() {
+    let mut store = store_with_task(3);
+    let w = to_awaiting(&mut store);
+    let v = start(&mut store, Role::Verifier, 5);
+    assert_eq!(check_run(&mut store, Some(&w), "repro", TREE_A, 0, "ok").producer, RunProducer::Worker);
+    assert_eq!(check_run(&mut store, Some(&v), "repro", TREE_A, 0, "ok").producer, RunProducer::Verifier);
+    let op = check_run(&mut store, None, "repro", TREE_A, 0, "Ran 0 tests in 0.000s\n\nOK\n");
+    assert_eq!(op.producer, RunProducer::Operator);
+    assert_eq!(op.vacuous.as_deref(), Some("unittest ran 0 tests"));
+    assert!(!op.passed());
+    // The command comes from the criterion, never from the caller.
+    assert_eq!(op.command, "checks/export-retry.sh");
+    // A criterion without a check has nothing to run.
+    let err = store
+        .record_check_run(
+            NewCheckRun {
+                task_id: "export-retry".into(),
+                criterion_id: "regression".into(),
+                attempt: None,
+                target: RunTarget::Output,
+                tree: TREE_A.into(),
+                exit_code: Some(0),
+                timed_out: false,
+                duration_ms: 1,
+                output: vec![],
+            },
+            t(8),
+        )
+        .unwrap_err();
+    assert!(err.to_string().contains("no check"), "{err}");
+    let conn = store.connection();
+    assert!(conn.execute("DELETE FROM check_runs", []).unwrap_err().to_string().contains("append-only"));
+}
+
+#[test]
+fn a_failing_check_run_by_the_verifier_sends_the_work_back() {
+    let mut store = store_with_task(3);
+    to_awaiting(&mut store);
+    let v = start(&mut store, Role::Verifier, 5);
+    check_run(&mut store, Some(&v), "repro", TREE_A, 1, "AssertionError: expected [1, 2, 3], got [1, 2, 1, 2, 3]");
+    let moves = store.advance("export-retry", t(9)).unwrap();
+    assert_eq!(moves[0].signal, Signal::R1);
+}
+
+#[test]
+fn check_output_is_kept_as_a_content_addressed_artifact() {
+    let dir = tempfile::tempdir().unwrap();
+    let mut store = Store::open(&dir.path().join("state.db")).unwrap();
+    let spec: TaskSpec = serde_json::from_value(serde_json::json!({
+        "id": "export-retry", "repository": ".", "workflow": "bug-fix", "intent": "x",
+        "criteria": [{"id": "repro", "statement": "s", "check": "sh check.sh", "min_strength": "tested", "producer": "self"}]
+    }))
+    .unwrap();
+    store.create_task(spec, t(0)).unwrap();
+    let run = check_run(&mut store, None, "repro", TREE_A, 0, "all good\n");
+    let rel = run.output_ref.unwrap();
+    assert_eq!(std::fs::read_to_string(dir.path().join(rel)).unwrap(), "all good\n");
+}
+
+#[test]
+fn results_outside_the_scope_are_rejected_and_the_attempt_may_try_again() {
+    let mut store = Store::open_in_memory().unwrap();
+    let spec: TaskSpec = serde_json::from_value(serde_json::json!({
+        "id": "export-retry", "repository": ".", "workflow": "bug-fix", "intent": "x",
+        "scope": {"paths": ["src/**"]},
+        "criteria": [{"id": "repro", "statement": "s", "check": "sh checks/repro.sh", "min_strength": "tested", "producer": "self"}]
+    }))
+    .unwrap();
+    store.create_task(spec, t(0)).unwrap();
+    let snapshot = Snapshot {
+        repository: ".".into(),
+        base_commit: "e43c7ee".into(),
+        untracked_hash: None,
+        protected_paths: vec!["checks/repro.sh".into()],
+    };
+    store.ready("export-retry", snapshot, t(1)).unwrap();
+    let w = start(&mut store, Role::Worker, 2);
+    let submit = |store: &mut Store, paths: &[&str], event: &str| {
+        store
+            .submit_result(
+                SubmitResult {
+                    attempt_id: w.id.clone(),
+                    token: w.token.clone(),
+                    epoch: 1,
+                    output_tree: TREE_A.into(),
+                    changed_paths: paths.iter().map(|p| p.to_string()).collect(),
+                    summary: "s".into(),
+                    open_questions: vec![],
+                    event_id: Some(event.into()),
+                },
+                t(3),
+            )
+            .unwrap()
+    };
+    let rejected = submit(&mut store, &["src/a.rs", "checks/repro.sh"], "e1");
+    assert_eq!(rejected.outcome.result.status, ResultStatus::Rejected);
+    assert!(rejected.outcome.result.superseded_reason.unwrap().contains("checks/repro.sh"));
+    assert_eq!(state(&store), State::Running);
+    // The brief for whoever works next says why.
+    let brief = store.brief("export-retry", Role::Worker, Profile::Conservative, &HostPolicy::open(), t(4)).unwrap();
+    assert!(brief.to_markdown().contains("was rejected: the result changes checks/repro.sh"));
+    let accepted = submit(&mut store, &["src/a.rs"], "e2");
+    assert_eq!(accepted.outcome.result.status, ResultStatus::Accepted);
 }

@@ -3,7 +3,7 @@ use sha2::{Digest, Sha256};
 
 /// Version of the evidence policy in `evidence.rs`. Bumping it changes every
 /// task's policy digest, so evidence gathered under the old policy stops counting.
-pub const POLICY_VERSION: &str = "evidence-policy/v1";
+pub const POLICY_VERSION: &str = "evidence-policy/v2";
 
 /// The digest that goes into every currency key: the policy version plus the
 /// task's criteria. Changing a criterion changes the digest.

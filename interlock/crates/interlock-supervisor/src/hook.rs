@@ -5,10 +5,10 @@
 use std::path::{Path, PathBuf};
 
 use interlock_adapter::hooks::{HookEvent, HookResponse, action_of, parse_event};
-use interlock_core::evidence::same_currency;
+use interlock_core::evidence::{same_currency, same_tree};
 use interlock_core::grants::{self, Verdict};
 use interlock_core::scope::{Placement, place};
-use interlock_schema::{AttemptStatus, Currency, Producer, Role, Timestamp};
+use interlock_schema::{AttemptStatus, Currency, Producer, Role, RunTarget, Timestamp};
 use interlock_store::Store;
 use serde_json::Value;
 
@@ -138,39 +138,59 @@ fn stop(ctx: &HookContext, attempt_id: &str, cwd: Option<PathBuf>) -> HookRespon
     };
     // Without a tree there is nothing to hold the agent to.
     let Some(tree) = tree else { return HookResponse::allow() };
-    let missing: Vec<&str> = owed
-        .iter()
-        .filter(|c| {
-            let key = Currency {
-                tree: tree.clone(),
-                check_version: c.check_version.clone(),
-                environment: task.environment.clone(),
-                policy_digest: task.policy_digest.clone(),
-            };
-            !records
-                .iter()
-                .any(|e| e.attempt_id == attempt.id && e.criterion_id == c.id && same_currency(&e.currency, &key))
-        })
-        .map(|c| c.id.as_str())
-        .collect();
-    if missing.is_empty() {
+    let runs = store.check_runs(&task.id).unwrap_or_default();
+    let mut missing_records = Vec::new();
+    let mut missing_runs = Vec::new();
+    for c in &owed {
+        let key = Currency {
+            tree: tree.clone(),
+            check_version: c.check_version.clone(),
+            environment: task.environment.clone(),
+            policy_digest: task.policy_digest.clone(),
+        };
+        if !records
+            .iter()
+            .any(|e| e.attempt_id == attempt.id && e.criterion_id == c.id && same_currency(&e.currency, &key))
+        {
+            missing_records.push(c.id.as_str());
+        }
+        let ran = runs.iter().any(|r| {
+            r.attempt_id.as_deref() == Some(attempt.id.as_str())
+                && r.criterion_id == c.id
+                && r.target == RunTarget::Output
+                && r.check_version == c.check_version
+                && same_tree(&r.tree, &tree)
+        });
+        if c.check.is_some() && !ran {
+            missing_runs.push(c.id.as_str());
+        }
+    }
+    if missing_records.is_empty() && missing_runs.is_empty() {
         return HookResponse::allow();
     }
-    let reason = match attempt.role {
-        Role::Worker => format!(
-            "Before you finish, record a claim for each self-checked criterion against your final files. Missing: {}. \
-             Run the check, then: interlock claim add --criterion <id> --strength <observed|tested|static|failed|blocked> \
-             --tree auto --ref \"<command you ran>\" --note \"<what you saw>\". Claims made before your last edit no \
-             longer count.",
-            missing.join(", ")
-        ),
-        _ => format!(
-            "Before you finish, record one assessment per criterion. Missing: {}. Run the check, then: interlock \
-             assess add --criterion <id> --strength <observed|tested|static|failed|blocked> --ref \"<command you ran>\" \
-             --note \"<what you saw>\".",
-            missing.join(", ")
-        ),
-    };
+    let mut steps = Vec::new();
+    if !missing_runs.is_empty() {
+        steps.push(format!(
+            "have interlock run the check on your current files for: {} (interlock check run --criterion <id>)",
+            missing_runs.join(", ")
+        ));
+    }
+    if !missing_records.is_empty() {
+        steps.push(match attempt.role {
+            Role::Worker => format!(
+                "record a claim for: {} (interlock claim add --criterion <id> --strength \
+                 <observed|tested|static|failed|blocked> --tree auto --ref \"<command>\" --note \"<what you saw>\")",
+                missing_records.join(", ")
+            ),
+            _ => format!(
+                "record an assessment for: {} (interlock assess add --criterion <id> --strength \
+                 <observed|tested|static|failed|blocked> --ref \"<command>\" --note \"<what you saw>\")",
+                missing_records.join(", ")
+            ),
+        });
+    }
+    let reason =
+        format!("Before you finish, {}. Evidence made before your last edit no longer counts.", steps.join(", then "));
     HookResponse::block_stop(&reason)
 }
 
@@ -213,7 +233,12 @@ mod tests {
         store
             .ready(
                 "t1",
-                Snapshot { repository: ".".into(), base_commit: base.clone(), untracked_hash: None },
+                Snapshot {
+                    repository: ".".into(),
+                    base_commit: base.clone(),
+                    untracked_hash: None,
+                    protected_paths: vec![],
+                },
                 Utc::now(),
             )
             .unwrap();
@@ -311,7 +336,7 @@ mod tests {
         let s = setup(true);
         let held = stop(&s, false);
         assert!(held.stdout.contains("\"decision\":\"block\""));
-        assert!(held.stdout.contains("Missing: tests"));
+        assert!(held.stdout.contains("record a claim for: tests"), "{}", held.stdout);
         assert_eq!(stop(&s, true), HookResponse::allow(), "never holds twice in a row");
 
         // A claim for the current tree releases it; a later edit makes it stale again.
@@ -338,5 +363,37 @@ mod tests {
         assert_eq!(stop(&s, false), HookResponse::allow());
         std::fs::write(s.worktree.join("src/a.rs"), "fn a() { /* changed again */ }\n").unwrap();
         assert!(stop(&s, false).stdout.contains("block"), "the claim no longer matches the files");
+    }
+
+    #[test]
+    fn the_stop_guard_also_wants_interlock_to_have_run_each_check() {
+        let s = setup(true);
+        let store = Store::open(&s.ctx.db).unwrap();
+        let mut task = store.task("t1").unwrap();
+        task.criteria[0].check = Some("true".into());
+        store
+            .connection()
+            .execute("UPDATE tasks SET record = ?1 WHERE id = 't1'", [serde_json::to_string(&task).unwrap()])
+            .unwrap();
+        drop(store);
+        let held = stop(&s, false);
+        assert!(held.stdout.contains("interlock check run --criterion <id>"), "{}", held.stdout);
+        let mut store = Store::open(&s.ctx.db).unwrap();
+        crate::checks::run_check(
+            &mut store,
+            crate::checks::CheckRequest {
+                task_id: "t1",
+                criterion_id: "tests",
+                target: RunTarget::Output,
+                attempt: Some((s.ctx.attempt_id.clone().unwrap(), s.token.clone())),
+                dir: &s.worktree,
+                scratch: &s.worktree.join("../../scratch"),
+                timeout: std::time::Duration::from_secs(30),
+            },
+        )
+        .unwrap();
+        let still = stop(&s, false);
+        assert!(!still.stdout.contains("check run"), "the run is recorded: {}", still.stdout);
+        assert!(still.stdout.contains("record a claim for: tests"), "{}", still.stdout);
     }
 }

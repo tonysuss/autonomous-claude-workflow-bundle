@@ -35,29 +35,45 @@ One policy, two hosts. `interlock host tools <task> --role verifier --host <host
 
 `interlock run <task> --host <copilot|claude-code>` drives a task through headless sessions until it is done, blocked, failed, or waiting on the operator:
 
-1. **G1**: records the repository's `HEAD` as the input snapshot.
-2. **Worker**: opens an attempt (G2) in a fresh git worktree under `.interlock/worktrees/`, with a brief built from records and the attempt's effective grant as the host's tool filters. When the session ends, interlock writes the worktree's tree through a temporary index and submits it as the result (G3). The repository's branch and index are never touched.
-3. **Verifier**: opens an independent attempt in a worktree checked out at that tree, with read and test tools only. It records one assessment per criterion.
-4. **Advance**: G4 then G7 when the evidence holds; R1 with a fix brief when an independent check fails; R3 when a session times out or crashes.
+1. **G1**: records the repository's `HEAD` as the input snapshot, with the files the checks run marked as protected.
+2. **Baseline**: interlock runs each check that promises a baseline on the input snapshot. A reproduction must fail there and a regression guard must pass there, and neither may run nothing. A task that breaks its promise is blocked before any session starts, with the reason.
+3. **Worker**: opens an attempt (G2) in a fresh git worktree under `.interlock/worktrees/`, with a brief built from records and the attempt's effective grant as the host's tool filters. When the session ends, interlock writes the worktree's tree through a temporary index and submits it as the result (G3). The repository's branch and index are never touched.
+4. **Verifier**: opens an independent attempt in a worktree checked out at that tree, with read and test tools only. It records one assessment per criterion.
+5. **Advance**: G4 then G7 when the evidence holds; R1 with a fix brief when an independent check fails; R3 when a session times out or crashes.
 
 Every tool call in those sessions passes through `interlock hook pre-tool-use`. That hook:
 - denies edits outside the attempt's worktree or the task's scope;
 - denies commands that touch the store;
 - denies anything the effective grant does not cover (headless sessions have nobody to ask).
 
-`interlock hook stop` holds a worker until it has claimed every self-checked criterion against its final files, and a verifier until it has assessed every criterion.
+`interlock hook stop` holds a worker until interlock has run each self-checked criterion's check on its final files and the worker has claimed it, and holds a verifier until it has done the same for every criterion.
 
-A recorded run of the [export-retry example](examples/export-retry/README.md) on Claude Code went from create to done in two sessions, 35 seconds of agent time.
+### Evidence interlock saw
+
+An agent's word is not enough for a criterion that names a check. `interlock check run --criterion <id>` runs the check itself, on the exact tree in the agent's worktree, and keeps the output as a content-addressed artifact. Evidence policy v2 then requires, for a checked criterion:
+
+| Rule | Why |
+| --- | --- |
+| A passing run on the current tree, asked for by an allowed producer (a verifier or the operator, for independent criteria) | The pass is something interlock saw |
+| A failing run by a verifier fails the criterion outright | Same as a failed independent assessment |
+| A run whose output shows nothing was tested never passes and never fails | `Ran 0 tests`, `collected 0 items`, `running 0 tests`, `[no test files]`, `No tests found`, `0 passing` |
+| `baseline = "fails"`: the check failed on the input snapshot | A reproduction that already passes proves nothing |
+| `baseline = "passes"`: the check passed there | A regression guard that already fails, or tests nothing, guards nothing |
+
+A result whose changed files leave the task's scope, or touch a file a check runs, is rejected at G3: the change set is read from the output tree, so a shell write (`sed -i`, `>`) cannot get around it. The attempt can try again; under `interlock run`, the next attempt's brief says why the last result was rejected.
+
+Recorded runs of the [export-retry example](examples/export-retry/README.md) on Claude Code: the corrected task went from create to done in two sessions, and the original task, whose regression command ran no tests, was blocked before any session started.
 
 ## What is built
 
 | Area | State |
 | --- | --- |
-| S4: JSON Schemas for all nine records (`schemas/`) | Done; Rust types are checked against them by a conformance test |
+| S4: JSON Schemas for all records (`schemas/`), now ten with `check_run` | Done; Rust types are checked against them by a conformance test |
 | Policy core: lifecycle, G1–G7, R1–R3, block, fail, cancel | Done; pure functions, no IO |
-| Evidence policy v1 with currency keys | Done; property-tested |
+| Evidence policy v1: currency keys, independent failures win | Done; property-tested |
 | Grants: profiles, intersection, expiry, irreversible never grantable | Done |
 | Shell command classifier and task scope globs | Done; conservative first cut |
+| Evidence policy v2: check runs by interlock, baselines, empty-run detection, output scope at G3 | Done |
 | SQLite store: one transaction per move, append-only evidence, idempotent events | Done |
 | CLI with JSON output | Done |
 | Host adapters: inspection, tool translation, session planning, output parsing | Done for Copilot CLI and Claude Code |
@@ -68,7 +84,7 @@ A recorded run of the [export-retry example](examples/export-retry/README.md) on
 
 ## Invariant tests
 
-Each invariant in the design has a fault test that passes today.
+Each invariant in the design has a fault test that passes today. The last row is an invariant this build adds.
 
 | Invariant | Test |
 | --- | --- |
@@ -79,6 +95,7 @@ Each invariant in the design has a fault test that passes today.
 | 5. Apply and acknowledge together | A duplicate event is a no-op; the process aborted mid-write, then the replay applies exactly once |
 | 6. Permissions are bounded | On Copilot, a worker's `git push` is denied inside the live session; edits outside the worktree or scope, and commands touching the store, are denied |
 | 7. External effects are reconciled | Operation rows are written before G5, and G6 confirms the pinned head. On restart, attempts left running get a synthetic failure report and the task retries |
+| Added: checks cannot be faked or emptied | On Copilot, end to end: a regression check that runs no tests, and a reproduction that already passes, each block the task before any session; a worker that rewrites the check to `exit 0` has its result rejected, and the next worker must really fix the bug. Runs that tested nothing never pass or fail (property-tested) |
 
 ## Changes from the design draft
 
@@ -87,13 +104,15 @@ Each invariant in the design has a fault test that passes today.
 - **Hand-written record types.** `typify` is still alpha (0.10.0-alpha.1). The schemas stay the source of truth: `interlock-schema` embeds them, the store validates every record it writes, and a conformance test catches drift. Generated types can replace these once the schemas settle.
 - **A host-neutral tool vocabulary** (`read`, `edit`, `shell:<prefix>`, `web`, `mcp:<server>/<tool>`, `agent`) so grants are written once and translated per host.
 - **One hooks plugin instead of per-host hook packages.** Both hosts load the same Claude-format plugin, so per-call policy and the stop guard are one implementation.
+- **Check runs are a tenth record.** The draft's evidence was claims and assessments. A `check_run` records interlock's own execution of a criterion's check, and criteria gained a `baseline`. The draft's "same-surface reproduction before and after the change" becomes a rule rather than an instruction.
+- **Scope is enforced on the output tree.** The draft limits edits to the task's scope; the hook enforces that per call for edit tools, and G3 enforces it for everything, including the checks' own files.
 
 ## Next
 
-- **Checks that cannot pass vacuously.** In the recorded run, both agents noticed that the task's regression command ran zero tests. A `repro` criterion should be required to fail on the base tree and pass on the output, and a check that runs nothing should not count.
 - **Interactive path.** Generated skills that call `interlock` from a session a person drives (phase 1), using the same hooks in `interactive` mode, where they ask instead of deny.
 - **Forge adapter** for G5 and G6 with pinned merges, and the evaluation against a frozen task set (phase 4).
 - **Copilot CLI with a real model**, in an environment where it can sign in. Today's Copilot runs exercise the real CLI, hooks and permissions, with a scripted model.
+- **Wider empty-run detection.** The detectors know unittest, pytest, cargo, go, Jest, Vitest and Mocha. Other runners need adding, or a criterion could state the minimum number of tests it expects.
 
 ## Use
 
@@ -116,6 +135,7 @@ interlock task ready export-retry --base "$(git rev-parse HEAD)"
 interlock attempt start export-retry --role worker --host copilot
 interlock result submit --attempt <id> --token <token> --epoch 1 --tree "$(git write-tree)" --summary "..."
 interlock attempt start export-retry --role verifier --host copilot
+interlock check run --criterion repro            # interlock runs the check; credentials come from the attempt
 interlock assess add --attempt <id> --token <token> --criterion repro --strength observed --tree <tree>
 interlock advance export-retry
 interlock brief export-retry

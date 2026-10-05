@@ -12,6 +12,11 @@
     "check": { "type": ["string", "null"], "description": "Reference to the check that tests this criterion, such as a script path." },
     "check_version": { "type": "string", "minLength": 1, "default": "1" },
     "min_strength": { "$ref": "common.schema.json#/$defs/min_strength" },
-    "producer": { "$ref": "common.schema.json#/$defs/producer" }
+    "producer": { "$ref": "common.schema.json#/$defs/producer" },
+    "baseline": {
+      "description": "What the check must do on the task's input snapshot for its passes to count. fails: it reproduces the problem. passes: it already held, as a regression guard. any: no requirement.",
+      "enum": ["fails", "passes", "any"],
+      "default": "any"
+    }
   }
 }

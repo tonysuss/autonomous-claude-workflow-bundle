@@ -15,7 +15,10 @@
     "changed_paths": { "type": "array", "items": { "type": "string" } },
     "summary": { "type": "string" },
     "open_questions": { "type": "array", "items": { "type": "string" } },
-    "status": { "enum": ["accepted", "superseded"] },
+    "status": {
+      "description": "accepted: applied. superseded: from a stale attempt or epoch. rejected: changes outside the task's scope or to its checks.",
+      "enum": ["accepted", "superseded", "rejected"]
+    },
     "superseded_reason": { "type": ["string", "null"] },
     "received_at": { "$ref": "common.schema.json#/$defs/timestamp" }
   }

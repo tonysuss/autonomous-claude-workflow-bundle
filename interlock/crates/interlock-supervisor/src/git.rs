@@ -43,8 +43,20 @@ pub fn head(dir: &Path) -> Result<String> {
     git(dir, &["rev-parse", "HEAD"], &[])
 }
 
+/// Generated files that never belong in an output tree, even where the
+/// repository forgets to ignore them. Running a check must not change the
+/// tree it checked.
+pub const GENERATED: &[&str] = &[
+    ":(exclude,glob)**/__pycache__/**",
+    ":(exclude,glob)**/*.pyc",
+    ":(exclude,glob)**/.pytest_cache/**",
+    ":(exclude,glob)**/.mypy_cache/**",
+    ":(exclude,glob)**/.ruff_cache/**",
+    ":(exclude,glob).interlock/**",
+];
+
 /// The tree of everything in the worktree (tracked, changed and untracked,
-/// minus ignored files), written through a temporary index.
+/// minus ignored and generated files), written through a temporary index.
 pub fn worktree_tree(dir: &Path) -> Result<String> {
     let root = toplevel(dir)?;
     let index = git(&root, &["rev-parse", "--git-path", "index"], &[])?;
@@ -55,7 +67,9 @@ pub fn worktree_tree(dir: &Path) -> Result<String> {
     }
     let tmp_str = tmp.display().to_string();
     let env = [("GIT_INDEX_FILE", tmp_str.as_str())];
-    let result = git(&root, &["add", "-A"], &env).and_then(|_| git(&root, &["write-tree"], &env));
+    let mut add = vec!["add", "-A", "--", "."];
+    add.extend(GENERATED);
+    let result = git(&root, &add, &env).and_then(|_| git(&root, &["write-tree"], &env));
     let _ = std::fs::remove_file(&tmp);
     result
 }
@@ -79,6 +93,11 @@ pub fn worktree_add(repo: &Path, path: &Path, commit: &str) -> Result<()> {
 
 pub fn worktree_remove(repo: &Path, path: &Path) -> Result<()> {
     git(repo, &["worktree", "remove", "--force", &path.display().to_string()], &[]).map(|_| ())
+}
+
+/// The object type at `spec` (for example `HEAD:src/a.rs`), or `None` if absent.
+pub fn object_type(repo: &Path, spec: &str) -> Option<String> {
+    git(repo, &["cat-file", "-t", spec], &[]).ok()
 }
 
 /// Paths that differ between two trees or commits.
@@ -118,6 +137,10 @@ pub(crate) mod tests {
         let tree = worktree_tree(repo.path()).unwrap();
         assert_ne!(tree, base_tree);
         assert_eq!(changed_paths(repo.path(), &base_tree, &tree).unwrap(), vec!["b.txt"]);
+        // Bytecode the repository forgot to ignore does not count as output.
+        std::fs::create_dir_all(repo.path().join("pkg/__pycache__")).unwrap();
+        std::fs::write(repo.path().join("pkg/__pycache__/m.cpython-311.pyc"), "x").unwrap();
+        assert_eq!(worktree_tree(repo.path()).unwrap(), tree);
         let status = git(repo.path(), &["status", "--porcelain"], &[]).unwrap();
         assert!(status.contains("?? b.txt"), "b.txt is still untracked in the user's index: {status}");
     }
