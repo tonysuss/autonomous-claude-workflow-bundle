@@ -72,6 +72,9 @@ impl Copilot {
         if let Some(m) = &spec.model {
             args.extend(["--model".into(), m.clone()]);
         }
+        if let Some(id) = &spec.session_id {
+            args.push(format!("--session-id={id}"));
+        }
         let mut env = spec.env.clone();
         env.push(("COPILOT_AUTO_UPDATE".into(), "false".into()));
         CommandPlan { program: bin, args, stdin: None, env }
@@ -129,6 +132,7 @@ impl Host for Copilot {
                     saw_result = true;
                     s.session_id = e["sessionId"].as_str().map(str::to_string);
                     s.is_error = e["exitCode"].as_i64().is_some_and(|c| c != 0);
+                    s.premium_requests = e["usage"]["premiumRequests"].as_f64();
                 }
                 _ => {}
             }
@@ -211,6 +215,8 @@ mod tests {
             env: vec![("INTERLOCK_ATTEMPT".into(), "att-1".into())],
             timeout: std::time::Duration::from_secs(60),
             transcript: "/t.jsonl".into(),
+            session_id: Some("0cb916db-26aa-40f2-86b5-1ba81b225fd2".into()),
+            max_cost_usd: Some(1.0),
         };
         let plan = Copilot.plan_with("/bin/copilot".into(), &spec);
         assert_eq!(plan.args[1], "You are the worker.\n\nFix it");
@@ -219,6 +225,9 @@ mod tests {
         }
         assert!(plan.args.windows(2).any(|w| w == ["--plugin-dir", "/p"]));
         assert!(plan.env.iter().any(|(k, _)| k == "INTERLOCK_ATTEMPT"));
+        assert!(plan.args.iter().any(|a| a == "--session-id=0cb916db-26aa-40f2-86b5-1ba81b225fd2"));
+        // Copilot caps AI credits, not dollars, so a dollar budget is enforced by interlock alone.
+        assert!(!plan.args.iter().any(|a| a.contains("credits")));
     }
 
     #[test]
@@ -230,7 +239,7 @@ mod tests {
             r#"{"type":"assistant.turn_end","data":{"turnId":"0"}}"#,
             r#"{"type":"assistant.message","data":{"content":"Fixed the retry."}}"#,
             r#"{"type":"assistant.turn_end","data":{"turnId":"1"}}"#,
-            r#"{"type":"result","sessionId":"s-1","exitCode":0,"usage":{}}"#,
+            r#"{"type":"result","sessionId":"s-1","exitCode":0,"usage":{"premiumRequests":2,"sessionDurationMs":317}}"#,
         ]
         .iter()
         .map(|s| s.to_string())
@@ -239,6 +248,7 @@ mod tests {
         assert_eq!(s.final_text.as_deref(), Some("Fixed the retry."));
         assert_eq!((s.denials, s.turns, s.is_error), (1, Some(2), false));
         assert_eq!(s.session_id.as_deref(), Some("s-1"));
+        assert_eq!(s.premium_requests, Some(2.0));
         assert!(Copilot.summarize(&lines[..5]).is_error, "no result event means the session did not finish");
     }
 }

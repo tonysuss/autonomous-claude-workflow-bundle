@@ -21,6 +21,7 @@ interlock-store.workspace = true
 interlock-supervisor.workspace = true
 serde.workspace = true
 serde_json.workspace = true
+signal-hook.workspace = true
 toml.workspace = true
 
 [dev-dependencies]

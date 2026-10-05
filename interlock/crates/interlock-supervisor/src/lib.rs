@@ -2,6 +2,8 @@
 //! verifier sessions, the hooks both hosts call, and restart reconcile.
 
 pub mod checks;
+pub mod config;
+pub mod export;
 pub mod git;
 pub mod hook;
 pub mod prompts;

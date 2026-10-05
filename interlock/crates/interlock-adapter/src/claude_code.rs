@@ -80,6 +80,13 @@ impl ClaudeCode {
         if let Some(sys) = &spec.append_system {
             args.extend(["--append-system-prompt".into(), sys.clone()]);
         }
+        if let Some(id) = &spec.session_id {
+            args.extend(["--session-id".into(), id.clone()]);
+        }
+        // Claude Code stops itself at a dollar cap, ending with `error_max_budget_usd`.
+        if let Some(usd) = spec.max_cost_usd {
+            args.extend(["--max-budget-usd".into(), format!("{usd:.4}")]);
+        }
         CommandPlan { program: bin, args, stdin: Some(spec.prompt.clone()), env: spec.env.clone() }
     }
 }
@@ -124,6 +131,14 @@ impl Host for ClaudeCode {
             s.turns = e["num_turns"].as_u64();
             s.cost_usd = e["total_cost_usd"].as_f64();
             s.denials = e["permission_denials"].as_array().map_or(0, |a| a.len() as u64);
+            let subtype = e["subtype"].as_str().filter(|t| *t != "success");
+            s.stop_reason = e["terminal_reason"].as_str().or(subtype).map(str::to_string);
+            if s.final_text.is_none() {
+                // Error results carry their messages in `errors` instead.
+                let errors: Vec<&str> =
+                    e["errors"].as_array().into_iter().flatten().filter_map(serde_json::Value::as_str).collect();
+                s.final_text = (!errors.is_empty()).then(|| errors.join("; "));
+            }
         }
         s
     }
@@ -180,6 +195,8 @@ mod tests {
             env: vec![],
             timeout: std::time::Duration::from_secs(60),
             transcript: "/t.jsonl".into(),
+            session_id: Some("6f1c0b8e-3a2d-4c5e-9f00-1a2b3c4d5e6f".into()),
+            max_cost_usd: Some(0.25),
         };
         let plan = ClaudeCode.plan_with("/bin/claude".into(), &spec);
         assert_eq!(plan.stdin.as_deref(), Some("Fix it"));
@@ -190,6 +207,19 @@ mod tests {
         );
         assert!(joined.contains("--permission-mode dontAsk"));
         assert!(plan.args.windows(2).any(|w| w == ["--max-turns", "30"]));
+        assert!(plan.args.windows(2).any(|w| w == ["--session-id", "6f1c0b8e-3a2d-4c5e-9f00-1a2b3c4d5e6f"]));
+        assert!(plan.args.windows(2).any(|w| w == ["--max-budget-usd", "0.2500"]));
+    }
+
+    #[test]
+    fn a_session_stopped_at_its_cost_cap_says_so() {
+        // Captured from Claude Code 2.1.289 with --max-budget-usd 0.000001, trimmed.
+        let line = r#"{"type":"result","subtype":"error_max_budget_usd","is_error":true,"num_turns":1,"total_cost_usd":0.000944,"terminal_reason":"budget_exhausted","errors":["Reached maximum budget ($0.000001)"],"permission_denials":[],"session_id":"6f1c0b8e-3a2d-4c5e-9f00-1a2b3c4d5e6f"}"#;
+        let s = ClaudeCode.summarize(&[line.to_string()]);
+        assert!(s.is_error);
+        assert_eq!(s.stop_reason.as_deref(), Some("budget_exhausted"));
+        assert_eq!(s.cost_usd, Some(0.000944));
+        assert_eq!(s.final_text.as_deref(), Some("Reached maximum budget ($0.000001)"));
     }
 
     #[test]

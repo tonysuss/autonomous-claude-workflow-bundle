@@ -1,14 +1,21 @@
 //! Running one headless session. Each host turns a host-neutral
 //! `SessionSpec` into a `CommandPlan`; one runner executes any plan with a
-//! timeout and cancellation, and keeps the raw event stream as a transcript.
+//! timeout and cancellation. The host writes its event stream straight to a
+//! transcript file, so a session can outlive the supervisor that started it.
+//!
+//! A session starts in two steps so the supervisor can record its handoff
+//! first: `spawn` starts the session's process group with a gate that holds
+//! the host back, and `release` lets it run. A supervisor that dies before
+//! releasing the gate leaves no host running. `attach` waits for a session
+//! that another supervisor started.
 
-use std::io::{BufRead, BufReader, Write};
-use std::path::PathBuf;
-use std::process::{Command, Stdio};
+use std::io::{BufRead, BufReader, Read, Seek, SeekFrom, Write};
+use std::path::{Path, PathBuf};
+use std::process::{Child, ChildStdin, Command, ExitStatus, Stdio};
 use std::sync::atomic::{AtomicBool, Ordering};
-use std::time::{Duration, Instant};
+use std::time::{Duration, Instant, SystemTime};
 
-use interlock_schema::ToolPolicy;
+use interlock_schema::{EndReason, ToolPolicy};
 use serde::{Deserialize, Serialize};
 
 /// What to run, in host-neutral terms.
@@ -29,6 +36,10 @@ pub struct SessionSpec {
     pub timeout: Duration,
     /// Where the raw output stream is written, one event per line.
     pub transcript: PathBuf,
+    /// The host's own id for the new session, so it is known before the session starts.
+    pub session_id: Option<String>,
+    /// A cost cap in US dollars for hosts that enforce one themselves.
+    pub max_cost_usd: Option<f64>,
 }
 
 /// A concrete command for one host.
@@ -49,6 +60,12 @@ pub struct SessionSummary {
     pub session_id: Option<String>,
     pub turns: Option<u64>,
     pub cost_usd: Option<f64>,
+    /// Copilot CLI's `usage.premiumRequests`.
+    #[serde(default)]
+    pub premium_requests: Option<f64>,
+    /// The host's own label for why it stopped, such as Claude Code's `budget_exhausted`.
+    #[serde(default)]
+    pub stop_reason: Option<String>,
     pub denials: u64,
     pub events: u64,
 }
@@ -67,119 +84,359 @@ pub struct SessionOutcome {
     #[serde(flatten)]
     pub exit: Exit,
     pub exit_code: Option<i32>,
+    /// The signal that killed the host, when one did and interlock did not send it.
+    #[serde(default)]
+    pub signal: Option<i32>,
     pub duration_ms: u64,
     pub summary: SessionSummary,
     pub transcript: PathBuf,
 }
 
-/// Runs a plan to completion, timeout or cancellation. The host's
-/// `summarize` reads the transcript lines afterwards.
+/// The gate: wait for one line, `go`, on stdin, then become the host with
+/// its real stdin. End of input without it (the supervisor died) exits 97.
+const GATE: &str = r#"IFS= read -r go || exit 97; [ "$go" = go ] || exit 97; f=$1; shift; exec "$@" < "$f""#;
+const NEVER_RELEASED: i32 = 97;
+
+/// How long a stopped session gets to exit after SIGTERM before SIGKILL.
+const GRACE: Duration = Duration::from_secs(3);
+
+fn failed_to_start(plan: &CommandPlan, spec: &SessionSpec, why: impl std::fmt::Display) -> SessionOutcome {
+    SessionOutcome {
+        exit: Exit::Failed { reason: format!("could not start {}: {why}", plan.program.display()) },
+        exit_code: None,
+        signal: None,
+        duration_ms: 0,
+        summary: SessionSummary::default(),
+        transcript: spec.transcript.clone(),
+    }
+}
+
+/// A session's process group, held at its gate until `release`.
+pub struct Spawned {
+    child: Child,
+    gate: Option<ChildStdin>,
+    started: Instant,
+    pub pid: u32,
+    /// The session runs in its own process group, led by `pid`.
+    pub pgid: u32,
+    pub process_start: Option<u64>,
+}
+
+/// Starts a session's process group without starting the host.
+pub fn spawn(plan: &CommandPlan, spec: &SessionSpec) -> Result<Spawned, Box<SessionOutcome>> {
+    let fail = |why: String| Box::new(failed_to_start(plan, spec, why));
+    if let Some(dir) = spec.transcript.parent() {
+        std::fs::create_dir_all(dir).map_err(|e| fail(format!("cannot create {}: {e}", dir.display())))?;
+    }
+    if plan.program.components().count() > 1 && !plan.program.exists() {
+        return Err(fail("no such file".into()));
+    }
+    let stdout = std::fs::File::create(&spec.transcript).map_err(|e| fail(e.to_string()))?;
+    let stderr = std::fs::File::create(stderr_path(&spec.transcript)).map_err(|e| fail(e.to_string()))?;
+    let input = match &plan.stdin {
+        Some(text) => {
+            let path = spec.transcript.with_extension("stdin.txt");
+            std::fs::write(&path, text).map_err(|e| fail(e.to_string()))?;
+            path
+        }
+        None => PathBuf::from("/dev/null"),
+    };
+    let mut cmd = Command::new("/bin/sh");
+    cmd.args(["-c", GATE, "interlock-session"]).arg(&input).arg(&plan.program).args(&plan.args);
+    cmd.current_dir(&spec.workdir)
+        .envs(plan.env.iter().map(|(k, v)| (k.as_str(), v.as_str())))
+        .stdin(Stdio::piped())
+        .stdout(stdout)
+        .stderr(stderr);
+    // Its own process group, so a timeout or cancel stops every subprocess the
+    // host started, and a terminal's Ctrl-C reaches the supervisor, not the host.
+    #[cfg(unix)]
+    std::os::unix::process::CommandExt::process_group(&mut cmd, 0);
+    let mut child = cmd.spawn().map_err(|e| fail(e.to_string()))?;
+    let pid = child.id();
+    Ok(Spawned {
+        gate: child.stdin.take(),
+        child,
+        started: Instant::now(),
+        pid,
+        pgid: pid,
+        process_start: process_start(pid),
+    })
+}
+
+impl Spawned {
+    /// Lets the host start. Call it once the handoff is recorded.
+    pub fn release(&mut self) -> std::io::Result<()> {
+        match self.gate.take() {
+            Some(mut gate) => gate.write_all(b"go\n"),
+            None => Ok(()),
+        }
+    }
+
+    /// Closes the gate without releasing it: the host never starts.
+    pub fn abandon(mut self) {
+        self.gate.take();
+        let _ = self.child.wait();
+    }
+
+    /// Waits for the session to end, stopping its process group on cancel
+    /// or timeout, then reads the transcript.
+    pub fn wait(
+        mut self,
+        spec: &SessionSpec,
+        cancel: &AtomicBool,
+        summarize: impl Fn(&[String]) -> SessionSummary,
+    ) -> SessionOutcome {
+        self.gate.take();
+        let child = &mut self.child;
+        let (exit, code, signal) = loop {
+            match child.try_wait() {
+                Ok(Some(status)) => break (Exit::Completed, status.code(), signal_of(status)),
+                Ok(None) => {}
+                Err(e) => break (Exit::Failed { reason: e.to_string() }, None, None),
+            }
+            if cancel.load(Ordering::SeqCst) {
+                stop_child(child, self.pgid);
+                break (Exit::Cancelled, None, None);
+            }
+            if self.started.elapsed() >= spec.timeout {
+                stop_child(child, self.pgid);
+                break (Exit::TimedOut, None, None);
+            }
+            std::thread::sleep(Duration::from_millis(100));
+        };
+        // Anything the host left behind in its group goes with it.
+        signal_group(self.pgid, "KILL");
+        let code = if code == Some(NEVER_RELEASED) && exit == Exit::Completed { None } else { code };
+        finish(exit, code, signal, self.started.elapsed(), &spec.transcript, summarize)
+    }
+}
+
+/// A session process another supervisor started, from its handoff.
+#[derive(Debug, Clone)]
+pub struct Target {
+    pub pid: u32,
+    pub pgid: u32,
+    pub process_start: Option<u64>,
+    pub started_at: SystemTime,
+    pub deadline: SystemTime,
+    pub transcript: PathBuf,
+}
+
+/// Waits for a session this process did not start, as a restarted
+/// supervisor does. Its exit code is not observable, so the transcript
+/// decides whether it completed.
+pub fn attach(target: &Target, cancel: &AtomicBool, summarize: impl Fn(&[String]) -> SessionSummary) -> SessionOutcome {
+    let still = || alive(target.pid, target.process_start);
+    let exit = loop {
+        if !still() {
+            break Exit::Completed;
+        }
+        if cancel.load(Ordering::SeqCst) {
+            stop_group(target.pgid, still);
+            break Exit::Cancelled;
+        }
+        if SystemTime::now() >= target.deadline {
+            stop_group(target.pgid, still);
+            break Exit::TimedOut;
+        }
+        std::thread::sleep(Duration::from_millis(100));
+    };
+    signal_group(target.pgid, "KILL");
+    let took = SystemTime::now().duration_since(target.started_at).unwrap_or_default();
+    finish(exit, None, None, took, &target.transcript, summarize)
+}
+
+fn finish(
+    exit: Exit,
+    code: Option<i32>,
+    signal: Option<i32>,
+    took: Duration,
+    transcript: &Path,
+    summarize: impl Fn(&[String]) -> SessionSummary,
+) -> SessionOutcome {
+    let lines = read_lines(transcript);
+    let summary = summarize(&lines);
+    let exit = match exit {
+        Exit::Completed if signal.is_some() => {
+            Exit::Failed { reason: format!("the host was killed by signal {}", signal.unwrap_or_default()) }
+        }
+        Exit::Completed if code.is_some_and(|c| c != 0) => {
+            Exit::Failed { reason: format!("the host exited with code {}", code.unwrap_or(-1)) }
+        }
+        Exit::Completed if summary.is_error => Exit::Failed { reason: "the host reported an error".into() },
+        other => other,
+    };
+    SessionOutcome {
+        exit,
+        exit_code: code,
+        signal,
+        duration_ms: took.as_millis() as u64,
+        summary,
+        transcript: transcript.to_path_buf(),
+    }
+}
+
+/// Runs a plan to completion, timeout or cancellation, in one step.
 pub fn run(
     plan: &CommandPlan,
     spec: &SessionSpec,
     cancel: &AtomicBool,
     summarize: impl Fn(&[String]) -> SessionSummary,
 ) -> SessionOutcome {
-    let started = Instant::now();
-    let finish = |exit: Exit, code: Option<i32>, lines: &[String]| {
-        let summary = summarize(lines);
-        let exit = match exit {
-            Exit::Completed if summary.is_error => Exit::Failed { reason: "the host reported an error".into() },
-            Exit::Completed if code.is_some_and(|c| c != 0) => {
-                Exit::Failed { reason: format!("the host exited with code {}", code.unwrap_or(-1)) }
-            }
-            other => other,
-        };
-        SessionOutcome {
-            exit,
-            exit_code: code,
-            duration_ms: started.elapsed().as_millis() as u64,
-            summary,
-            transcript: spec.transcript.clone(),
+    match spawn(plan, spec) {
+        Ok(mut s) => {
+            let _ = s.release();
+            s.wait(spec, cancel, summarize)
         }
-    };
+        Err(outcome) => *outcome,
+    }
+}
 
-    if let Some(dir) = spec.transcript.parent() {
-        let _ = std::fs::create_dir_all(dir);
+pub fn stderr_path(transcript: &Path) -> PathBuf {
+    transcript.with_extension("stderr.txt")
+}
+
+fn read_lines(path: &Path) -> Vec<String> {
+    match std::fs::File::open(path) {
+        Ok(f) => BufReader::new(f).lines().map_while(Result::ok).collect(),
+        Err(_) => vec![],
     }
-    let stderr_path = spec.transcript.with_extension("stderr.txt");
-    let stderr_file = std::fs::File::create(&stderr_path).ok();
-    let mut cmd = Command::new(&plan.program);
-    cmd.args(&plan.args)
-        .current_dir(&spec.workdir)
-        .envs(plan.env.iter().map(|(k, v)| (k.as_str(), v.as_str())))
-        .stdin(if plan.stdin.is_some() { Stdio::piped() } else { Stdio::null() })
-        .stdout(Stdio::piped())
-        .stderr(stderr_file.map(Stdio::from).unwrap_or_else(Stdio::null));
-    // Its own process group, so a timeout or cancel stops every subprocess the
-    // host started, not just the host.
-    #[cfg(unix)]
-    std::os::unix::process::CommandExt::process_group(&mut cmd, 0);
-    let mut child = match cmd.spawn() {
-        Ok(c) => c,
-        Err(e) => {
-            return finish(
-                Exit::Failed { reason: format!("could not start {}: {e}", plan.program.display()) },
-                None,
-                &[],
-            );
-        }
-    };
-    if let (Some(text), Some(mut stdin)) = (&plan.stdin, child.stdin.take()) {
-        let text = text.clone();
-        std::thread::spawn(move || {
-            let _ = stdin.write_all(text.as_bytes());
-        });
+}
+
+fn tail(path: &Path, bytes: u64) -> String {
+    let Ok(mut f) = std::fs::File::open(path) else { return String::new() };
+    let len = f.metadata().map(|m| m.len()).unwrap_or(0);
+    let _ = f.seek(SeekFrom::Start(len.saturating_sub(bytes)));
+    let mut buf = Vec::new();
+    let _ = f.read_to_end(&mut buf);
+    String::from_utf8_lossy(&buf).into_owned()
+}
+
+#[cfg(unix)]
+fn signal_of(status: ExitStatus) -> Option<i32> {
+    std::os::unix::process::ExitStatusExt::signal(&status)
+}
+
+#[cfg(not(unix))]
+fn signal_of(_: ExitStatus) -> Option<i32> {
+    None
+}
+
+fn signal_group(pgid: u32, signal: &str) {
+    let _ = Command::new("kill")
+        .args(["-s", signal, "--", &format!("-{pgid}")])
+        .stdout(Stdio::null())
+        .stderr(Stdio::null())
+        .status();
+}
+
+/// Asks the group to stop, then kills it after a grace period.
+fn stop_group(pgid: u32, mut still_running: impl FnMut() -> bool) {
+    signal_group(pgid, "TERM");
+    let asked = Instant::now();
+    while still_running() && asked.elapsed() < GRACE {
+        std::thread::sleep(Duration::from_millis(50));
     }
-    let stdout = child.stdout.take().expect("stdout is piped");
-    let transcript_path = spec.transcript.clone();
-    let lines = std::sync::Arc::new(std::sync::Mutex::new(Vec::new()));
-    let (done_tx, done_rx) = std::sync::mpsc::channel::<()>();
-    let sink = lines.clone();
-    std::thread::spawn(move || {
-        let mut out = std::fs::File::create(&transcript_path).ok();
-        for line in BufReader::new(stdout).lines().map_while(Result::ok) {
-            if let Some(f) = out.as_mut() {
-                let _ = writeln!(f, "{line}");
-            }
-            if let Ok(mut l) = sink.lock() {
-                l.push(line);
-            }
-        }
-        let _ = done_tx.send(());
-    });
-    let stop = |child: &mut std::process::Child| {
-        #[cfg(unix)]
-        let _ = Command::new("kill")
-            .args(["-s", "KILL", "--", &format!("-{}", child.id())])
+    signal_group(pgid, "KILL");
+}
+
+fn stop_child(child: &mut Child, pgid: u32) {
+    stop_group(pgid, || matches!(child.try_wait(), Ok(None)));
+    let _ = child.kill();
+    let _ = child.wait();
+}
+
+/// The process's state and the kernel's start time for it, from /proc.
+fn proc_stat(pid: u32) -> Option<(char, u64)> {
+    let stat = std::fs::read_to_string(format!("/proc/{pid}/stat")).ok()?;
+    // The command name is in parentheses and may contain spaces.
+    let rest = stat.get(stat.rfind(')')? + 1..)?;
+    let fields: Vec<&str> = rest.split_whitespace().collect();
+    let state = fields.first()?.chars().next()?;
+    let start = fields.get(19)?.parse().ok()?;
+    Some((state, start))
+}
+
+/// The kernel's start time for a process, which tells it apart from a later
+/// process that reuses its pid. `None` where /proc is unavailable.
+pub fn process_start(pid: u32) -> Option<u64> {
+    proc_stat(pid).map(|(_, start)| start)
+}
+
+/// Whether a process is still running: present, not a zombie, and the same
+/// process that was recorded when `process_start` is known.
+pub fn alive(pid: u32, process_start: Option<u64>) -> bool {
+    match proc_stat(pid) {
+        Some((state, start)) => !matches!(state, 'Z' | 'X') && process_start.is_none_or(|s| s == start),
+        None if Path::new("/proc/self/stat").exists() => false,
+        None => Command::new("kill")
+            .args(["-0", &pid.to_string()])
             .stdout(Stdio::null())
             .stderr(Stdio::null())
-            .status();
-        let _ = child.kill();
-        let _ = child.wait();
-    };
+            .status()
+            .is_ok_and(|s| s.success()),
+    }
+}
 
-    let exit = loop {
-        match child.try_wait() {
-            Ok(Some(status)) => break (Exit::Completed, status.code()),
-            Ok(None) => {}
-            Err(e) => break (Exit::Failed { reason: e.to_string() }, None),
+/// Words hosts use when they cannot sign in, lowercased.
+const AUTH_FAILURES: &[&str] = &[
+    "invalid api key",
+    "please run /login",
+    "not logged in",
+    "authentication_failed",
+    "authentication failed",
+    "authentication_error",
+    "no authentication information",
+    "not authenticated",
+    "unauthorized",
+    "oauth token has expired",
+    "login required",
+];
+
+/// Host stop reasons that mean the host's own cost cap was reached.
+const BUDGET_STOPS: &[&str] = &["budget_exhausted", "error_max_budget_usd"];
+
+/// Why a session ended, from its outcome and what the host wrote. Running
+/// out of the task's wall-clock budget looks like a timeout here; the
+/// supervisor, which set the deadline, tells the two apart.
+pub fn classify(outcome: &SessionOutcome) -> (EndReason, Option<String>) {
+    let reason = match &outcome.exit {
+        Exit::Completed => return (EndReason::Completed, None),
+        Exit::TimedOut => {
+            return (
+                EndReason::Timeout,
+                Some(format!("stopped after {}s without finishing", outcome.duration_ms / 1000)),
+            );
         }
-        if cancel.load(Ordering::SeqCst) {
-            stop(&mut child);
-            break (Exit::Cancelled, None);
-        }
-        if started.elapsed() >= spec.timeout {
-            stop(&mut child);
-            break (Exit::TimedOut, None);
-        }
-        std::thread::sleep(Duration::from_millis(100));
+        Exit::Cancelled => return (EndReason::Cancelled, None),
+        Exit::Failed { reason } => reason,
     };
-    // A subprocess that escaped the group can hold the pipe open; read what
-    // arrived and move on rather than wait for it.
-    let _ = done_rx.recv_timeout(Duration::from_secs(5));
-    let lines = lines.lock().map(|l| l.clone()).unwrap_or_default();
-    finish(exit.0, exit.1, &lines)
+    if outcome.signal.is_some() {
+        return (EndReason::Crash, Some(reason.clone()));
+    }
+    if reason.starts_with("could not start") {
+        return (EndReason::HostError, Some(reason.clone()));
+    }
+    let s = &outcome.summary;
+    if s.stop_reason.as_deref().is_some_and(|r| BUDGET_STOPS.contains(&r)) {
+        return (EndReason::BudgetExhausted, Some("the host stopped at its cost cap".into()));
+    }
+    let said = format!(
+        "{}\n{}\n{}",
+        s.final_text.as_deref().unwrap_or_default(),
+        tail(&stderr_path(&outcome.transcript), 16 * 1024),
+        tail(&outcome.transcript, 4 * 1024)
+    )
+    .to_lowercase();
+    if let Some(hit) = AUTH_FAILURES.iter().find(|p| said.contains(*p)) {
+        return (EndReason::AuthFailure, Some(format!("{reason}; the host said \"{hit}\"")));
+    }
+    let detail = match &s.stop_reason {
+        Some(r) => format!("{reason} ({r})"),
+        None => reason.clone(),
+    };
+    (EndReason::HostError, Some(detail))
 }
 
 /// Quotes one argument for a POSIX shell command string, as hook commands are.
@@ -230,6 +487,8 @@ mod tests {
             env: vec![],
             timeout: Duration::from_millis(timeout_ms),
             transcript: dir.join("t.jsonl"),
+            session_id: None,
+            max_cost_usd: None,
         }
     }
 
@@ -239,6 +498,14 @@ mod tests {
 
     fn count(lines: &[String]) -> SessionSummary {
         SessionSummary { events: lines.len() as u64, final_text: lines.last().cloned(), ..Default::default() }
+    }
+
+    fn wait_until(what: &str, f: impl Fn() -> bool) {
+        let start = Instant::now();
+        while !f() {
+            assert!(start.elapsed() < Duration::from_secs(10), "timed out waiting until {what}");
+            std::thread::sleep(Duration::from_millis(20));
+        }
     }
 
     #[test]
@@ -256,6 +523,7 @@ mod tests {
         let out = run(&sh("exit 3"), &spec(dir.path(), 5000), &AtomicBool::new(false), count);
         assert!(matches!(out.exit, Exit::Failed { .. }));
         assert_eq!(out.exit_code, Some(3));
+        assert_eq!(classify(&out).0, EndReason::HostError);
     }
 
     #[test]
@@ -264,8 +532,10 @@ mod tests {
         let out = run(&sh("sleep 5"), &spec(dir.path(), 200), &AtomicBool::new(false), count);
         assert_eq!(out.exit, Exit::TimedOut);
         assert!(out.duration_ms < 3000);
+        assert_eq!(classify(&out).0, EndReason::Timeout);
         let out = run(&sh("sleep 5"), &spec(dir.path(), 5000), &AtomicBool::new(true), count);
         assert_eq!(out.exit, Exit::Cancelled);
+        assert_eq!(classify(&out).0, EndReason::Cancelled);
     }
 
     #[test]
@@ -275,6 +545,136 @@ mod tests {
         plan.stdin = Some("from stdin\n".into());
         let out = run(&plan, &spec(dir.path(), 5000), &AtomicBool::new(false), count);
         assert_eq!(out.summary.final_text.as_deref(), Some("from stdin"));
+    }
+
+    #[test]
+    fn the_gate_holds_the_host_until_released() {
+        let dir = tempfile::tempdir().unwrap();
+        let marker = dir.path().join("started");
+        let plan = sh(&format!("echo $$ > {}", marker.display()));
+        let s = spec(dir.path(), 5000);
+        let mut spawned = spawn(&plan, &s).ok().unwrap();
+        assert!(alive(spawned.pid, spawned.process_start));
+        assert_eq!(spawned.pgid, spawned.pid);
+        std::thread::sleep(Duration::from_millis(300));
+        assert!(!marker.exists(), "the host ran before its handoff could be recorded");
+        spawned.release().unwrap();
+        let pid = spawned.pid;
+        let out = spawned.wait(&s, &AtomicBool::new(false), count);
+        assert_eq!(out.exit, Exit::Completed);
+        let ran_as: u32 = std::fs::read_to_string(&marker).unwrap().trim().parse().unwrap();
+        assert_eq!(ran_as, pid, "the host replaces the gate, so the recorded pid is the host's");
+    }
+
+    #[test]
+    fn an_abandoned_gate_never_starts_the_host() {
+        let dir = tempfile::tempdir().unwrap();
+        let marker = dir.path().join("started");
+        let spawned = spawn(&sh(&format!("touch {}", marker.display())), &spec(dir.path(), 5000)).ok().unwrap();
+        let pid = spawned.pid;
+        spawned.abandon();
+        assert!(!alive(pid, None));
+        assert!(!marker.exists());
+    }
+
+    #[test]
+    fn a_missing_host_binary_is_a_host_error() {
+        let dir = tempfile::tempdir().unwrap();
+        let plan = CommandPlan { program: "/no/such/copilot".into(), args: vec![], stdin: None, env: vec![] };
+        let out = run(&plan, &spec(dir.path(), 5000), &AtomicBool::new(false), count);
+        assert!(matches!(&out.exit, Exit::Failed { reason } if reason.starts_with("could not start")));
+        assert_eq!(classify(&out).0, EndReason::HostError);
+    }
+
+    #[test]
+    fn a_host_killed_by_a_signal_crashed() {
+        let dir = tempfile::tempdir().unwrap();
+        let out = run(&sh("kill -9 $$"), &spec(dir.path(), 5000), &AtomicBool::new(false), count);
+        assert_eq!(out.signal, Some(9));
+        assert_eq!(classify(&out).0, EndReason::Crash);
+    }
+
+    #[test]
+    fn sign_in_failures_and_host_cost_caps_are_told_apart() {
+        let dir = tempfile::tempdir().unwrap();
+        let out = run(
+            &sh("echo 'Error: Not logged in. Please run /login' >&2; exit 1"),
+            &spec(dir.path(), 5000),
+            &AtomicBool::new(false),
+            count,
+        );
+        assert_eq!(classify(&out).0, EndReason::AuthFailure);
+        let capped = |lines: &[String]| SessionSummary {
+            is_error: true,
+            stop_reason: Some("budget_exhausted".into()),
+            ..count(lines)
+        };
+        let out = run(&sh("echo '{}'; exit 1"), &spec(dir.path(), 5000), &AtomicBool::new(false), capped);
+        assert_eq!(classify(&out).0, EndReason::BudgetExhausted);
+    }
+
+    #[test]
+    fn stopping_a_session_stops_its_whole_group() {
+        let dir = tempfile::tempdir().unwrap();
+        let pidfile = dir.path().join("child.pid");
+        // The host starts a background child that would otherwise outlive it.
+        let plan = sh(&format!("sleep 30 & echo $! > {}; wait", pidfile.display()));
+        let cancel = std::sync::Arc::new(AtomicBool::new(false));
+        let flag = cancel.clone();
+        let s = spec(dir.path(), 20_000);
+        let handle = std::thread::spawn(move || run(&plan, &s, &flag, count));
+        wait_until("the background child exists", || pidfile.exists());
+        let child: u32 = std::fs::read_to_string(&pidfile).unwrap().trim().parse().unwrap();
+        assert!(alive(child, None));
+        cancel.store(true, Ordering::SeqCst);
+        assert_eq!(handle.join().unwrap().exit, Exit::Cancelled);
+        wait_until("the background child is gone", || !alive(child, None));
+    }
+
+    #[test]
+    fn attach_follows_a_session_another_supervisor_started() {
+        let dir = tempfile::tempdir().unwrap();
+        let s = spec(dir.path(), 20_000);
+        // The first supervisor starts the session and "dies": it never waits on it.
+        let mut first = spawn(&sh("sleep 1; echo '{\"done\":true}'"), &s).ok().unwrap();
+        first.release().unwrap();
+        let target = Target {
+            pid: first.pid,
+            pgid: first.pgid,
+            process_start: first.process_start,
+            started_at: SystemTime::now(),
+            deadline: SystemTime::now() + Duration::from_secs(20),
+            transcript: s.transcript.clone(),
+        };
+        let out = attach(&target, &AtomicBool::new(false), count);
+        assert_eq!(out.exit, Exit::Completed);
+        assert_eq!(out.exit_code, None, "a process it did not start has no exit code to read");
+        assert_eq!(out.summary.final_text.as_deref(), Some("{\"done\":true}"));
+        drop(first);
+
+        // Re-attached sessions still honor cancellation and the original deadline.
+        let mut second = spawn(&sh("sleep 30"), &s).ok().unwrap();
+        second.release().unwrap();
+        let mut target = Target { pid: second.pid, pgid: second.pgid, process_start: second.process_start, ..target };
+        target.deadline = SystemTime::now() + Duration::from_millis(300);
+        assert_eq!(attach(&target, &AtomicBool::new(false), count).exit, Exit::TimedOut);
+        assert!(!alive(second.pid, second.process_start));
+        let mut third = spawn(&sh("sleep 30"), &s).ok().unwrap();
+        third.release().unwrap();
+        target = Target { pid: third.pid, pgid: third.pgid, process_start: third.process_start, ..target };
+        target.deadline = SystemTime::now() + Duration::from_secs(20);
+        assert_eq!(attach(&target, &AtomicBool::new(true), count).exit, Exit::Cancelled);
+        assert!(!alive(third.pid, third.process_start));
+    }
+
+    #[test]
+    fn a_reused_pid_is_not_mistaken_for_the_session() {
+        let me = std::process::id();
+        let start = process_start(me);
+        assert!(start.is_some(), "this platform has /proc");
+        assert!(alive(me, start));
+        assert!(!alive(me, start.map(|s| s + 1)), "same pid, different process");
+        assert!(!alive(u32::MAX - 1, None));
     }
 
     #[test]

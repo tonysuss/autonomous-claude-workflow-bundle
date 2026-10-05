@@ -19,7 +19,8 @@ pub use claude_code::ClaudeCode;
 pub use copilot::Copilot;
 pub use probe::Probe;
 pub use session::{
-    CommandPlan, Exit, SessionOutcome, SessionSpec, SessionSummary, run, shell_quote, write_hooks_plugin,
+    CommandPlan, Exit, SessionOutcome, SessionSpec, SessionSummary, Spawned, Target, alive, attach, classify,
+    process_start, run, shell_quote, spawn, stderr_path, write_hooks_plugin,
 };
 
 /// How a capability's availability was established.
@@ -112,6 +113,7 @@ pub trait Host {
             Err(reason) => SessionOutcome {
                 exit: Exit::Failed { reason },
                 exit_code: None,
+                signal: None,
                 duration_ms: 0,
                 summary: SessionSummary::default(),
                 transcript: spec.transcript.clone(),

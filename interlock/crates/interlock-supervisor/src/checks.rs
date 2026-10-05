@@ -75,6 +75,8 @@ pub fn run_check(store: &mut Store, req: CheckRequest<'_>) -> Result<CheckRun> {
         env: vec![],
         timeout: req.timeout,
         transcript: transcript.clone(),
+        session_id: None,
+        max_cost_usd: None,
     };
     let outcome = interlock_adapter::run(&plan, &spec, &AtomicBool::new(false), |_| SessionSummary::default());
     let stderr_path = transcript.with_extension("stderr.txt");

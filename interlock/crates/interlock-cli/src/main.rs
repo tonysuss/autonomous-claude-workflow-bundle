@@ -206,6 +206,22 @@ enum TaskCmd {
     Log {
         task: String,
     },
+    /// The task's events: results, evidence, and how each attempt's session ended.
+    Events {
+        task: String,
+    },
+    /// Pause safely: commit the current worker's worktree as a `wip:` commit on
+    /// interlock/wip/<task>, with a resume note built from records.
+    Export {
+        task: String,
+    },
+    /// Make an export the next worker's starting point. The task must be ready.
+    Resume {
+        task: String,
+        /// A commit or ref; defaults to interlock/wip/<task>.
+        #[arg(long)]
+        from: Option<String>,
+    },
 }
 
 #[derive(Clone, Copy, ValueEnum, PartialEq, Eq)]
@@ -510,6 +526,12 @@ fn open(cli: &Cli) -> Result<Store> {
     Ok(store)
 }
 
+/// The directory beside the store: config, transcripts, worktrees, exports.
+fn store_dir(cli: &Cli) -> PathBuf {
+    let db = cli.db.clone().unwrap_or_else(default_db);
+    db.parent().map(Path::to_path_buf).unwrap_or_else(|| PathBuf::from(".interlock"))
+}
+
 fn profile(cli: &Cli) -> Profile {
     match cli.profile {
         ProfileArg::Conservative => Profile::Conservative,
@@ -672,6 +694,20 @@ fn run(cli: &Cli) -> Result<()> {
                 TaskCmd::Fail { task, reason } => print(&store.stop(task, false, reason, now()?)?),
                 TaskCmd::Cancel { task, reason } => print(&store.stop(task, true, reason, now()?)?),
                 TaskCmd::Log { task } => print(&store.transitions(task)?),
+                TaskCmd::Events { task } => print(&store.events(task)?),
+                TaskCmd::Export { task } => {
+                    let repo = interlock_supervisor::git::toplevel(&std::env::current_dir()?)?;
+                    let dir = store_dir(cli);
+                    print(&interlock_supervisor::export::export(&store, &repo, &dir, task, profile, now()?)?)
+                }
+                TaskCmd::Resume { task, from } => {
+                    let repo = interlock_supervisor::git::toplevel(&std::env::current_dir()?)?;
+                    let (commit, tree) =
+                        interlock_supervisor::export::resume(&mut store, &repo, task, from.as_deref(), now()?)?;
+                    print(
+                        &json!({"task": task, "resumes_from": commit, "tree": tree, "state": store.task(task)?.state}),
+                    )
+                }
             }
         }
         Command::Attempt(cmd) => {
@@ -823,7 +859,16 @@ fn run(cli: &Cli) -> Result<()> {
                         store.save_host_report(&r.host, &serde_json::to_value(r)?, now()?)?;
                     }
                 }
-                print(&reports)
+                // Each report says whether the installed version matches .interlock/config.toml's pin.
+                let config = interlock_supervisor::config::Config::load(&store_dir(cli)).map_err(|e| anyhow!(e))?;
+                let mut out = Vec::new();
+                for r in &reports {
+                    let mut v = serde_json::to_value(r)?;
+                    let pin = interlock_supervisor::config::PinStatus::of(config.pin(&r.host), r.version.as_deref());
+                    v["pin"] = serde_json::to_value(pin)?;
+                    out.push(v);
+                }
+                print(&out)
             }
             HostCmd::Tools { task, role, host } => {
                 let store = open(cli)?;
@@ -964,8 +1009,27 @@ fn run_task(
         capabilities: capabilities.as_deref().map(parse_capabilities).transpose()?,
     };
     let mut supervisor = interlock_supervisor::Supervisor::new(repo, db, host_by_name(host)?, Probe::from_env(), cfg)?;
+    // SIGINT or SIGTERM stops the running session, cancels its attempt and
+    // leaves the task to resume. A second signal exits at once.
+    use signal_hook::consts::{SIGINT, SIGTERM};
+    let signal = std::sync::Arc::new(std::sync::atomic::AtomicUsize::new(0));
+    for (sig, code) in [(SIGINT, 130), (SIGTERM, 143)] {
+        signal_hook::flag::register_conditional_shutdown(sig, code, supervisor.cancel.clone())?;
+        signal_hook::flag::register_usize(sig, signal.clone(), sig as usize)?;
+        signal_hook::flag::register(sig, supervisor.cancel.clone())?;
+    }
     let report = supervisor.run(task)?;
     print(&report)?;
+    if report.interrupted {
+        let name = match signal.load(std::sync::atomic::Ordering::SeqCst) as i32 {
+            SIGINT => "SIGINT",
+            SIGTERM => "SIGTERM",
+            _ => "a signal",
+        };
+        let resume = format!("interlock run {task} --host {host}");
+        eprintln!("{}", json!({"interrupted": name, "final_state": report.final_state, "resume": resume}));
+        return Ok(ExitCode::from(6));
+    }
     Ok(if report.final_state == State::Done { ExitCode::SUCCESS } else { ExitCode::from(5) })
 }
 

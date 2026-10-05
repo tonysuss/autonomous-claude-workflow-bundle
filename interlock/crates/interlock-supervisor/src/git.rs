@@ -101,6 +101,23 @@ pub fn worktree_remove(repo: &Path, path: &Path) -> Result<()> {
     git(repo, &["worktree", "remove", "--force", &path.display().to_string()], &[]).map(|_| ())
 }
 
+/// The commit `rev` names, and its tree.
+pub fn resolve_commit(repo: &Path, rev: &str) -> Result<(String, String)> {
+    let commit = git(repo, &["rev-parse", "--verify", "--end-of-options", &format!("{rev}^{{commit}}")], &[])?;
+    let tree = tree_of(repo, &commit)?;
+    Ok((commit, tree))
+}
+
+/// Points interlock's own ref `name` (under refs/heads/interlock/) at `commit`.
+/// Never used for the user's branches.
+pub fn update_interlock_ref(repo: &Path, name: &str, commit: &str, message: &str) -> Result<()> {
+    if !name.starts_with("refs/heads/interlock/") {
+        return Err(GitError { args: format!("update-ref {name}"), message: "not an interlock ref".into() });
+    }
+    git(repo, &["check-ref-format", name], &[])?;
+    git(repo, &["update-ref", "-m", message, name, commit], &[]).map(|_| ())
+}
+
 /// The object type at `spec` (for example `HEAD:src/a.rs`), or `None` if absent.
 pub fn object_type(repo: &Path, spec: &str) -> Option<String> {
     git(repo, &["cat-file", "-t", spec], &[]).ok()
