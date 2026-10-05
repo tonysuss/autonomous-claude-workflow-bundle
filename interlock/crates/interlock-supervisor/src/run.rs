@@ -237,12 +237,12 @@ impl Supervisor {
                 State::Running => {
                     self.store.retry(task_id, "found running without a live session", Utc::now())?;
                 }
-                State::Verified => {
-                    if self.store.advance(task_id, Utc::now())?.is_empty() {
-                        break "verified; landing needs the operator (interlock integrate begin)".to_string();
+                // G7 when no delivery is needed; otherwise G5, the pinned merge and G6 through the forge.
+                State::Verified | State::Integrating => {
+                    if let Some(stop) = crate::delivery::step(&mut self.store, &self.repo, task_id, &self.cancel)? {
+                        break stop;
                     }
                 }
-                State::Integrating => break "integrating; waiting for the forge".to_string(),
                 State::Blocked => break format!("blocked: {}", task.blocked_reason.unwrap_or_default()),
                 State::Done => break "done".to_string(),
                 State::Failed => break "failed".to_string(),

@@ -14,6 +14,7 @@ interlock-schema = { path = "crates/interlock-schema" }
 interlock-core = { path = "crates/interlock-core" }
 interlock-store = { path = "crates/interlock-store" }
 interlock-adapter = { path = "crates/interlock-adapter" }
+interlock-forge = { path = "crates/interlock-forge" }
 interlock-supervisor = { path = "crates/interlock-supervisor" }
 
 anyhow = "1"
