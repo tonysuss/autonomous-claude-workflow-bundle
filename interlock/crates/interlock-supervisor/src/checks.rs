@@ -197,7 +197,8 @@ mod tests {
         std::fs::write(repo.path().join("calc.py"), "def add(a, b):\n    return a + b\n").unwrap();
         let fixed = check(&mut store, repo.path(), "repro", RunTarget::Output, repo.path());
         assert!(fixed.passed(), "{}", fixed.output_tail);
-        assert_eq!(fixed.tree, git::worktree_tree(repo.path()).unwrap());
+        let after = git::worktree_tree(repo.path()).unwrap();
+        assert_eq!(fixed.tree, after);
         assert!(
             !repo
                 .path()

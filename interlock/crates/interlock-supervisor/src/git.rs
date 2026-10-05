@@ -63,7 +63,13 @@ pub fn worktree_tree(dir: &Path) -> Result<String> {
     let index = if Path::new(&index).is_absolute() { PathBuf::from(index) } else { root.join(index) };
     let tmp = std::env::temp_dir().join(format!("interlock-index-{}", uuid::Uuid::new_v4().simple()));
     if index.exists() {
-        std::fs::copy(&index, &tmp).map_err(|e| GitError { args: "copy index".into(), message: e.to_string() })?;
+        let io = |e: std::io::Error| GitError { args: "copy index".into(), message: e.to_string() };
+        std::fs::copy(&index, &tmp).map_err(io)?;
+        // Keep the original index's timestamp. Git re-reads any file changed in
+        // the same second the index was written; a fresh timestamp on the copy
+        // would make it trust stale entries and hash old content.
+        let written = std::fs::metadata(&index).and_then(|m| m.modified()).map_err(io)?;
+        std::fs::File::options().write(true).open(&tmp).and_then(|f| f.set_modified(written)).map_err(io)?;
     }
     let tmp_str = tmp.display().to_string();
     let env = [("GIT_INDEX_FILE", tmp_str.as_str())];
@@ -143,6 +149,22 @@ pub(crate) mod tests {
         assert_eq!(worktree_tree(repo.path()).unwrap(), tree);
         let status = git(repo.path(), &["status", "--porcelain"], &[]).unwrap();
         assert!(status.contains("?? b.txt"), "b.txt is still untracked in the user's index: {status}");
+    }
+
+    #[test]
+    fn a_same_size_edit_in_the_second_of_checkout_is_seen_later() {
+        // Racy git: the index is written and the file edited in the same second,
+        // keeping its size; the tree is computed in a later second.
+        let subsec = || std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).unwrap().subsec_millis();
+        while subsec() > 100 {
+            std::thread::sleep(std::time::Duration::from_millis(5));
+        }
+        let repo = repo_with(&[("calc.py", "def add(a, b):\n    return a - b\n")]);
+        std::fs::write(repo.path().join("calc.py"), "def add(a, b):\n    return a + b\n").unwrap();
+        std::thread::sleep(std::time::Duration::from_millis(1100));
+        let tree = worktree_tree(repo.path()).unwrap();
+        let blob = git(repo.path(), &["show", &format!("{tree}:calc.py")], &[]).unwrap();
+        assert!(blob.contains("a + b"), "the tree holds stale content: {blob}");
     }
 
     #[test]
