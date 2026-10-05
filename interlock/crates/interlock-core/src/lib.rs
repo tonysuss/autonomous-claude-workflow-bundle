@@ -3,6 +3,7 @@
 //! back the updated records plus the move that was made, or a refusal.
 
 pub mod brief;
+pub mod budget;
 pub mod capability;
 pub mod classify;
 pub mod digest;

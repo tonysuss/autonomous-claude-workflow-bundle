@@ -119,6 +119,16 @@ pub struct SubmitResult {
     pub event_id: Option<String>,
 }
 
+/// How a session ended, as the supervisor saw it.
+#[derive(Debug, Clone)]
+pub struct SessionEnd {
+    /// The attempt's new status, if it is still open. `None` keeps it, as
+    /// for a worker whose result was just accepted.
+    pub status: Option<AttemptStatus>,
+    pub end: AttemptEnd,
+    pub spent: Option<Spent>,
+}
+
 pub struct AddEvidence {
     pub attempt_id: String,
     pub token: String,
@@ -246,6 +256,13 @@ fn log_move(tx: &Transaction, task_id: &str, mv: &Move, attempt_id: Option<&str>
 }
 
 fn apply(tx: &Transaction, v: &Validators, out: &Outcome, attempt_id: Option<&str>, now: Timestamp) -> Result<Move> {
+    // A finished task leaves no attempt open: running ones are cancelled and
+    // submitted ones, whose results were judged, complete.
+    if out.task.state.is_terminal() {
+        let all = [Role::Worker, Role::Verifier, Role::Reviewer];
+        end_attempts(tx, v, &out.task.id, &all, &[AttemptStatus::Running], AttemptStatus::Cancelled, now)?;
+        end_attempts(tx, v, &out.task.id, &all, &[AttemptStatus::Submitted], AttemptStatus::Completed, now)?;
+    }
     put_task(tx, v, &out.task, false)?;
     log_move(tx, &out.task.id, &out.mv, attempt_id, now)?;
     Ok(out.mv.clone())
@@ -298,6 +315,71 @@ fn end_attempts(
             a.ended_at = Some(now);
             put_attempt(tx, v, &a, false)?;
         }
+    }
+    Ok(())
+}
+
+/// Records why an attempt's session ended and what it used, and moves the
+/// attempt to `status` if it is still open. The first recorded end stands;
+/// its event is written once.
+fn record_end(
+    tx: &Transaction,
+    v: &Validators,
+    attempt: &mut Attempt,
+    status: Option<AttemptStatus>,
+    end: AttemptEnd,
+    spent: Option<Spent>,
+    now: Timestamp,
+) -> Result<()> {
+    let mut changed = false;
+    if let Some(s) = status
+        && attempt.status.is_open()
+        && s != attempt.status
+    {
+        attempt.status = s;
+        if !s.is_open() {
+            attempt.ended_at = Some(now);
+        }
+        changed = true;
+    }
+    let first = attempt.end.is_none();
+    if first {
+        attempt.end = Some(end.clone());
+        changed = true;
+    }
+    if attempt.spent.is_none() && spent.is_some() {
+        attempt.spent = spent;
+        changed = true;
+    }
+    if !changed {
+        return Ok(());
+    }
+    put_attempt(tx, v, attempt, false)?;
+    if first {
+        put_event(
+            tx,
+            v,
+            &Event {
+                id: new_id("evt"),
+                task_id: attempt.task_id.clone(),
+                attempt_id: Some(attempt.id.clone()),
+                epoch: Some(attempt.epoch),
+                kind: match end.reason {
+                    EndReason::Completed => EventKind::AttemptCompleted,
+                    EndReason::Cancelled => EventKind::AttemptCancelled,
+                    _ => EventKind::AttemptFailed,
+                },
+                payload_ref: None,
+                received_at: now,
+                acknowledged: true,
+                outcome: Some(serde_json::json!({
+                    "reason": end.reason,
+                    "detail": end.detail,
+                    "synthetic": end.synthetic,
+                    "spent": attempt.spent,
+                })),
+            },
+        )?;
     }
     Ok(())
 }
@@ -515,6 +597,9 @@ impl Store {
                     status: AttemptStatus::Running,
                     started_at: now,
                     ended_at: None,
+                    handoff: None,
+                    end: None,
+                    spent: None,
                 };
                 put_attempt(&tx, v, &attempt, true)?;
                 let moved = match &outcome {
@@ -681,28 +766,124 @@ impl Store {
             if attempt.status != AttemptStatus::Running {
                 continue;
             }
-            attempt.status = AttemptStatus::Failed;
-            attempt.ended_at = Some(now);
-            put_attempt(&tx, v, &attempt, false)?;
-            put_event(
-                &tx,
-                v,
-                &Event {
-                    id: new_id("evt"),
-                    task_id: task_id.to_string(),
-                    attempt_id: Some(attempt.id.clone()),
-                    epoch: Some(attempt.epoch),
-                    kind: EventKind::AttemptFailed,
-                    payload_ref: None,
-                    received_at: now,
-                    acknowledged: true,
-                    outcome: Some(serde_json::json!({ "synthetic": true, "reason": reason })),
-                },
-            )?;
+            let end = AttemptEnd { reason: EndReason::Crash, detail: Some(reason.to_string()), synthetic: true };
+            record_end(&tx, v, &mut attempt, Some(AttemptStatus::Failed), end, None, now)?;
             ended.push(attempt);
         }
         tx.commit()?;
         Ok(ended)
+    }
+
+    /// Supervisor path for restart recovery, one attempt at a time: ends a
+    /// running attempt whose session is gone as failed, with a synthetic
+    /// report. A no-op for an attempt that is no longer running.
+    pub fn reconcile_attempt(
+        &mut self,
+        attempt_id: &str,
+        reason: EndReason,
+        detail: &str,
+        spent: Option<Spent>,
+        now: Timestamp,
+    ) -> Result<Attempt> {
+        let (tx, v) = self.begin()?;
+        let mut attempt = get_attempt(&tx, attempt_id)?;
+        if attempt.status == AttemptStatus::Running {
+            let end = AttemptEnd { reason, detail: Some(detail.to_string()), synthetic: true };
+            record_end(&tx, v, &mut attempt, Some(AttemptStatus::Failed), end, spent, now)?;
+        }
+        tx.commit()?;
+        Ok(attempt)
+    }
+
+    /// Records where an attempt's session runs, in its own transaction,
+    /// before the session starts. An attempt gets one session: a second
+    /// handoff is refused, so neither a restart nor a second supervisor can
+    /// start another.
+    pub fn record_handoff(&mut self, attempt_id: &str, token: &str, handoff: Handoff) -> Result<Attempt> {
+        let (tx, v) = self.begin()?;
+        let mut attempt = authenticate(&tx, attempt_id, token)?;
+        if let Some(h) = &attempt.handoff {
+            return Err(StoreError::Invalid(format!(
+                "attempt {attempt_id} already has a session (pid {}, started {}); an attempt never gets a second one",
+                h.pid,
+                ts(h.started_at)
+            )));
+        }
+        if attempt.status != AttemptStatus::Running {
+            return Err(StoreError::Invalid(format!(
+                "attempt {attempt_id} is {}; no session may start for it",
+                enum_str(&attempt.status)
+            )));
+        }
+        attempt.handoff = Some(handoff);
+        put_attempt(&tx, v, &attempt, false)?;
+        tx.commit()?;
+        Ok(attempt)
+    }
+
+    /// Notes that a restarted supervisor re-attached to the attempt's session.
+    pub fn note_reattach(&mut self, attempt_id: &str, token: &str, now: Timestamp) -> Result<Attempt> {
+        let (tx, v) = self.begin()?;
+        let mut attempt = authenticate(&tx, attempt_id, token)?;
+        let Some(h) = attempt.handoff.as_mut() else {
+            return Err(StoreError::Invalid(format!("attempt {attempt_id} has no session to re-attach to")));
+        };
+        h.reattached_at.push(now);
+        put_attempt(&tx, v, &attempt, false)?;
+        tx.commit()?;
+        Ok(attempt)
+    }
+
+    /// Records how an attempt's session ended: the classified reason, what it
+    /// used, and the attempt's new status. An attempt someone else already
+    /// closed, for example by cancelling the task, keeps its status but still
+    /// gets its end recorded once.
+    pub fn end_session(&mut self, attempt_id: &str, token: &str, req: SessionEnd, now: Timestamp) -> Result<Attempt> {
+        if req.status == Some(AttemptStatus::Running) {
+            return Err(StoreError::Invalid("an ended session cannot leave its attempt running".into()));
+        }
+        let (tx, v) = self.begin()?;
+        let mut attempt = authenticate(&tx, attempt_id, token)?;
+        record_end(&tx, v, &mut attempt, req.status, req.end, req.spent, now)?;
+        tx.commit()?;
+        Ok(attempt)
+    }
+
+    /// What the task's sessions used, summed over its attempts.
+    pub fn spent(&self, task_id: &str) -> Result<Spent> {
+        Ok(interlock_core::budget::total(&attempts_of(&self.conn, task_id)?))
+    }
+
+    /// Fails the task, in one transaction, when what its sessions used has
+    /// reached any limit in its budget. `None` while the budget has room.
+    pub fn enforce_budget(&mut self, task_id: &str, now: Timestamp) -> Result<Option<Move>> {
+        let (tx, v) = self.begin()?;
+        let task = get_task(&tx, task_id)?;
+        if task.state.is_terminal() {
+            return Ok(None);
+        }
+        let spent = interlock_core::budget::total(&attempts_of(&tx, task_id)?);
+        let Some(why) = interlock_core::budget::exhausted(&task.budget, &spent) else { return Ok(None) };
+        let out = lifecycle::fail(&task, &why, now)?;
+        let mv = apply(&tx, v, &out, None, now)?;
+        tx.commit()?;
+        Ok(Some(mv))
+    }
+
+    /// Makes an exported work-in-progress tree the next worker's starting point.
+    pub fn resume_from(&mut self, task_id: &str, tree: &str, now: Timestamp) -> Result<Task> {
+        let (tx, v) = self.begin()?;
+        let task = lifecycle::resume_from(&get_task(&tx, task_id)?, tree, now)?;
+        put_task(&tx, v, &task, false)?;
+        tx.commit()?;
+        Ok(task)
+    }
+
+    /// The task's events in the order they were applied.
+    pub fn events(&self, task_id: &str) -> Result<Vec<Event>> {
+        let mut stmt = self.conn.prepare("SELECT record FROM events WHERE task_id = ?1 ORDER BY rowid")?;
+        let rows = stmt.query_map([task_id], |r| r.get::<_, String>(0))?;
+        rows.map(|r| decode(r?)).collect()
     }
 
     /// Marks an attempt finished. A worker that ends without a result has its

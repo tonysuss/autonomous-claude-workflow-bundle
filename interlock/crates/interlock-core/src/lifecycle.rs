@@ -141,7 +141,7 @@ fn default_scope() -> Scope {
 }
 
 fn default_budget() -> Budget {
-    Budget { max_attempts: 3 }
+    Budget::attempts(3)
 }
 
 pub fn create(spec: TaskSpec, workflow: &Workflow, now: Timestamp) -> Result<Task, Refusal> {
@@ -589,6 +589,20 @@ pub fn confirm_integration(
 /// Not a move: the next `advance` finds the evidence stale and applies R2.
 pub fn record_new_tree(task: &Task, tree: &str, now: Timestamp) -> Result<Task, Refusal> {
     require_state(task, Signal::R2, &[State::AwaitingVerification, State::Verified, State::Integrating])?;
+    let mut next = task.clone();
+    next.current_tree = Some(tree.to_string());
+    next.updated_at = now;
+    Ok(next)
+}
+
+/// Makes an exported work-in-progress tree the next worker's starting point,
+/// as the last accepted output would be. Not a move: the task stays ready, and
+/// the tree satisfies nothing until a worker's result built on it is accepted.
+pub fn resume_from(task: &Task, tree: &str, now: Timestamp) -> Result<Task, Refusal> {
+    if task.state != State::Ready {
+        let code = if task.state.is_terminal() { RefusalCode::Terminal } else { RefusalCode::WrongState };
+        return Err(refuse(None, code, format!("resuming needs the task ready, but it is {}", task.state)));
+    }
     let mut next = task.clone();
     next.current_tree = Some(tree.to_string());
     next.updated_at = now;

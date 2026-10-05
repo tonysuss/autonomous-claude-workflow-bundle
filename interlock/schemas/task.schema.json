@@ -49,7 +49,22 @@
       "additionalProperties": false,
       "required": ["max_attempts"],
       "properties": {
-        "max_attempts": { "type": "integer", "minimum": 1 }
+        "max_attempts": { "type": "integer", "minimum": 1 },
+        "max_wall_secs": {
+          "description": "Total wall-clock time the task's sessions may run, summed over its attempts.",
+          "type": ["integer", "null"],
+          "minimum": 1
+        },
+        "max_cost_usd": {
+          "description": "Total cost in US dollars, where the host reports it (Claude Code's total_cost_usd).",
+          "type": ["number", "null"],
+          "exclusiveMinimum": 0
+        },
+        "max_premium_requests": {
+          "description": "Total premium requests, where the host reports them (Copilot CLI's usage).",
+          "type": ["number", "null"],
+          "exclusiveMinimum": 0
+        }
       }
     },
     "integration_required": { "type": "boolean" },

@@ -40,7 +40,7 @@ pub fn spec(criteria: Vec<Criterion>) -> TaskSpec {
         dependencies: vec![],
         criteria,
         environment: "linux-x86_64".into(),
-        budget: Budget { max_attempts: 2 },
+        budget: Budget::attempts(2),
         integration_required: false,
     }
 }
@@ -93,6 +93,9 @@ pub fn attempt(task: &Task, id: &str, role: Role, epoch: u32) -> Attempt {
         status: AttemptStatus::Running,
         started_at: t(1),
         ended_at: None,
+        handoff: None,
+        end: None,
+        spent: None,
     }
 }
 

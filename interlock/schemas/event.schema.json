@@ -13,7 +13,7 @@
       "oneOf": [{ "$ref": "common.schema.json#/$defs/id" }, { "type": "null" }]
     },
     "epoch": { "type": ["integer", "null"], "minimum": 1 },
-    "type": { "enum": ["result.submitted", "claim.added", "assessment.added", "attempt.failed", "attempt.completed"] },
+    "type": { "enum": ["result.submitted", "claim.added", "assessment.added", "attempt.failed", "attempt.completed", "attempt.cancelled"] },
     "payload_ref": { "type": ["string", "null"] },
     "received_at": { "$ref": "common.schema.json#/$defs/timestamp" },
     "acknowledged": { "type": "boolean" },
