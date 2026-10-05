@@ -505,6 +505,7 @@ dependencies = [
  "interlock-schema",
  "serde",
  "serde_json",
+ "tempfile",
 ]
 
 [[package]]
@@ -518,6 +519,7 @@ dependencies = [
  "interlock-core",
  "interlock-schema",
  "interlock-store",
+ "interlock-supervisor",
  "serde",
  "serde_json",
  "tempfile",
@@ -555,6 +557,22 @@ dependencies = [
  "interlock-core",
  "interlock-schema",
  "rusqlite",
+ "serde",
+ "serde_json",
+ "tempfile",
+ "thiserror",
+ "uuid",
+]
+
+[[package]]
+name = "interlock-supervisor"
+version = "0.1.0"
+dependencies = [
+ "chrono",
+ "interlock-adapter",
+ "interlock-core",
+ "interlock-schema",
+ "interlock-store",
  "serde",
  "serde_json",
  "tempfile",

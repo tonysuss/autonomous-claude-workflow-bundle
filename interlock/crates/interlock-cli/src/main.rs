@@ -84,6 +84,40 @@ enum Command {
     Schema(SchemaCmd),
     /// List the built-in workflows.
     Workflows,
+    /// Drive a task through headless worker and verifier sessions on a host.
+    Run {
+        task: String,
+        /// copilot or claude-code.
+        #[arg(long)]
+        host: String,
+        #[arg(long)]
+        model: Option<String>,
+        /// Per-session limit, for example 20m.
+        #[arg(long, default_value = "20m")]
+        timeout: String,
+        #[arg(long, default_value_t = 80)]
+        max_turns: u32,
+        /// Sessions this run may start, across workers and verifiers.
+        #[arg(long, default_value_t = 6)]
+        max_sessions: u32,
+        /// Keep each attempt's worktree for inspection.
+        #[arg(long)]
+        keep_worktrees: bool,
+        /// Declare capabilities instead of inspecting the host (comma-separated).
+        #[arg(long, value_delimiter = ',')]
+        capabilities: Option<Vec<String>>,
+    },
+    /// Called by interlock's hooks plugin with the host's payload on stdin.
+    Hook {
+        #[arg(value_enum)]
+        event: HookArg,
+    },
+}
+
+#[derive(Clone, Copy, ValueEnum)]
+enum HookArg {
+    PreToolUse,
+    Stop,
 }
 
 #[derive(Subcommand)]
@@ -247,8 +281,8 @@ enum EvidenceCmd {
         criterion: String,
         #[arg(long, value_enum)]
         strength: StrengthArg,
-        /// The git tree id that was checked.
-        #[arg(long)]
+        /// The git tree id that was checked; `auto` computes the current worktree's.
+        #[arg(long, env = "INTERLOCK_TREE")]
         tree: String,
         #[arg(long = "ref")]
         refs: Vec<String>,
@@ -467,6 +501,9 @@ fn read_spec(path: &Path) -> Result<TaskSpec> {
 }
 
 fn parse_duration(s: &str) -> Result<Duration> {
+    if let Some(secs) = s.strip_suffix('s') {
+        return Ok(Duration::seconds(secs.parse().map_err(|_| anyhow!("bad duration {s}"))?));
+    }
     let (num, unit) = s.split_at(s.find(|c: char| !c.is_ascii_digit()).unwrap_or(s.len()));
     let n: i64 = num.parse().map_err(|_| anyhow!("bad duration {s}; use forms like 30m or 8h"))?;
     Ok(match unit {
@@ -657,7 +694,7 @@ fn run(cli: &Cli) -> Result<()> {
                     token: auth.token.clone(),
                     criterion_id: criterion.clone(),
                     strength: (*strength).into(),
-                    tree: tree.clone(),
+                    tree: interlock_supervisor::hook::resolve_tree(tree, &std::env::current_dir()?)?,
                     environment: environment.clone(),
                     evidence_refs: refs.clone(),
                     note: note.clone(),
@@ -771,6 +808,7 @@ fn run(cli: &Cli) -> Result<()> {
                 }))
             }
         },
+        Command::Run { .. } | Command::Hook { .. } => unreachable!("handled in main"),
         Command::Policy(PolicyCmd::Check { attempt, shell, tool }) => {
             let store = open(cli)?;
             let attempt = store.attempt(attempt)?;
@@ -786,25 +824,86 @@ fn run(cli: &Cli) -> Result<()> {
                 }
                 _ => bail!("pass one of --shell or --tool"),
             };
-            let grant = &attempt.effective_grant;
-            let (decision, reason) = if class == ActionClass::Irreversible {
-                ("ask", "irreversible actions always pause for the operator".to_string())
-            } else if grants::allows(grant, class, &tool_name) {
-                ("allow", format!("{class:?} is covered by the effective grant"))
-            } else if !grant.action_classes.contains(&class) {
-                ("ask", format!("{class:?} is not granted for this attempt"))
-            } else {
-                ("deny", format!("{tool_name} is not in the attempt's tool policy"))
+            let verdict = grants::decide(&attempt.effective_grant, class, &tool_name);
+            let (decision, reason) = match &verdict {
+                grants::Verdict::Allow => {
+                    ("allow", format!("{} is covered by the effective grant", grants::class_name(class)))
+                }
+                grants::Verdict::Deny(r) => ("deny", r.clone()),
+                grants::Verdict::Ask(r) => ("ask", r.clone()),
             };
             print(&json!({"decision": decision, "class": class, "tool": tool_name, "reason": reason}))
         }
     }
 }
 
+/// Runs one hook: payload on stdin, the response on stdout and stderr, and an
+/// exit code both hosts understand.
+fn hook(cli: &Cli) -> ExitCode {
+    let mut raw = String::new();
+    let _ = std::io::Read::read_to_string(&mut std::io::stdin(), &mut raw);
+    let ctx = interlock_supervisor::hook::HookContext::from_env(cli.db.clone().unwrap_or_else(default_db));
+    let Ok(payload) = serde_json::from_str::<Value>(&raw) else {
+        // Fail closed: inside an attempt, a tool call we cannot read is denied.
+        if ctx.attempt_id.is_some() && matches!(cli.command, Command::Hook { event: HookArg::PreToolUse }) {
+            eprintln!("interlock could not read the hook payload");
+            return ExitCode::from(2);
+        }
+        return ExitCode::SUCCESS;
+    };
+    let response = interlock_supervisor::hook::handle(&ctx, &payload, Utc::now());
+    if !response.stdout.is_empty() {
+        println!("{}", response.stdout);
+    }
+    if !response.stderr.is_empty() {
+        eprintln!("{}", response.stderr);
+    }
+    ExitCode::from(response.exit_code as u8)
+}
+
+#[allow(clippy::too_many_arguments)]
+fn run_task(
+    cli: &Cli,
+    task: &str,
+    host: &str,
+    model: &Option<String>,
+    timeout: &str,
+    max_turns: u32,
+    max_sessions: u32,
+    keep_worktrees: bool,
+    capabilities: &Option<Vec<String>>,
+) -> Result<ExitCode> {
+    let cwd = std::env::current_dir()?;
+    let repo = interlock_supervisor::git::toplevel(&cwd)?;
+    let db = cli.db.clone().unwrap_or_else(|| repo.join(".interlock").join("state.db"));
+    let db = if db.is_absolute() { db } else { cwd.join(db) };
+    let cfg = interlock_supervisor::RunConfig {
+        model: model.clone(),
+        timeout: parse_duration(timeout)?.to_std()?,
+        max_turns: Some(max_turns),
+        keep_worktrees,
+        max_sessions,
+        profile: profile(cli),
+        interlock_bin: std::env::current_exe()?,
+        capabilities: capabilities.as_deref().map(parse_capabilities).transpose()?,
+    };
+    let mut supervisor = interlock_supervisor::Supervisor::new(repo, db, host_by_name(host)?, Probe::from_env(), cfg)?;
+    let report = supervisor.run(task)?;
+    print(&report)?;
+    Ok(if report.final_state == State::Done { ExitCode::SUCCESS } else { ExitCode::from(5) })
+}
+
 fn main() -> ExitCode {
     let cli = Cli::parse();
-    match run(&cli) {
-        Ok(()) => ExitCode::SUCCESS,
+    let result = match &cli.command {
+        Command::Hook { .. } => return hook(&cli),
+        Command::Run { task, host, model, timeout, max_turns, max_sessions, keep_worktrees, capabilities } => {
+            run_task(&cli, task, host, model, timeout, *max_turns, *max_sessions, *keep_worktrees, capabilities)
+        }
+        _ => run(&cli).map(|()| ExitCode::SUCCESS),
+    };
+    match result {
+        Ok(code) => code,
         Err(err) => {
             let (code, body) = match err.downcast_ref::<StoreError>() {
                 Some(StoreError::Refused(r)) => (2, json!({"error": "refused", "refusal": r})),

@@ -1,0 +1,25 @@
+id = "export-retry"
+repository = "."
+workflow = "bug-fix"
+intent = "Fix duplicate rows when an export retries: after a transient failure mid-batch, rows written before the failure are written again."
+environment = "linux-python3"
+
+[budget]
+max_attempts = 3
+
+[scope]
+paths = ["exporter.py", "tests/**"]
+
+[[criterion]]
+id = "repro"
+statement = "Retrying an export after a transient failure produces no duplicate rows"
+check = "sh checks/export-retry.sh"
+min_strength = "observed"
+producer = "independent"
+
+[[criterion]]
+id = "regression"
+statement = "The existing unit tests pass"
+check = "python3 -m unittest discover -s tests -q"
+min_strength = "tested"
+producer = "self"

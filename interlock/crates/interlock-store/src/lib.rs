@@ -630,6 +630,39 @@ impl Store {
         Ok(Applied { event_id, duplicate: false, outcome })
     }
 
+    /// Supervisor path for restart recovery: ends every attempt a previous
+    /// controller left running as failed, each with a synthetic failure report.
+    pub fn reconcile_running(&mut self, task_id: &str, reason: &str, now: Timestamp) -> Result<Vec<Attempt>> {
+        let (tx, v) = self.begin()?;
+        let mut ended = Vec::new();
+        for mut attempt in attempts_of(&tx, task_id)? {
+            if attempt.status != AttemptStatus::Running {
+                continue;
+            }
+            attempt.status = AttemptStatus::Failed;
+            attempt.ended_at = Some(now);
+            put_attempt(&tx, v, &attempt, false)?;
+            put_event(
+                &tx,
+                v,
+                &Event {
+                    id: new_id("evt"),
+                    task_id: task_id.to_string(),
+                    attempt_id: Some(attempt.id.clone()),
+                    epoch: Some(attempt.epoch),
+                    kind: EventKind::AttemptFailed,
+                    payload_ref: None,
+                    received_at: now,
+                    acknowledged: true,
+                    outcome: Some(serde_json::json!({ "synthetic": true, "reason": reason })),
+                },
+            )?;
+            ended.push(attempt);
+        }
+        tx.commit()?;
+        Ok(ended)
+    }
+
     /// Marks an attempt finished. A worker that ends without a result has its
     /// end recorded so nothing is left running.
     pub fn end_attempt(

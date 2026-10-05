@@ -143,6 +143,39 @@ pub fn allows(grant: &EffectiveGrant, class: ActionClass, tool: &str) -> bool {
     class != ActionClass::Irreversible && grant.action_classes.contains(&class) && tools::permits(&grant.tools, tool)
 }
 
+/// The decision for one proposed action.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(tag = "decision", content = "reason", rename_all = "snake_case")]
+pub enum Verdict {
+    Allow,
+    /// Not allowed for this attempt at all.
+    Deny(String),
+    /// Needs the operator. Headless sessions treat this as a denial.
+    Ask(String),
+}
+
+pub fn decide(grant: &EffectiveGrant, class: ActionClass, tool: &str) -> Verdict {
+    if class == ActionClass::Irreversible {
+        Verdict::Ask("irreversible actions always pause for the operator".into())
+    } else if allows(grant, class, tool) {
+        Verdict::Allow
+    } else if !grant.action_classes.contains(&class) {
+        Verdict::Ask(format!("{} is not granted for this attempt", class_name(class)))
+    } else {
+        Verdict::Deny(format!("{tool} is not in this attempt's tool policy"))
+    }
+}
+
+pub fn class_name(class: ActionClass) -> &'static str {
+    match class {
+        ActionClass::Read => "read",
+        ActionClass::LocalReversible => "local_reversible",
+        ActionClass::ExternalReversible => "external_reversible",
+        ActionClass::Landing => "landing",
+        ActionClass::Irreversible => "irreversible",
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

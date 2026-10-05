@@ -9,6 +9,7 @@ pub mod digest;
 pub mod evidence;
 pub mod grants;
 pub mod lifecycle;
+pub mod scope;
 pub mod tools;
 pub mod workflow;
 

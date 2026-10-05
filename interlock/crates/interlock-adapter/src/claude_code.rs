@@ -2,7 +2,10 @@
 
 use interlock_core::capability::{CONTRACT_VERSION, Capability as C};
 
-use crate::{AuthStatus, CapabilityEvidence, Host, HostReport, Probe, Source, flag_capability, process_capability};
+use crate::{
+    AuthStatus, CommandPlan, Host, HostReport, Probe, SessionSpec, SessionSummary, flag_capability, json_lines,
+    plugin_hook_capability, process_capability,
+};
 
 pub struct ClaudeCode;
 
@@ -13,21 +16,14 @@ impl ClaudeCode {
     pub fn report(binary: Option<String>, version_out: &str, help: &str) -> HostReport {
         let version = version_out.split_whitespace().next().map(str::to_string);
         let headless = help.contains("--print");
-        let settings = help.contains("--settings");
-        let hook = |capability, detail: &str| CapabilityEvidence {
-            capability,
-            available: settings,
-            source: if settings { Source::Documented } else { Source::Unverified },
-            detail: if settings { detail.into() } else { "help output lacks --settings for hooks".into() },
-        };
         let capabilities = vec![
             flag_capability(C::SessionStart, help, &["--print"], "headless print mode"),
             flag_capability(C::SessionCollect, help, &["--output-format"], "JSON result"),
             flag_capability(C::EventStream, help, &["stream-json"], "stream-json events"),
             process_capability(C::SessionCancel, headless, "one OS process per session; cancel by signal"),
             flag_capability(C::ToolRestriction, help, &["--allowedTools", "--disallowedTools"], "allow and deny lists"),
-            hook(C::PerCallPolicy, "PreToolUse hooks passed with --settings can deny a call"),
-            hook(C::StopGuard, "Stop and SubagentStop hooks can hold an agent from finishing"),
+            plugin_hook_capability(C::PerCallPolicy, help, "PreToolUse can deny a call"),
+            plugin_hook_capability(C::StopGuard, help, "Stop can hold the agent from finishing"),
             flag_capability(C::ModelSelection, help, &["--model"], "per session"),
             flag_capability(C::CustomAgents, help, &["--agents"], "custom agents defined per session"),
             process_capability(C::Parallel, headless, "independent processes"),
@@ -42,6 +38,49 @@ impl ClaudeCode {
             capabilities,
             notes: vec!["the test host for this repository; pin its version for evaluation runs".into()],
         }
+    }
+
+    /// The command for a session, given the binary's location. The prompt goes
+    /// on stdin, so no variadic flag can swallow it.
+    pub fn plan_with(&self, bin: std::path::PathBuf, spec: &SessionSpec) -> CommandPlan {
+        let tools = self.translate(&spec.tools);
+        let mut args: Vec<String> = [
+            "-p",
+            "--output-format",
+            "stream-json",
+            "--verbose",
+            // Anything not allowed is denied instead of prompting.
+            "--permission-mode",
+            "dontAsk",
+            // Keep the user's and the project's own settings out of the session.
+            "--setting-sources",
+            "",
+            "--no-session-persistence",
+        ]
+        .iter()
+        .map(|s| s.to_string())
+        .collect();
+        if !tools.allow.is_empty() {
+            args.push("--allowedTools".into());
+            args.extend(tools.allow);
+        }
+        if !tools.deny.is_empty() {
+            args.push("--disallowedTools".into());
+            args.extend(tools.deny);
+        }
+        if let Some(dir) = &spec.plugin_dir {
+            args.extend(["--plugin-dir".into(), dir.display().to_string()]);
+        }
+        if let Some(m) = &spec.model {
+            args.extend(["--model".into(), m.clone()]);
+        }
+        if let Some(n) = spec.max_turns {
+            args.extend(["--max-turns".into(), n.to_string()]);
+        }
+        if let Some(sys) = &spec.append_system {
+            args.extend(["--append-system-prompt".into(), sys.clone()]);
+        }
+        CommandPlan { program: bin, args, stdin: Some(spec.prompt.clone()), env: spec.env.clone() }
     }
 }
 
@@ -71,6 +110,24 @@ impl Host for ClaudeCode {
         }
     }
 
+    fn plan(&self, probe: &Probe, spec: &SessionSpec) -> Result<CommandPlan, String> {
+        let bin = probe.locate(self.name(), BINARY).ok_or("claude was not found on PATH")?;
+        Ok(self.plan_with(bin, spec))
+    }
+
+    fn summarize(&self, lines: &[String]) -> SessionSummary {
+        let mut s = SessionSummary { events: lines.len() as u64, is_error: true, ..Default::default() };
+        for e in json_lines(lines).filter(|e| e["type"] == "result") {
+            s.is_error = e["is_error"].as_bool().unwrap_or(true);
+            s.final_text = e["result"].as_str().map(str::to_string);
+            s.session_id = e["session_id"].as_str().map(str::to_string);
+            s.turns = e["num_turns"].as_u64();
+            s.cost_usd = e["total_cost_usd"].as_f64();
+            s.denials = e["permission_denials"].as_array().map_or(0, |a| a.len() as u64);
+        }
+        s
+    }
+
     fn tool_patterns(&self, tool: &str) -> Vec<String> {
         let names = |list: &[&str]| list.iter().map(|s| s.to_string()).collect();
         match tool {
@@ -95,8 +152,9 @@ impl Host for ClaudeCode {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use interlock_schema::ToolPolicy;
 
-    const HELP: &str = "  -p, --print\n  --output-format <format> (choices: \"text\", \"json\", \"stream-json\")\n  --allowedTools, --allowed-tools <tools...>\n  --disallowedTools, --disallowed-tools <tools...>\n  --model <model>\n  --agents <json-or-file>\n  --settings <file-or-json>\n";
+    const HELP: &str = "  -p, --print\n  --output-format <format> (choices: \"text\", \"json\", \"stream-json\")\n  --allowedTools, --allowed-tools <tools...>\n  --disallowedTools, --disallowed-tools <tools...>\n  --model <model>\n  --agents <json-or-file>\n  --plugin-dir <path>\n";
 
     #[test]
     fn detects_capabilities_from_help() {
@@ -107,5 +165,41 @@ mod tests {
         {
             assert!(caps.has(c), "{c:?}");
         }
+    }
+
+    #[test]
+    fn plans_a_session_with_the_prompt_on_stdin() {
+        let spec = SessionSpec {
+            workdir: "/w".into(),
+            prompt: "Fix it".into(),
+            append_system: Some("You are the verifier.".into()),
+            tools: ToolPolicy { allow: vec!["read".into(), "shell".into()], deny: vec!["edit".into()] },
+            model: None,
+            max_turns: Some(30),
+            plugin_dir: Some("/p".into()),
+            env: vec![],
+            timeout: std::time::Duration::from_secs(60),
+            transcript: "/t.jsonl".into(),
+        };
+        let plan = ClaudeCode.plan_with("/bin/claude".into(), &spec);
+        assert_eq!(plan.stdin.as_deref(), Some("Fix it"));
+        let joined = plan.args.join(" ");
+        assert!(
+            joined.contains("--allowedTools Read Grep Glob Bash --disallowedTools Edit Write NotebookEdit"),
+            "{joined}"
+        );
+        assert!(joined.contains("--permission-mode dontAsk"));
+        assert!(plan.args.windows(2).any(|w| w == ["--max-turns", "30"]));
+    }
+
+    #[test]
+    fn summarizes_the_result_event() {
+        let lines = vec![
+            r#"{"type":"system","subtype":"init"}"#.to_string(),
+            r#"{"type":"result","subtype":"success","is_error":false,"result":"Done.","num_turns":4,"total_cost_usd":0.12,"permission_denials":[{"tool_name":"Write"}],"session_id":"s"}"#.to_string(),
+        ];
+        let s = ClaudeCode.summarize(&lines);
+        assert_eq!((s.final_text.as_deref(), s.turns, s.denials, s.is_error), (Some("Done."), Some(4), 1, false));
+        assert!(ClaudeCode.summarize(&lines[..1]).is_error, "no result event means the session did not finish");
     }
 }

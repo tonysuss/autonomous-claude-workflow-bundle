@@ -7,7 +7,9 @@
 
 mod claude_code;
 mod copilot;
+pub mod hooks;
 mod probe;
+mod session;
 
 use interlock_core::capability::{CONTRACT_VERSION, Capability, CapabilitySet};
 use interlock_schema::ToolPolicy;
@@ -16,6 +18,9 @@ use serde::{Deserialize, Serialize};
 pub use claude_code::ClaudeCode;
 pub use copilot::Copilot;
 pub use probe::Probe;
+pub use session::{
+    CommandPlan, Exit, SessionOutcome, SessionSpec, SessionSummary, run, shell_quote, write_hooks_plugin,
+};
 
 /// How a capability's availability was established.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
@@ -94,6 +99,26 @@ pub trait Host {
     /// An empty result means the host does not gate that tool.
     fn tool_patterns(&self, tool: &str) -> Vec<String>;
 
+    /// Builds the command for one headless session.
+    fn plan(&self, probe: &Probe, spec: &SessionSpec) -> Result<CommandPlan, String>;
+
+    /// Reads a finished session's output stream.
+    fn summarize(&self, lines: &[String]) -> SessionSummary;
+
+    /// Runs one headless session to completion, timeout or cancellation.
+    fn run_session(&self, probe: &Probe, spec: &SessionSpec, cancel: &std::sync::atomic::AtomicBool) -> SessionOutcome {
+        match self.plan(probe, spec) {
+            Ok(plan) => session::run(&plan, spec, cancel, |lines| self.summarize(lines)),
+            Err(reason) => SessionOutcome {
+                exit: Exit::Failed { reason },
+                exit_code: None,
+                duration_ms: 0,
+                summary: SessionSummary::default(),
+                transcript: spec.transcript.clone(),
+            },
+        }
+    }
+
     /// Translates a whole policy. Deny still wins on the host side.
     fn translate(&self, policy: &ToolPolicy) -> ToolPolicy {
         let map = |list: &[String]| {
@@ -132,6 +157,26 @@ fn flag_capability(capability: Capability, help: &str, flags: &[&str], what: &st
             format!("help output lacks {}", missing.join(", "))
         },
     }
+}
+
+/// Per-call policy and the stop guard both come from interlock's hooks plugin,
+/// which the host must be able to load with `--plugin-dir`.
+fn plugin_hook_capability(capability: Capability, help: &str, what: &str) -> CapabilityEvidence {
+    let ok = help.contains("--plugin-dir");
+    CapabilityEvidence {
+        capability,
+        available: ok,
+        source: if ok { Source::Detected } else { Source::Unverified },
+        detail: if ok {
+            format!("{what}, from interlock's hooks plugin (--plugin-dir)")
+        } else {
+            "help output lacks --plugin-dir".into()
+        },
+    }
+}
+
+fn json_lines(lines: &[String]) -> impl Iterator<Item = serde_json::Value> + '_ {
+    lines.iter().filter_map(|l| serde_json::from_str::<serde_json::Value>(l).ok())
 }
 
 fn process_capability(capability: Capability, needs: bool, detail: &str) -> CapabilityEvidence {
