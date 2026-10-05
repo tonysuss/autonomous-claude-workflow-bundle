@@ -1,0 +1,152 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.interlock.dev/v0/common.schema.json",
+  "title": "Shared definitions for interlock records",
+  "$defs": {
+    "id": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$"
+    },
+    "timestamp": {
+      "description": "RFC 3339 UTC timestamp.",
+      "type": "string",
+      "format": "date-time"
+    },
+    "object_id": {
+      "description": "A git object id (SHA-1 or SHA-256), abbreviated to at least 7 hex digits.",
+      "type": "string",
+      "pattern": "^[0-9a-f]{7,64}$"
+    },
+    "state": {
+      "enum": [
+        "pending",
+        "ready",
+        "running",
+        "awaiting_verification",
+        "verified",
+        "integrating",
+        "done",
+        "blocked",
+        "failed",
+        "cancelled"
+      ]
+    },
+    "strength": {
+      "description": "Evidence strength, strongest first. blocked and failed never count as a pass.",
+      "enum": ["observed", "tested", "static", "blocked", "failed"]
+    },
+    "min_strength": {
+      "enum": ["observed", "tested", "static"]
+    },
+    "producer": {
+      "description": "self: a worker claim may satisfy the criterion. independent: only a verifier assessment may.",
+      "enum": ["self", "independent"]
+    },
+    "role": {
+      "enum": ["worker", "verifier", "reviewer"]
+    },
+    "action_class": {
+      "enum": ["read", "local_reversible", "external_reversible", "landing", "irreversible"]
+    },
+    "grantable_action_class": {
+      "description": "Every action class except irreversible, which no grant can cover.",
+      "enum": ["read", "local_reversible", "external_reversible", "landing"]
+    },
+    "landing_authority": {
+      "enum": ["none", "coordinator", "owner", "operator"]
+    },
+    "tool_policy": {
+      "description": "Host tool patterns. Deny wins over allow.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["allow", "deny"],
+      "properties": {
+        "allow": { "type": "array", "items": { "type": "string", "minLength": 1 } },
+        "deny": { "type": "array", "items": { "type": "string", "minLength": 1 } }
+      }
+    },
+    "workflow_ref": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name", "version"],
+      "properties": {
+        "name": { "type": "string", "minLength": 1 },
+        "version": { "type": "integer", "minimum": 1 }
+      }
+    },
+    "snapshot": {
+      "description": "The inputs a task starts from.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["repository", "base_commit"],
+      "properties": {
+        "repository": { "type": "string", "minLength": 1 },
+        "base_commit": { "$ref": "#/$defs/object_id" },
+        "untracked_hash": { "type": ["string", "null"] }
+      }
+    },
+    "host_ref": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["host", "version"],
+      "properties": {
+        "host": { "type": "string", "minLength": 1 },
+        "version": { "type": "string" }
+      }
+    },
+    "currency": {
+      "description": "Ties evidence to exactly what it checked. Evidence whose key no longer matches the task stops counting.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["tree", "check_version", "environment", "policy_digest"],
+      "properties": {
+        "tree": { "$ref": "#/$defs/object_id" },
+        "check_version": { "type": "string", "minLength": 1 },
+        "environment": { "type": "string" },
+        "policy_digest": { "type": "string", "minLength": 1 }
+      }
+    },
+    "effective_grant": {
+      "description": "User grants intersected with host policy and task needs.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["action_classes", "tools", "landing_authority", "grant_ids"],
+      "properties": {
+        "action_classes": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": { "$ref": "#/$defs/grantable_action_class" }
+        },
+        "tools": { "$ref": "#/$defs/tool_policy" },
+        "landing_authority": { "$ref": "#/$defs/landing_authority" },
+        "grant_ids": { "type": "array", "items": { "$ref": "#/$defs/id" } }
+      }
+    },
+    "evidence": {
+      "description": "Shared shape of a worker claim and a verifier assessment. Both are append-only.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "task_id",
+        "criterion_id",
+        "attempt_id",
+        "strength",
+        "currency",
+        "evidence_refs",
+        "recorded_at"
+      ],
+      "properties": {
+        "id": { "$ref": "#/$defs/id" },
+        "task_id": { "$ref": "#/$defs/id" },
+        "criterion_id": { "$ref": "#/$defs/id" },
+        "attempt_id": { "$ref": "#/$defs/id" },
+        "strength": { "$ref": "#/$defs/strength" },
+        "currency": { "$ref": "#/$defs/currency" },
+        "evidence_refs": { "type": "array", "items": { "type": "string" } },
+        "note": { "type": ["string", "null"] },
+        "recorded_at": { "$ref": "#/$defs/timestamp" }
+      }
+    }
+  }
+}

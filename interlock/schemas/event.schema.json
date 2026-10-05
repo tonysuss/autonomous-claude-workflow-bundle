@@ -1,0 +1,22 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.interlock.dev/v0/event.schema.json",
+  "title": "Event",
+  "description": "An inbound report. Applied and acknowledged in one transaction; a repeated id is a no-op.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["id", "task_id", "type", "received_at", "acknowledged"],
+  "properties": {
+    "id": { "$ref": "common.schema.json#/$defs/id" },
+    "task_id": { "$ref": "common.schema.json#/$defs/id" },
+    "attempt_id": {
+      "oneOf": [{ "$ref": "common.schema.json#/$defs/id" }, { "type": "null" }]
+    },
+    "epoch": { "type": ["integer", "null"], "minimum": 1 },
+    "type": { "enum": ["result.submitted", "claim.added", "assessment.added", "attempt.failed", "attempt.completed"] },
+    "payload_ref": { "type": ["string", "null"] },
+    "received_at": { "$ref": "common.schema.json#/$defs/timestamp" },
+    "acknowledged": { "type": "boolean" },
+    "outcome": { "description": "What applying the event produced, returned again on a duplicate delivery." }
+  }
+}

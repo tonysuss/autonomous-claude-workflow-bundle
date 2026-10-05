@@ -1,0 +1,27 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.interlock.dev/v0/operation.schema.json",
+  "title": "Operation",
+  "description": "An external effect. Written before the call is made and reconciled on start; never assumed.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["id", "task_id", "kind", "intent", "state", "created_at", "updated_at"],
+  "properties": {
+    "id": { "$ref": "common.schema.json#/$defs/id" },
+    "task_id": { "$ref": "common.schema.json#/$defs/id" },
+    "kind": { "enum": ["open_pr", "merge", "arm_auto_merge"] },
+    "intent": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "expected_head_sha": { "$ref": "common.schema.json#/$defs/object_id" },
+        "base": { "type": "string" },
+        "pull_request": { "type": "integer", "minimum": 1 }
+      }
+    },
+    "state": { "enum": ["planned", "started", "confirmed", "unknown", "failed"] },
+    "outcome": { "description": "What the forge reported, once reconciled." },
+    "created_at": { "$ref": "common.schema.json#/$defs/timestamp" },
+    "updated_at": { "$ref": "common.schema.json#/$defs/timestamp" }
+  }
+}

@@ -1,0 +1,23 @@
+[package]
+name = "interlock-store"
+description = "SQLite store for interlock: each transition is one transaction"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+
+[dependencies]
+chrono.workspace = true
+interlock-core.workspace = true
+interlock-schema = { workspace = true, features = ["validate"] }
+rusqlite.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+thiserror.workspace = true
+uuid.workspace = true
+
+[dev-dependencies]
+tempfile.workspace = true
+
+[lints]
+workspace = true

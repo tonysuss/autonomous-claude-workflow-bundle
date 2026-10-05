@@ -1,0 +1,23 @@
+[package]
+name = "interlock-schema"
+description = "Record types for interlock, checked against the JSON Schema files that define them"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+
+[features]
+default = []
+validate = ["dep:jsonschema"]
+
+[dependencies]
+chrono.workspace = true
+jsonschema = { workspace = true, optional = true }
+serde.workspace = true
+serde_json.workspace = true
+
+[dev-dependencies]
+jsonschema.workspace = true
+
+[lints]
+workspace = true

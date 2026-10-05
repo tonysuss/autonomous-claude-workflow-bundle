@@ -1,0 +1,26 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.interlock.dev/v0/attempt.schema.json",
+  "title": "Attempt",
+  "description": "One run of an agent against a task. The role comes from here, never from the caller.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["id", "task_id", "epoch", "role", "host", "effective_grant", "token_hash", "status", "started_at"],
+  "properties": {
+    "id": { "$ref": "common.schema.json#/$defs/id" },
+    "task_id": { "$ref": "common.schema.json#/$defs/id" },
+    "epoch": { "type": "integer", "minimum": 1 },
+    "role": { "$ref": "common.schema.json#/$defs/role" },
+    "host": { "$ref": "common.schema.json#/$defs/host_ref" },
+    "agent": { "type": ["string", "null"] },
+    "model": { "type": ["string", "null"] },
+    "worktree": { "type": ["string", "null"] },
+    "effective_grant": { "$ref": "common.schema.json#/$defs/effective_grant" },
+    "token_hash": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
+    "status": { "enum": ["running", "submitted", "superseded", "cancelled", "failed", "completed"] },
+    "started_at": { "$ref": "common.schema.json#/$defs/timestamp" },
+    "ended_at": {
+      "oneOf": [{ "$ref": "common.schema.json#/$defs/timestamp" }, { "type": "null" }]
+    }
+  }
+}

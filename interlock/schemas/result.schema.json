@@ -1,0 +1,22 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.interlock.dev/v0/result.schema.json",
+  "title": "Result",
+  "description": "A worker's output. Applied only for the current attempt and lease epoch; anything else is stored as superseded.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["id", "task_id", "attempt_id", "epoch", "output_tree", "changed_paths", "summary", "open_questions", "status", "received_at"],
+  "properties": {
+    "id": { "$ref": "common.schema.json#/$defs/id" },
+    "task_id": { "$ref": "common.schema.json#/$defs/id" },
+    "attempt_id": { "$ref": "common.schema.json#/$defs/id" },
+    "epoch": { "type": "integer", "minimum": 1 },
+    "output_tree": { "$ref": "common.schema.json#/$defs/object_id" },
+    "changed_paths": { "type": "array", "items": { "type": "string" } },
+    "summary": { "type": "string" },
+    "open_questions": { "type": "array", "items": { "type": "string" } },
+    "status": { "enum": ["accepted", "superseded"] },
+    "superseded_reason": { "type": ["string", "null"] },
+    "received_at": { "$ref": "common.schema.json#/$defs/timestamp" }
+  }
+}

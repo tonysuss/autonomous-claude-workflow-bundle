@@ -1,0 +1,38 @@
+[workspace]
+resolver = "3"
+members = ["crates/*"]
+
+[workspace.package]
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.85"
+license = "MIT"
+repository = "https://github.com/tonysuss/autonomous-claude-workflow-bundle"
+
+[workspace.dependencies]
+interlock-schema = { path = "crates/interlock-schema" }
+interlock-core = { path = "crates/interlock-core" }
+interlock-store = { path = "crates/interlock-store" }
+interlock-adapter = { path = "crates/interlock-adapter" }
+
+anyhow = "1"
+chrono = { version = "0.4", default-features = false, features = ["serde", "clock", "std"] }
+clap = { version = "4", features = ["derive", "env"] }
+hex = "0.4"
+jsonschema = { version = "0.58", default-features = false }
+proptest = "1"
+rand = "0.10"
+rusqlite = { version = "0.40", features = ["bundled"] }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+sha2 = "0.11"
+tempfile = "3"
+thiserror = "2"
+toml = "1"
+uuid = { version = "1", features = ["v4"] }
+
+[workspace.lints.rust]
+unsafe_code = "forbid"
+
+[workspace.lints.clippy]
+all = { level = "warn", priority = -1 }

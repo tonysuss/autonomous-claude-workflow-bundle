@@ -1,0 +1,74 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.interlock.dev/v0/task.schema.json",
+  "title": "Task",
+  "description": "A unit of work. Its state changes only through a guard.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "id",
+    "repository",
+    "workflow",
+    "intent",
+    "scope",
+    "dependencies",
+    "criteria",
+    "environment",
+    "policy_digest",
+    "budget",
+    "integration_required",
+    "state",
+    "lease_epoch",
+    "attempts_used",
+    "created_at",
+    "updated_at"
+  ],
+  "properties": {
+    "id": { "$ref": "common.schema.json#/$defs/id" },
+    "repository": { "type": "string", "minLength": 1 },
+    "workflow": { "$ref": "common.schema.json#/$defs/workflow_ref" },
+    "intent": { "type": "string", "minLength": 1 },
+    "scope": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["paths"],
+      "properties": {
+        "paths": { "type": "array", "items": { "type": "string", "minLength": 1 } },
+        "description": { "type": ["string", "null"] }
+      }
+    },
+    "dependencies": { "type": "array", "uniqueItems": true, "items": { "$ref": "common.schema.json#/$defs/id" } },
+    "criteria": { "type": "array", "items": { "$ref": "criterion.schema.json" } },
+    "input_snapshot": {
+      "oneOf": [{ "$ref": "common.schema.json#/$defs/snapshot" }, { "type": "null" }]
+    },
+    "environment": { "type": "string", "description": "Where checks run, for example linux-x86_64. Part of every currency key." },
+    "policy_digest": { "type": "string", "minLength": 1 },
+    "budget": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["max_attempts"],
+      "properties": {
+        "max_attempts": { "type": "integer", "minimum": 1 }
+      }
+    },
+    "integration_required": { "type": "boolean" },
+    "state": { "$ref": "common.schema.json#/$defs/state" },
+    "resume_point": {
+      "description": "Set while blocked: the state the task returns to when unblocked.",
+      "oneOf": [{ "$ref": "common.schema.json#/$defs/state" }, { "type": "null" }]
+    },
+    "blocked_reason": { "type": ["string", "null"] },
+    "current_tree": {
+      "description": "The output tree evidence must match. Set when a result is accepted, or when the operator records new input.",
+      "oneOf": [{ "$ref": "common.schema.json#/$defs/object_id" }, { "type": "null" }]
+    },
+    "lease_epoch": { "type": "integer", "minimum": 0 },
+    "current_attempt": {
+      "oneOf": [{ "$ref": "common.schema.json#/$defs/id" }, { "type": "null" }]
+    },
+    "attempts_used": { "type": "integer", "minimum": 0 },
+    "created_at": { "$ref": "common.schema.json#/$defs/timestamp" },
+    "updated_at": { "$ref": "common.schema.json#/$defs/timestamp" }
+  }
+}
