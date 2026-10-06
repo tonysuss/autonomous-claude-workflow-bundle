@@ -351,14 +351,40 @@ def _apply_edits(repo, edits):
             raise RuntimeError(f"unknown edit {edit[0]}")
 
 
+def _clone_at(source, dest):
+    """A real repository at the commit before a known fix. Every ref and the
+    remote are removed and unreachable objects pruned, so the fix cannot be
+    found in the agent's copy."""
+    run_cmd(["git", "clone", "-q", "--no-checkout", source["git"], dest])
+    git(dest, "checkout", "-q", "--detach", source["commit"])
+    for ref in git(dest, "for-each-ref", "--format=%(refname)").splitlines():
+        git(dest, "update-ref", "-d", ref)
+    git(dest, "remote", "remove", "origin", check=False)
+    git(dest, "checkout", "-q", "-B", "main")
+    git(dest, "reflog", "expire", "--expire=now", "--all")
+    git(dest, "gc", "-q", "--prune=now")
+    return [{"sha": git(dest, "rev-parse", "HEAD"), "message": f"upstream {source['commit']}"}]
+
+
 def build_repo(task, dest):
     """Builds a task's starting repository deterministically: same inputs,
     same commit ids, on any machine."""
     if os.path.exists(dest):
         shutil.rmtree(dest)
+    commits = []
+    source = task.meta.get("source")
+    if source:
+        commits = _clone_at(source, dest)
+        start = os.path.join(task.dir, "start")
+        if os.path.isdir(start):
+            _overlay(start, dest)
+            env = _commit_env(1)
+            git(dest, "add", "-A", env=env)
+            git(dest, "commit", "-q", "--no-verify", "-m", "Add the task's visible checks", env=env)
+            commits.append({"sha": git(dest, "rev-parse", "HEAD", env=env), "message": "Add the task's visible checks"})
+        return _facts(task, dest, commits)
     shutil.copytree(os.path.join(TASKSET, "repos", task.repo), dest, ignore=IGNORE)
     git(dest, "init", "-q", "-b", "main", env=_commit_env(0))
-    commits = []
     if os.path.exists(task.history):
         spec = importlib.util.spec_from_file_location(f"history_{task.id}", task.history)
         module = importlib.util.module_from_spec(spec)
@@ -371,6 +397,10 @@ def build_repo(task, dest):
         if os.path.isdir(start):
             _overlay(start, dest)
         commits.append({"sha": _commit_all(dest, f"Import {task.repo}", 0), "message": f"Import {task.repo}"})
+    return _facts(task, dest, commits)
+
+
+def _facts(task, dest, commits):
     facts = {
         "task": task.id,
         "base_commit": commits[-1]["sha"],
