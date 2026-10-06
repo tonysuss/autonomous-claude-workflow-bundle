@@ -219,7 +219,24 @@ Then run the conditions as above, in a sandbox (see Isolation), with `--host cop
 
 ## Results v4: after fixing what v3 exposed (October 6, 2026)
 
-v3 exposed two problems (see "Results v3" below). interlock failed three of eight runs on the harder tasks, each one on a requirement the goal implies but the criteria do not spell out, and in all three the independent verifier passed the work. And no session invoked a skill, in any condition. Both were fixed in general terms (commit `882f3cb`), with nothing that names a task, and then the conditions they touch were run again.
+v3 exposed two problems (see "Results v3" below). interlock failed three of eight runs on the harder tasks, each one on a requirement the goal implies but the criteria do not spell out, and in all three the independent verifier passed the work. And no session invoked a skill, in any condition. Both were changed (commit `882f3cb`), and the conditions the changes touch were run again.
+
+**This is not a held-out test, and three things confound it.**
+
+1. **The wording is in-sample.** The prompts name no task, but they were written after reading v3's failures and the harder tasks' hidden-requirement labels (`harder` in each task's `meta.toml`), and each new sentence answers one of them:
+
+   | New sentence | What it answers |
+   | --- | --- |
+   | "search for other call sites and code paths with the same defect" | `go-dotted-section`: a second call site |
+   | "the inputs the goal implies, such as the forms the existing code already accepts" | `go-duration-days`: an edge case implied by existing code |
+   | "A gap the worker's summary names is still a gap" | v3's `go-duration-days` repeat 1, where the verifier read the worker's stated limitation and passed it |
+   | "Change nothing the goal does not need" | `py-thousands`: a regression in a module the task never mentions |
+
+   So v4's runs on the harder tasks measure the prompts on the very tasks they were tuned against.
+2. **The host changed.** Claude Code updated itself from 2.1.289 to 2.1.291 between v3 and v4.
+3. **The skill text changed.** Every interlock session loads the skills plugin, so the new `implement` description ("fixes the root cause wherever it occurs") was in each worker's context, though no session invoked it. And in v3, `skills` and `plain` sessions found `Config.Lookup` with no prompt change at all (2 of 2 each).
+
+The prompts are general and reasonable; they are not shown to work. A real test needs held-out tasks whose hidden requirements are of categories none of these sentences names, and an ablation: v3's prompts on 2.1.291 with the v4 plugin, to separate the prompts from the host and the skill text.
 
 ### What changed
 
@@ -234,12 +251,25 @@ v3 exposed two problems (see "Results v3" below). interlock failed three of eigh
 | Verifier, new step 3 | (none) | "Judge the work against the task's goal, not only the criteria's wording. A criterion that restates part of the goal holds only if the change achieves that part wherever it applies. Read the change, search the code around it for other call sites and code paths with the same defect, and try inputs the goal implies, such as the forms the existing code already accepts. A gap the worker's summary names is still a gap. A gap the task's scope does not let the worker close is not a failure: mention it in your note. Do not fail work for what the goal does not ask for, such as style or extra features." |
 | Verifier, new step 4 | (none) | "When you find a gap, record `failed` on the criterion it bears on, or on the criterion closest to it if none names it, with the gap in the note: what is missing, where, and the input or command that shows it." |
 
-The steps that run checks and record claims and assessments are unchanged. Unit tests pin the new wording and check that neither prompt names a task, a language or a domain word.
+That is what v4 ran with. The steps that run checks and record claims and assessments are unchanged.
+
+**After the review of v4** (not yet run live), the verifier prompt changed again, and the guided verifier agent (`agents/verifier/AGENT.md`) now carries the same four texts verbatim, which a test checks:
+
+| | v4 run (`882f3cb`) | Now |
+| --- | --- | --- |
+| Step 1, where it may write | "Do not modify, commit or push anything here. Put any scratch files under /tmp." | "Do not commit or push anything. Never create, change or delete a file in your working directory, not even for a moment: its files are what you are judging. To try inputs or run a probe of your own, copy the tree first (`cp -r . /tmp/<name>`) and write only in the copy, or put scratch files under /tmp." |
+| Step 2, how a check runs | "interlock runs the check itself and records the output; read it." | "interlock runs the check itself, always in a clean checkout of the tree in your working directory, so files the tree leaves out (ignored or generated ones) cannot affect it, and records the output; read it." Since `764518b`, every check runs in a fresh checkout of the tree it is recorded against |
+| Step 3, a gap outside the scope | "... is not a failure: mention it in your note." | Removed: a note is invisible to the evidence policy, so the task would reach done with a known gap |
+| Step 4, recording a gap | "record `failed` on the criterion it bears on, or on the criterion closest to it if none names it" | "Record every gap; none is only a remark in a note. When a criterion's statement covers the missing part and the worker can close it inside the task's scope, record `failed` on that criterion. When no criterion covers it, or the task's scope does not let the worker close it, record `blocked` on the criterion closest to it: only a person can settle that. Either way, the note says what is missing, where, and the input or command that shows it; for `blocked`, it also says why the worker cannot close it." |
+
+`failed` sends the work back for rework (R1). `blocked` keeps the criterion from passing; headless, a second verifier session is asked, and when it ends the same way interlock blocks the task for the operator, whose `interlock status` shows the verifier's reason (a new test in `run_fake_host.rs`).
+
+Unit tests pin each prompt's steps in order, the new sentences, the rule against failing work for what the goal does not ask, and the scratch rule. They also check that neither prompt contains a few words from these tasks ("section", "duration", "dotted", "Lookup", "day", "Go", "Python", "CLI's"). That is a guard against copying task details, not proof that the wording is task-independent: see the in-sample note above.
 
 **The skills** (`skills/`, the generator). Why none was invoked in v3: the transcripts show the six skills listed in every `skills` and interlock session's init event, and no `Skill` call in any of them. The descriptions the model saw said "Make the smallest change that meets an interlock task's criteria ..." and "Start here for any request ... in a repository that uses interlock". The task prompts never mention interlock (selftest checks the word is absent from every repository), so no description matched. Even an invoked skill could not have worked: every step called `interlock`, which the `skills` condition does not have. In v4:
 
 - `implement` and `investigate` are standalone. Their descriptions trigger on ordinary requests ("Use this skill whenever you are asked to fix a bug, add or change a feature, or refactor code, however small the change looks: load it before your first edit"; "... whenever you are asked how something works, why it was built that way, or which change caused a behavior").
-- Each body says when interlock applies: the agent was given a task id, `INTERLOCK_ATTEMPT` is set, or the repository has a store at `.interlock/state.db`. Otherwise the agent follows a `## Without interlock` section: the same playbooks, checks run by the agent itself, and nothing recorded.
+- Each body says when interlock applies: the agent was given a task id, `INTERLOCK_ATTEMPT` is set, or the repository has a store. (v4 ran with a test for `.interlock/state.db`; after the review the skills ask `interlock where` instead, which finds the store the way every command does, `INTERLOCK_DB` included, and creates nothing.) Otherwise the agent follows a `## Without interlock` section: the same playbooks, checks run by the agent itself, and nothing recorded.
 - The generator checks the promise when it loads the catalog: `standalone = true` in `skill.toml` requires that section.
 - `route` says it is for repositories set up for interlock. `verify`, `review` and `design` are unchanged.
 - The guided tests (`guided_cli`, `guided_copilot`, `skills_load`) pass with `INTERLOCK_REQUIRE_HOSTS=1`, as does the whole workspace: 320 passed, 1 ignored (`evidence/evaluation/checks/cargo_test_hosts_v4.out.txt`).
@@ -259,7 +289,7 @@ The scripted checks show that the plumbing and the text work. They do not show t
 
 Claude Code updated itself between v3 and v4, from 2.1.289 to **2.1.291**. Every v4 run used 2.1.291, `claude-sonnet-5-5` at medium effort, the same harness settings as v3, and ABBA order. Records, transcripts and verdicts are in `evidence/evaluation/claude-code-v4/`.
 
-1. `skills` and `interlock` on the three harder tasks and `py-date-filter`, two repeats each: 16 runs. `plain` was not rerun. Nothing that changed reaches it: no plugin, and an unchanged prompt and harness path. Its tools came out identical on all 11 tasks (`interlock host tools` on the new binary against v3's records). So these runs are compared with v3's `plain` runs, which ran on 2.1.289.
+1. `skills` and `interlock` on the three harder tasks and `py-date-filter`, two repeats each: 16 runs. `plain` was not rerun. Nothing interlock changed reaches it: it loads no plugin, its prompt and harness path are the same, and its tools came out identical on all 11 tasks (`interlock host tools` on the new binary against v3's records). The host did change under it, though, so these runs are compared with v3's `plain` runs on 2.1.289, across a host version.
 2. Then a second repeat of all three conditions on the seven original tasks, run as repeat 2 (`--first-repeat 2`), so each task's conditions ran in the reverse of v3's order. The budget stopped this before its last task: the next run, `py-split-remainder` under interlock, was estimated at $0.66 (the costliest interlock run so far, an interruption with its reserve), which would have passed the cap. So six of the seven original tasks now have two runs per condition; `py-split-remainder` still has one.
 
 | Accepted | plain | skills | interlock (with skills) |
@@ -283,14 +313,14 @@ Claude Code updated itself between v3 and v4, from 2.1.289 to **2.1.291**. Every
 
 Paired by task and repeat within v4 (`checks/compare_v3_v4.out.json`): interlock cost a median 2.43 times as much as skills (11 pairs, range 1.77 to 3.08) and took 2.44 times as long (14 pairs). Against plain, on the original tasks only, the medians are 2.79 times the cost (5 pairs) and 2.81 times the time (6 pairs). skills cost 1.08 times plain. Over the 11 uninterrupted interlock runs, the worker sessions cost $1.11 and the verifier sessions $0.84.
 
-**How interlock got to 8 of 8.** It was not through the verifier. No v4 run was sent back for rework (no R1); every uninterrupted run passed verification on its first attempt. The workers got it right. On `go-dotted-section`, both workers fixed `Config.Lookup` as well as the command line. On `go-duration-days`, both workers accepted `1d12h` and `1.5d`. The verifiers did follow the new instructions, which shows in their transcripts:
+**What happened in interlock's 8 of 8.** No v4 run was sent back for rework (no R1): every uninterrupted run passed verification on its first attempt. On `go-dotted-section`, both workers fixed `Config.Lookup` as well as the command line. On `go-duration-days`, both workers accepted `1d12h` and `1.5d`. The verifiers did follow the new instructions, which shows in their transcripts:
 
 - On `go-dotted-section`, they searched for every other place that splits a name ("I found no other splitting sites").
 - On `go-duration-days`, they ran their own probes of `1d12h`, `1.5d`, `-2d` and malformed values.
 
-They found nothing to fail. So this run shows the worker change working, or chance. It does not exercise the verifier's new failure path.
+They found nothing to fail. This run cannot say why the workers did better than v3's: the prompt, the host and the skill text changed together (see the in-sample note above). It does not exercise the verifier's new failure path.
 
-One verifier, on `go-duration-days` repeat 2, wrote a probe test file into the worktree it was verifying and deleted it again. Its transcript says nothing was left behind, and the judged output does not contain it. The prompt says to change nothing there and to put scratch files under /tmp, and no hook stopped it.
+**Verifiers wrote into the tree they were judging, three times.** On `go-duration-days` in v4, the repeat 1 verifier copied a probe test into its worktree and the repeat 2 verifier wrote one there; in v3, the repeat 2 verifier did the same. Each ran its probe and deleted the file, and no judged output contains one, but for that moment the files under verification were not the submitted ones, and no hook stopped it. The v4 step "try inputs the goal implies" invites exactly this. The verifier prompt and agent now say to copy the tree to /tmp and probe there, and never to write in their own working directory (above).
 
 **Leak scan.** One run was flagged, `go-dotted-section` under `skills`, repeat 2. It is the same false positive as v3's two: a Go test the agent wrote opens `../../checks/dotted.conf`, relative to its own package, and the scanner resolved that against the shell's working directory.
 
@@ -300,7 +330,7 @@ One verifier, on `go-duration-days` repeat 2, wrote a probe test file into the w
 
 The design's first goal is falsifiable: better reliability, with an overhead we understand.
 
-**Did the v4 changes help? On these tasks interlock went from 5 of 8 to 8 of 8 on the harder tasks, and that is not significant** (Fisher's exact test, two-sided, p = 0.20). The direction is the one the change aimed at, and the mechanism is visible in the transcripts: the workers fixed the second call site and handled the implied inputs. But 8 runs per arm cannot tell a fix from luck. A failure rate near v3's 3 in 8 would give 8 of 8 about 2% of the time; one near the other conditions' 1 in 16 would give it about 60% of the time. Nothing else changed significantly either:
+**Did the v4 changes help? On these tasks interlock went from 5 of 8 to 8 of 8 on the harder tasks, and that is not significant** (Fisher's exact test, two-sided, p = 0.20). The direction is the one the change aimed at, and in the transcripts the workers fixed the second call site and handled the implied inputs. But this is in-sample (the wording answers these tasks' hidden requirements), the host and the skill text changed at the same time, and 8 runs per arm cannot tell a fix from luck. A failure rate near v3's 3 in 8 would give 8 of 8 about 2% of the time; one near the other conditions' 1 in 16 would give it about 60% of the time. Nothing else changed significantly either:
 
 | Comparison, accepted | | p (two-sided) |
 | --- | --- | --- |
@@ -322,11 +352,18 @@ The design's first goal is falsifiable: better reliability, with an overhead we 
 
 **What this does not show:**
 
+- That the v4 prompts work. Their test is in-sample, and confounded with the host update and the new skill text.
 - Anything about skills in use (above).
 - Whether v4's verifier catches gaps. No v4 run had one.
 - Anything about Copilot CLI with a real model. Its runs used a scripted model.
 - Code quality or speed of delivery.
 - Generality. These are eleven small tasks of our own making, one host (whose version moved between runs), one model, one effort level, and one or two repeats.
+
+**What would test the prompts:**
+
+1. Held-out tasks whose hidden requirements fall in categories the new sentences do not name, run under every condition.
+2. An ablation on the current host: v3's prompts with the v4 plugin on 2.1.291, against v4's prompts. That separates the prompts from the host update and the skill text.
+3. A task where the worker reliably leaves a gap, to exercise the verifier's `failed` and `blocked` paths live.
 
 ## Results v3: all three conditions, after integration (October 6, 2026)
 
@@ -435,7 +472,8 @@ The interruptions in these runs killed each session at its first edit, after thr
 ## Limitations
 
 - **Stand-in tasks.** Written for this harness and small. They are not the S3 set.
-- **Small n.** One or two repeats per task and condition: v3 had 15 runs per condition, and v4 rereran the conditions it changed. `py-split-remainder` still has one run per condition.
+- **Small n.** One or two repeats per task and condition: v3 had 15 runs per condition, and v4 reran the conditions it changed. `py-split-remainder` still has one run per condition.
+- **v4 is in-sample.** Its prompt wording answers the harder tasks' hidden requirements, read from v3's failures and the tasks' labels. Held-out tasks with new requirement categories, and an ablation (v3's prompts on 2.1.291), are still to do.
 - **The plain condition is told how to report.** It is asked for a closing `STATUS:` line, so that its completion claim can be read without a model's judgement.
 - **interlock's criteria spell the task out.** Each task file breaks the prompt into criteria, some with checks. That is the intervention being measured, but it also means interlock gets the task stated twice. The criteria add no requirement or hint the prompt lacks.
 - **No sandbox.** See Isolation: the layout and the scanner keep agents away from the answers and report attempts, but the agents could read them.
