@@ -60,6 +60,10 @@ impl Invocation {
 
 /// What a skill needs to be present to work.
 pub const KNOWN_REQUIREMENTS: &[&str] = &["interlock-cli"];
+
+/// The section of a standalone skill's body that says how to work without
+/// interlock: no task, no attempt, no store.
+pub const STANDALONE_HEADING: &str = "\n## Without interlock\n";
 pub const KNOWN_PACKS: &[&str] = &["core"];
 
 #[derive(Debug, Clone, PartialEq, Eq, Deserialize)]
@@ -70,6 +74,11 @@ pub struct SkillMeta {
     pub invocation: Invocation,
     #[serde(default)]
     pub requires: Vec<String>,
+    /// Also works where its requirements are missing: it follows its
+    /// playbook and records nothing. Its body says how, under
+    /// [`STANDALONE_HEADING`].
+    #[serde(default)]
+    pub standalone: bool,
     pub pack: String,
     /// For routed skills: the skills whose `references/` carry this one.
     #[serde(default)]
@@ -258,6 +267,20 @@ impl Catalog {
             }
             if !KNOWN_PACKS.contains(&m.pack.as_str()) {
                 return invalid(format!("{ctx}: unknown pack {}", m.pack));
+            }
+            if m.standalone {
+                if m.invocation != Invocation::Model {
+                    return invalid(format!("{ctx}: only a model-invoked skill can be standalone"));
+                }
+                if m.requires.is_empty() {
+                    return invalid(format!("{ctx}: standalone means it works without its requirements; it has none"));
+                }
+                if !s.body.contains(STANDALONE_HEADING) {
+                    return invalid(format!(
+                        "{ctx}/SKILL.md: a standalone skill says how to work without interlock under {:?}",
+                        STANDALONE_HEADING.trim()
+                    ));
+                }
             }
             match m.invocation {
                 Invocation::Routed => {
@@ -518,7 +541,15 @@ pub fn generate(catalog: &Catalog, target: Target) -> Result<Output> {
         match target {
             Target::AgentSkills => {
                 if !m.requires.is_empty() {
-                    fm.push("compatibility", Value::Str(format!("Requires {} on PATH", m.requires.join(", "))));
+                    let needs = m.requires.join(", ");
+                    fm.push(
+                        "compatibility",
+                        Value::Str(if m.standalone {
+                            format!("Uses {needs} on PATH where the work is an interlock task; works without it")
+                        } else {
+                            format!("Requires {needs} on PATH")
+                        }),
+                    );
                 }
                 fm.push(
                     "metadata",
@@ -526,6 +557,7 @@ pub fn generate(catalog: &Catalog, target: Target) -> Result<Output> {
                         ("interlock-invocation".into(), m.invocation.name().into()),
                         ("interlock-pack".into(), m.pack.clone()),
                         ("interlock-requires".into(), m.requires.join(" ")),
+                        ("interlock-standalone".into(), m.standalone.to_string()),
                     ]),
                 );
             }

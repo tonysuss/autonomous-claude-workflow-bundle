@@ -802,7 +802,10 @@ def prepare_skills(a, cfg):
     with open(os.path.join(plugin, ".claude-plugin", "plugin.json"), "w") as f:
         # A neutral name: the agent sees it, and it should not hint at an evaluation.
         json.dump({"name": "workflow-skills", "version": "0.0.0"}, f)
-    skills = os.path.join(src, "skills") if os.path.isdir(os.path.join(src, "skills")) else src
+    # A plugin's skills/, a repository's .github/skills/ (what `generate --target
+    # copilot` writes), or a bare folder of skill folders.
+    skills = next((d for d in (os.path.join(src, "skills"), os.path.join(src, ".github", "skills")) if os.path.isdir(d)),
+                  src)
     shutil.copytree(skills, os.path.join(plugin, "skills"))
     return plugin
 
@@ -903,6 +906,22 @@ def tool_usage(raw_dir):
             if not f.endswith(".jsonl"):
                 continue
             for e in jsonl(os.path.join(root, f)):
+                if e.get("type") == "tool.execution_start":  # Copilot CLI
+                    d = e.get("data") or {}
+                    args = d.get("arguments") or {}
+                    if isinstance(args, str):
+                        try:
+                            args = json.loads(args)
+                        except ValueError:
+                            args = {}
+                    if not isinstance(args, dict):
+                        args = {}
+                    if d.get("toolName") == "skill":
+                        skills.append(str(args.get("skill") or args))
+                    cmd = args.get("command") if isinstance(args, dict) else None
+                    if isinstance(cmd, str) and re.search(r"(^|[;&|]\s*|\bcd [^;&|]*&&\s*)interlock\b", cmd):
+                        interlock_cmds += 1
+                    continue
                 if e.get("type") != "assistant":
                     continue
                 for item in (e.get("message") or {}).get("content") or []:
@@ -1270,7 +1289,10 @@ class Runner:
             for c in task.spec["criterion"]
         ]
         script = {
+            # With a skills plugin loaded, the plain session invokes the skill an
+            # ordinary request of this kind would reach; without one, it cannot.
             "plain": {"steps": fix + ([f"{checks[0]['check']} || true"] if checks else []),
+                      "skill": "interlock-investigate" if task.wants_answer else "interlock-implement",
                       "final": f"Applied the scripted change.\n{answer}STATUS: DONE"},
             "worker": {"steps": worker + claims, "final": f"Applied the scripted change.\n{answer}"},
             "verifier": {"steps": verifier, "final": "Scripted verification finished."},
@@ -1728,10 +1750,7 @@ def cmd_run(a):
     runner = Runner(cfg, state, run_base, results, a.label, a.seed)
     defaults = {"plain": a.default_plain_usd, "skills": a.default_plain_usd, "interlock": a.default_interlock_usd}
     count_labels = set(a.count_labels or [a.label])
-    plan = []
-    for repeat in range(1, a.repeats + 1):
-        for task in tasks:
-            plan += [(task, c, repeat) for c in condition_order(conditions, task.id, repeat, a.seed)]
+    plan = run_plan(tasks, conditions, a.first_repeat, a.repeats, a.seed)
     for task, condition, repeat in plan:
         stopped = run_until_counted(runner, task, frozen[task.id], condition, repeat, results, a.budget_usd,
                                     defaults, count_labels, a.interrupt_retries, cfg.fake_model, a.dry_run, invocation,
@@ -1740,6 +1759,16 @@ def cmd_run(a):
             break
     write_json(manifest_path, manifest)
     return 0
+
+
+def run_plan(tasks, conditions, first_repeat, repeats, seed):
+    """(task, condition, repeat) in the order they run: repeat by repeat, each
+    task's conditions in ABBA order for that repeat's number."""
+    plan = []
+    for repeat in range(first_repeat, first_repeat + repeats):
+        for task in tasks:
+            plan += [(task, c, repeat) for c in condition_order(conditions, task.id, repeat, seed)]
+    return plan
 
 
 def run_until_counted(runner, task, frozen, condition, repeat, results, budget_usd, defaults, count_labels, retries,
@@ -1752,7 +1781,7 @@ def run_until_counted(runner, task, frozen, condition, repeat, results, budget_u
         runs = load_runs(results)
         same = [r for r in runs if r["task"] == task.id and r["condition"] == condition
                 and r.get("label") in count_labels]
-        if sum(1 for r in same if run_counts(r)) >= repeat:
+        if any(run_counts(r) for r in same if r.get("repeat") == repeat):
             return None  # already run; earlier runs with a counted label are data
         tries = [r for r in same if r.get("repeat") == repeat]
         if attempt >= 1 + retries or len(tries) > retries:
@@ -2128,6 +2157,9 @@ def main(argv=None):
     r.add_argument("--conditions", default="plain,interlock")
     r.add_argument("--tasks", nargs="*")
     r.add_argument("--repeats", type=int, default=1)
+    r.add_argument("--first-repeat", type=int, default=1,
+                   help="number the repeats from here, so a later invocation continues the ABBA order "
+                        "(with --repeats 1 --first-repeat 2, each task's conditions run in reverse)")
     r.add_argument("--model")
     r.add_argument("--effort", help="Claude Code effort level for every condition")
     r.add_argument("--max-turns", type=int, default=80)

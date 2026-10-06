@@ -24,9 +24,9 @@ Runtime evidence for everything below is indexed in [evidence/skills/README.md](
 | Skill | Invocation | From pstack | Job | interlock commands it drives |
 | --- | --- | --- | --- | --- |
 | `route` | model | poteto-mode routing | Pick the workflow, write the criteria, create the task | `init`, `task create -`, `task ready`, `status` |
-| `investigate` | model | how, why | File-level evidence and history; the worker of an investigation | `brief`, `attempt start`, `check run`, `claim add`, `result submit --tree auto`, `note add --kind answer` |
+| `investigate` | model, standalone | how, why | File-level evidence and history; the worker of an investigation, or an answer on its own | `brief`, `attempt start`, `check run`, `claim add`, `result submit --tree auto`, `note add --kind answer` |
 | `design` | user | architect, arena | Compare whole designs, only when uncertainty and impact justify it | `brief`, `status`, `note add --kind design` |
-| `implement` | model | bug-fix, feature, refactoring playbooks | Smallest change, in the attempt's worktree; before and after recorded | `brief`, `status`, `attempt start --worktree auto`, `check run --target base`, `check run`, `claim add`, `result submit --tree auto` |
+| `implement` | model, standalone | bug-fix, feature, refactoring playbooks | The change, at its root cause wherever it occurs; in the attempt's worktree with before and after recorded, or on its own | `brief`, `status`, `attempt start --worktree auto`, `check run --target base`, `check run`, `claim add`, `result submit --tree auto` |
 | `verify` | model | bug-fix steps 1 and 4, prove-it-works | Hand off to the independent verifier, then let interlock decide | `status`, `verify` (Copilot), `advance`, `task log` |
 | `review` | model | interrogate | Findings with evidence, a lead judgment on each, dismissals kept | `status`, `attempt start --role reviewer`, `attempt end --note`, `note add --kind review` |
 
@@ -46,6 +46,14 @@ Routed references, emitted as files under the skills that route to them and neve
 | `confidence-tiers` | investigate, review | why's epistemics |
 
 Skill-local references: `route/references/task-templates.md` (one TOML template per workflow), `implement/references/{bug-fix,feature,refactor}.md`, `investigate/references/answer-format.md`, `review/references/lead-judgment.md`, `design/references/rationale.md`. Patterns are adapted, not copied; [skills/NOTICE](../skills/NOTICE) carries pstack's MIT notice and is copied into every output.
+
+### Without interlock
+
+`implement` and `investigate` are standalone: they also work where there is no interlock task, which is how the evaluation's skills condition ("skills alone", design §13) uses them, and how anyone without interlock set up would. Their descriptions trigger on ordinary requests ("fix this bug", "add this feature", "why does X happen") rather than on an interlock task. Each body says when interlock applies: the agent was given a task id, `INTERLOCK_ATTEMPT` is set (a headless session, where interlock opened the attempt and runs the rest of the loop), or the repository has a store at `.interlock/state.db` (then, with no task yet, route comes first). Otherwise the agent follows the body's `## Without interlock` section: the same playbooks and principles, the checks run by the agent itself, nothing recorded, and a report of what changed, the root cause and the commands it ran. A `.interlock/` directory alone is not the signal: `skills generate` writes its record there with no store.
+
+`standalone = true` in `skill.toml` is checked when the catalog loads: only a model-invoked skill with a requirement can be standalone, and its body must have the `## Without interlock` section. The plain Agent Skills target says so in `compatibility` ("Uses interlock-cli on PATH where the work is an interlock task; works without it") and in `metadata.interlock-standalone`. `route`, `verify`, `review` and `design` stay tied to interlock: their jobs exist only with its records.
+
+Why: in the October 6 evaluation no session invoked a skill, in any condition. The descriptions then said "an interlock task's criteria" and "a repository that uses interlock", which a plain request never matches, and every step of every body called `interlock`.
 
 ### The four workflows
 
@@ -68,6 +76,7 @@ Route tells the person before it commits a check script under `checks/` (the inp
 skills/<name>/
   skill.toml      name, description, invocation = "model" | "user" | "routed",
                   requires = ["interlock-cli"], pack = "core",
+                  standalone = true (optional: also works without interlock),
                   routers = [...] (routed only), argument-hint (optional)
   SKILL.md        host-neutral body, no frontmatter
   references/     *.md copied under this skill

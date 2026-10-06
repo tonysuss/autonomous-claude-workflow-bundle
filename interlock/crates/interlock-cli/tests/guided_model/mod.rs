@@ -140,12 +140,18 @@ fn respond(req: &Value, conversations: &[Conversation], state: &Mutex<State>) ->
     // Everything the host added since the model's last turn: tool results, and any skill text it injected.
     let since = msgs.iter().rposition(|m| m["role"] == "assistant").map_or(0, |i| i + 1);
     let new_text: Vec<String> = msgs[since..].iter().filter(|m| m["role"] != "system").map(text_of).collect();
+    // The skills the host lists for the model, with their descriptions (Copilot puts them in the system
+    // prompt), logged on a conversation's first request only.
+    let available_skills = (done == 0)
+        .then(|| system.split("<available_skills>").nth(1).and_then(|s| s.split("</available_skills>").next()))
+        .flatten();
     state.lock().unwrap().log.push(json!({
         "conversation": conversation.map(|c| c.marker.clone()),
         "tools_done": done,
         "last": msgs.last(),
         "new_text": new_text.join("\n"),
         "offered": offered,
+        "available_skills": available_skills,
     }));
     let Some(conversation) = conversation else {
         return json!({"role": "assistant", "content": "No script matches this conversation."});

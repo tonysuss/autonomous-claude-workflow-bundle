@@ -8,24 +8,29 @@ test_fires_after_the_delay_with_polling (__main__.Interruption.test_fires_after_
 test_fires_when_a_test_is_issued_after_the_edit (__main__.Interruption.test_fires_when_a_test_is_issued_after_the_edit) ... ok
 test_no_edit_means_not_interrupted (__main__.Interruption.test_no_edit_means_not_interrupted) ... ok
 test_porcelain_keeps_the_first_status_column (__main__.Interruption.test_porcelain_keeps_the_first_status_column) ... ok
-test_a_run_that_did_not_land_is_kept_and_rerun (__main__.InterruptionRetries.test_a_run_that_did_not_land_is_kept_and_rerun) ... [2026-10-06T03:04:29+00:00] t plain r1 (spent $0.00, estimate $0.15)
+test_a_repeat_is_skipped_only_when_that_repeat_has_counted (__main__.InterruptionRetries.test_a_repeat_is_skipped_only_when_that_repeat_has_counted) ... [2026-10-06T08:03:38+00:00] t plain r2 (spent $0.00, estimate $0.15)
+    accepted=True claimed=True hidden=True scope=[] cost=0.1 wall=1s interruption=valid
+[2026-10-06T08:03:38+00:00] t plain r1 (spent $0.10, estimate $0.10)
+    accepted=True claimed=True hidden=True scope=[] cost=0.1 wall=1s interruption=valid
+ok
+test_a_run_that_did_not_land_is_kept_and_rerun (__main__.InterruptionRetries.test_a_run_that_did_not_land_is_kept_and_rerun) ... [2026-10-06T08:03:38+00:00] t plain r1 (spent $0.00, estimate $0.15)
     accepted=True claimed=True hidden=True scope=[] cost=0.1 wall=1s interruption=NOT VALID: no edit
-[2026-10-06T03:04:29+00:00] t plain r1 (spent $0.10, estimate $0.10)
+[2026-10-06T08:03:38+00:00] t plain r1 (spent $0.10, estimate $0.10)
     accepted=True claimed=True hidden=True scope=[] cost=0.1 wall=1s interruption=valid
 ok
 test_budget_stops_before_a_run (__main__.InterruptionRetries.test_budget_stops_before_a_run) ... budget: spent $0.00; the next run (t, plain) is estimated at $0.15, which would pass the $0.05 cap
 ok
-test_gives_up_after_the_retries_and_keeps_every_record (__main__.InterruptionRetries.test_gives_up_after_the_retries_and_keeps_every_record) ... [2026-10-06T03:04:29+00:00] t plain r1 (spent $0.00, estimate $0.15)
+test_gives_up_after_the_retries_and_keeps_every_record (__main__.InterruptionRetries.test_gives_up_after_the_retries_and_keeps_every_record) ... [2026-10-06T08:03:38+00:00] t plain r1 (spent $0.00, estimate $0.15)
     accepted=True claimed=True hidden=True scope=[] cost=0.1 wall=1s interruption=NOT VALID: no edit
-[2026-10-06T03:04:29+00:00] t plain r1 (spent $0.10, estimate $0.10)
+[2026-10-06T08:03:38+00:00] t plain r1 (spent $0.10, estimate $0.10)
     accepted=True claimed=True hidden=True scope=[] cost=0.1 wall=1s interruption=NOT VALID: no edit
-[2026-10-06T03:04:29+00:00] t plain r1 (spent $0.20, estimate $0.10)
+[2026-10-06T08:03:38+00:00] t plain r1 (spent $0.20, estimate $0.10)
     accepted=True claimed=True hidden=True scope=[] cost=0.1 wall=1s interruption=NOT VALID: no edit
     giving up on t plain r1: the interruption never landed as designed
 ok
-test_report_counts_not_landed_runs_separately (__main__.InterruptionRetries.test_report_counts_not_landed_runs_separately) ... [2026-10-06T03:04:29+00:00] t plain r1 (spent $0.00, estimate $0.15)
+test_report_counts_not_landed_runs_separately (__main__.InterruptionRetries.test_report_counts_not_landed_runs_separately) ... [2026-10-06T08:03:38+00:00] t plain r1 (spent $0.00, estimate $0.15)
     accepted=True claimed=True hidden=True scope=[] cost=0.1 wall=1s interruption=NOT VALID: no edit
-[2026-10-06T03:04:29+00:00] t plain r1 (spent $0.10, estimate $0.10)
+[2026-10-06T08:03:38+00:00] t plain r1 (spent $0.10, estimate $0.10)
     accepted=True claimed=True hidden=True scope=[] cost=0.1 wall=1s interruption=valid
 ok
 test_cd_then_relative_read_across_calls (__main__.LeakScanNewLayout.test_cd_then_relative_read_across_calls) ... ok
@@ -44,7 +49,11 @@ test_earlier_runs_judged_output_and_verdict (__main__.LeakScanReviewerExamples.t
 test_earlier_runs_working_copy (__main__.LeakScanReviewerExamples.test_earlier_runs_working_copy) ... ok
 test_reference_solution_by_relative_path_in_another_checkout (__main__.LeakScanReviewerExamples.test_reference_solution_by_relative_path_in_another_checkout) ... ok
 test_sibling_frozen_repo_of_another_task (__main__.LeakScanReviewerExamples.test_sibling_frozen_repo_of_another_task) ... ok
+test_a_later_invocation_continues_the_abba_order (__main__.Ordering.test_a_later_invocation_continues_the_abba_order) ... ok
 test_abba (__main__.Ordering.test_abba) ... ok
+test_copilot_generated_skills_are_wrapped_as_a_plugin (__main__.SkillUse.test_copilot_generated_skills_are_wrapped_as_a_plugin) ... ok
+test_skill_calls_are_counted_on_both_hosts (__main__.SkillUse.test_skill_calls_are_counted_on_both_hosts) ... ok
+test_the_scripted_model_invokes_a_listed_skill_first (__main__.SkillUse.test_the_scripted_model_invokes_a_listed_skill_first) ... ok
 test_bounds (__main__.Small.test_bounds) ... ok
 test_globs_and_scope (__main__.Small.test_globs_and_scope) ... ok
 test_layout_must_not_overlap (__main__.Small.test_layout_must_not_overlap) ... ok
@@ -52,6 +61,6 @@ test_scope_in_the_plain_prompt (__main__.Small.test_scope_in_the_plain_prompt) .
 test_status_claim (__main__.Small.test_status_claim) ... ok
 
 ----------------------------------------------------------------------
-Ran 36 tests in 3.992s
+Ran 41 tests in 4.228s
 
 OK

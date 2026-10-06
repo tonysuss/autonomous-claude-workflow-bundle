@@ -335,6 +335,67 @@ class InterruptionRetries(unittest.TestCase):
         self.assertEqual(runner.calls, 0)
         self.assertIn("budget", stopped)
 
+    def test_a_repeat_is_skipped_only_when_that_repeat_has_counted(self):
+        results = tempfile.mkdtemp()
+        runner = StubRunner(results, [True, True, True])
+        go = lambda repeat: harness.run_until_counted(  # noqa: E731
+            runner, self.task, None, "plain", repeat, results, 10.0, {"plain": 0.1}, {"main"}, 2, False, False,
+            {"runs": []}, lambda: None)
+        go(2)  # a later invocation's repeat 2, with no repeat 1 in this directory
+        self.assertEqual(runner.calls, 1)
+        go(2)
+        self.assertEqual(runner.calls, 1, "repeat 2 has counted")
+        go(1)
+        self.assertEqual(runner.calls, 2, "repeat 1 has not")
+
+
+class SkillUse(unittest.TestCase):
+    def test_copilot_generated_skills_are_wrapped_as_a_plugin(self):
+        src, state = tempfile.mkdtemp(), tempfile.mkdtemp()
+        os.makedirs(os.path.join(src, ".github", "skills", "interlock-implement"))
+        with open(os.path.join(src, ".github", "skills", "interlock-implement", "SKILL.md"), "w") as f:
+            f.write("---\nname: interlock-implement\ndescription: x\n---\nbody\n")
+        a = SimpleNamespace(skills_generate=False, skills_dir=src)
+        plugin = harness.prepare_skills(a, SimpleNamespace(state_dir=state))
+        self.assertTrue(os.path.isfile(os.path.join(plugin, "skills", "interlock-implement", "SKILL.md")))
+        self.assertTrue(os.path.isfile(os.path.join(plugin, ".claude-plugin", "plugin.json")))
+
+    def test_skill_calls_are_counted_on_both_hosts(self):
+        raw = tempfile.mkdtemp()
+        claude = [{"type": "assistant", "message": {"content": [
+            {"type": "tool_use", "name": "Skill", "input": {"skill": "interlock:implement"}},
+            {"type": "tool_use", "name": "Bash", "input": {"command": "cd x && interlock check run --criterion c"}}]}}]
+        copilot = [{"type": "tool.execution_start", "data": {"toolName": "skill",
+                                                             "arguments": {"skill": "interlock-investigate"}}},
+                   {"type": "tool.execution_start", "data": {"toolName": "bash",
+                                                             "arguments": {"command": "interlock status t"}}}]
+        for name, events in (("a.jsonl", claude), ("b.jsonl", copilot)):
+            with open(os.path.join(raw, name), "w") as f:
+                f.write("".join(json.dumps(e) + "\n" for e in events))
+        usage = harness.tool_usage(raw)
+        self.assertEqual(sorted(usage["skills_invoked"]), ["interlock-investigate", "interlock:implement"])
+        self.assertEqual(usage["interlock_commands"], 2)
+
+    def test_the_scripted_model_invokes_a_listed_skill_first(self):
+        import fake_model
+        m = fake_model.FakeModel({"plain": {"skill": "interlock-implement", "steps": ["echo fixed"], "final": "ok"}})
+        try:
+            tools = [{"type": "function", "function": {"name": n, "parameters": {"required": ["command"]}}}
+                     for n in ("skill", "bash")]
+            listed = {"role": "system", "content": "<available_skills><skill><name>interlock-implement</name>"}
+            user = {"role": "user", "content": "Fix this bug."}
+            first = m.respond({"messages": [listed, user], "tools": tools})
+            call = first["tool_calls"][0]["function"]
+            self.assertEqual((call["name"], json.loads(call["arguments"])), ("skill", {"skill": "interlock-implement"}))
+            tool_msg = {"role": "tool", "content": "skill text"}
+            second = m.respond({"messages": [listed, user, {"role": "assistant"}, tool_msg], "tools": tools})
+            self.assertEqual(json.loads(second["tool_calls"][0]["function"]["arguments"])["command"], "echo fixed")
+            # Without the skill listed (no plugin loaded), the session goes straight to its steps.
+            plain = m.respond({"messages": [{"role": "system", "content": "none"}, user], "tools": tools})
+            self.assertEqual(plain["tool_calls"][0]["function"]["name"], "bash")
+        finally:
+            m.close()
+
 
 class Ordering(unittest.TestCase):
     def test_abba(self):
@@ -343,6 +404,14 @@ class Ordering(unittest.TestCase):
         self.assertEqual(sorted(r1), sorted(conds))
         self.assertEqual(harness.condition_order(conds, "t", 2, 13), r1[::-1])
         self.assertEqual(harness.condition_order(conds, "t", 3, 13), r1)
+
+    def test_a_later_invocation_continues_the_abba_order(self):
+        conds = ["plain", "skills", "interlock"]
+        tasks = [SimpleNamespace(id="t"), SimpleNamespace(id="u")]
+        both = harness.run_plan(tasks, conds, 1, 2, 13)
+        second = harness.run_plan(tasks, conds, 2, 1, 13)
+        self.assertEqual([(t.id, c, r) for t, c, r in second], [(t.id, c, r) for t, c, r in both if r == 2])
+        self.assertEqual([c for t, c, r in second if t.id == "t"], harness.condition_order(conds, "t", 1, 13)[::-1])
 
 
 class Small(unittest.TestCase):

@@ -99,6 +99,7 @@ pub fn skills(cmd: &SkillsCmd) -> Result<ExitCode> {
                         "name": s.meta.name,
                         "invocation": s.meta.invocation,
                         "pack": s.meta.pack,
+                        "standalone": s.meta.standalone,
                         "routers": s.meta.routers,
                         "description": s.meta.description,
                     })

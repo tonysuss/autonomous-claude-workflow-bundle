@@ -1,5 +1,5 @@
 name = "route"
-description = "Start here for any request to investigate, fix, build or restructure code in a repository that uses interlock. Picks the workflow (investigation, bug fix, feature, refactor), writes its acceptance criteria, and creates the interlock task."
+description = "Start here for any request to investigate, fix, build or restructure code in a repository set up for interlock (it has an interlock store, .interlock/state.db). Picks the workflow (investigation, bug fix, feature, refactor), writes its acceptance criteria, and creates the interlock task. Without interlock, the implement and investigate skills work on their own."
 invocation = "model"
 requires = ["interlock-cli"]
 pack = "core"
