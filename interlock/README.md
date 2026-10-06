@@ -93,7 +93,24 @@ A verified task that needs integration lands through `interlock-forge`, which dr
 
 [docs/evaluation.md](docs/evaluation.md) is the harness for the design's §13 evaluation, run on a stand-in for the S3 frozen task set: eleven tasks with hidden executable checks, including two forced interruptions and three tasks whose prompts leave out a requirement a careful engineer should find. Conditions: the host's plain workflow, skills alone, and skills with interlock, with host, model and effort pinned, tools at parity, and each run isolated from the answers.
 
-The first live run (Claude Code, seven tasks, two repeats, before the harness review) accepted 14 of 14 in both conditions it ran. interlock cost a median 2.4 times as much and took 2.1 times as long, most of it the verifier session. That task set was too easy to show a reliability difference; both failure rates are bounded at about 19 to 23 percent. Evidence: [evidence/evaluation/README.md](evidence/evaluation/README.md).
+The run on the integrated build (Claude Code 2.1.289, `claude-sonnet-5-5`, medium effort, 15 counted runs per condition, ABBA order):
+
+| | plain | skills | interlock with skills |
+| --- | --- | --- | --- |
+| Accepted | 14/15 | 15/15 | 12/15 |
+| On the four harder tasks | 7/8 | 8/8 | 5/8 |
+| False completion claims | 1 | 0 | 3 |
+| Scope violations | 0 | 0 | 0 |
+| Recovery after a forced interruption | 3/3 | 3/3 | 3/3 |
+| Cost and wall time against plain, paired | | 1.1x, 1.1x | 2.5x, 2.3x |
+
+What it shows, and does not:
+- **No difference is significant at this size** (Fisher two-sided p = 0.60 for interlock against plain, 0.22 against skills).
+- **interlock did not make outcomes better here.** All three of its failures were on the harder tasks, whose prompts leave out a requirement, and in each one the independent verifier passed the work. The verifier checks the criteria, and the criteria only restated the prompt, so it did not catch what the worker missed. One suspect is the worker prompt's "make the smallest change that meets the criteria"; three failures cannot confirm it.
+- **No session invoked a skill in any condition**, though every session had them loaded: the skills describe themselves as steps of an interlock task. So the skills condition measured their descriptions sitting in context, not skills in use.
+- **The verifier is about three quarters of interlock's extra cost.**
+
+The earlier run, before the harness review, accepted 14 of 14 in both conditions it ran. Spend for both runs, the harness's isolation and the task set: [docs/evaluation.md](docs/evaluation.md) and [evidence/evaluation/README.md](evidence/evaluation/README.md).
 
 ## What is built
 
@@ -109,7 +126,7 @@ The first live run (Claude Code, seven tasks, two repeats, before the harness re
 | P1 skills, generator, guided sessions, S1 | Done; live on Claude Code, scripted on Copilot | [docs](docs/skills.md), [evidence](evidence/skills/README.md) |
 | P3 robustness: re-attach, reconcile, containment, signals, budgets, pins, export | Done | [docs](docs/runtime.md), [evidence](evidence/runtime/README.md) |
 | P4 delivery: forge adapter, pinned merges, operations, reconcile | Done against a fake `gh`; live GitHub not yet | [docs](docs/forge.md), [evidence](evidence/forge/README.md) |
-| §13 evaluation and S3 baseline | Harness and stand-in task set done; full three-condition run in progress | [docs](docs/evaluation.md), [evidence](evidence/evaluation/README.md) |
+| §13 evaluation and S3 baseline | Harness, stand-in task set and a three-condition run on Claude Code done; interlock showed no benefit at this size (see [Evaluation](#evaluation)) | [docs](docs/evaluation.md), [evidence](evidence/evaluation/README.md) |
 
 Each workstream was built, then reviewed by an independent agent that tried to break it; every confirmed finding became a regression test that fails before its fix. The review rounds are recorded in each evidence README.
 
@@ -156,6 +173,7 @@ These are the defaults this build uses until they are decided:
 
 - **Live GitHub.** The container's GitHub token is invalid, so delivery ran against a fake `gh` and a local bare repository. GitHub's real messages, timing and branch protection are untested; [docs/forge.md](docs/forge.md) lists what a live run would add. Under auto-merge, a base that moves while the merge waits is detected after the merge, not prevented, unless the branch requires up-to-date branches.
 - **Copilot CLI with a real model.** Copilot runs exercise the real CLI, hooks, permissions, skills and custom agents with a scripted model. Model behaviour under the skills is evidenced on Claude Code only.
+- **That interlock improves outcomes.** On the stand-in tasks it did not: it accepted fewer runs than plain or skills alone (not a significant difference), at about 2.5 times the cost. Its verifier checks the stated criteria, so it cannot catch a requirement nobody wrote down.
 - **The real S3 task set and its baseline.** The evaluation runs on stand-in tasks.
 - **Containment is not a security boundary.** Hooks read command text and do not parse shell grammar; a path computed at run time gets past them. A same-user process can read another's environment. Attempt tokens are bookkeeping. Real containment comes from the host's tool restrictions and the operating system ([docs/runtime.md](docs/runtime.md) says what holds).
 
