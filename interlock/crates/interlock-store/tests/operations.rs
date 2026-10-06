@@ -276,6 +276,23 @@ fn a_merge_never_lands_a_task_whose_evidence_went_stale() {
 }
 
 #[test]
+fn a_merge_confirmed_by_hand_never_lands_stale_evidence_or_a_short_head() {
+    // `interlock integrate confirm` reaches G6 without settle's checks; the
+    // guard itself must refuse what the lifecycle property tests found.
+    let mut store = Store::open_in_memory().unwrap();
+    let landing = integrating(&mut store);
+    let short = MergeReport::Merged { head_sha: HEAD[..3].into() };
+    let err = store.confirm_integration("t1", &landing.id, short, t(7)).unwrap_err();
+    assert!(err.to_string().contains("verified head was"), "{err}");
+    store.record_new_tree("t1", "bbbbbbb2222222222222222222222222222222222", t(8)).unwrap();
+    let merged = MergeReport::Merged { head_sha: HEAD.into() };
+    let mv = store.confirm_integration("t1", &landing.id, merged, t(9)).unwrap();
+    assert_eq!((mv.signal, mv.to), (Signal::Block, State::Blocked));
+    assert_eq!(store.operation(&landing.id).unwrap().state, OperationState::Confirmed, "what the forge did is kept");
+    assert!(store.task("t1").unwrap().blocked_reason.unwrap().contains("no longer covers"));
+}
+
+#[test]
 fn settled_operations_are_final() {
     let mut store = Store::open_in_memory().unwrap();
     let landing = integrating(&mut store);

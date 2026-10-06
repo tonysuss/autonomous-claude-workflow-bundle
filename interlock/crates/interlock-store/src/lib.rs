@@ -1200,7 +1200,8 @@ impl Store {
         Ok((mv, op))
     }
 
-    /// G6, or R2 when the forge refused the pinned merge.
+    /// G6, or R2 when the forge refused the pinned merge. A merge whose
+    /// evidence no longer covers the task's tree blocks the task instead.
     pub fn confirm_integration(
         &mut self,
         task_id: &str,
@@ -1215,7 +1216,8 @@ impl Store {
             .optional()?
             .ok_or_else(|| StoreError::NotFound(format!("operation {operation_id}")))
             .and_then(decode)?;
-        let out = lifecycle::confirm_integration(&task, &op, &report, now)?;
+        let evidence = report_for(&tx, &task)?;
+        let out = lifecycle::confirm_integration(&task, &op, &report, &evidence, now)?;
         op.state = match report {
             MergeReport::Merged { .. } => OperationState::Confirmed,
             MergeReport::Refused { .. } => OperationState::Failed,
