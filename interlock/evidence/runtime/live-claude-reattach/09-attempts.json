@@ -1,0 +1,181 @@
+[
+  {
+    "id": "att-1eec0a79aaa645d1",
+    "task_id": "fix-add",
+    "epoch": 1,
+    "role": "worker",
+    "host": {
+      "host": "claude-code",
+      "version": "2.1.289"
+    },
+    "agent": "interlock-worker",
+    "model": "haiku",
+    "worktree": "/tmp/claude-0/-home-user-autonomous-claude-workflow-bundle/533a7202-b2b1-5f9c-8fb9-d9bcdfeb7c84/scratchpad/live-demo/.interlock/worktrees/fix-add-worker-1",
+    "effective_grant": {
+      "action_classes": [
+        "read",
+        "local_reversible"
+      ],
+      "tools": {
+        "allow": [
+          "read",
+          "edit",
+          "shell"
+        ],
+        "deny": [
+          "shell:git push"
+        ]
+      },
+      "landing_authority": "none",
+      "grant_ids": []
+    },
+    "token_hash": "881609b668d9608072b43920ba3ecc0d8b87a57e82b3674df19832bb654bdd42",
+    "status": "submitted",
+    "started_at": "2026-10-06T00:08:31.914519215Z",
+    "ended_at": null,
+    "handoff": {
+      "host": "claude-code",
+      "pid": 7001,
+      "pgid": 7001,
+      "process_start": 285828,
+      "started_at": "2026-10-06T00:08:31.938895553Z",
+      "deadline": "2026-10-06T00:18:31.938895553Z",
+      "budget_deadline": false,
+      "transcript": "/tmp/claude-0/-home-user-autonomous-claude-workflow-bundle/533a7202-b2b1-5f9c-8fb9-d9bcdfeb7c84/scratchpad/live-demo/.interlock/transcripts/att-1eec0a79aaa645d1.jsonl",
+      "host_session_id": "3a0d88ab-2c1e-4104-a4a1-cf23c0fe2647",
+      "supervisor_pid": 6931,
+      "reattached_at": [
+        "2026-10-06T00:08:39.368614294Z"
+      ]
+    },
+    "end": {
+      "reason": "completed",
+      "detail": null,
+      "synthetic": false
+    },
+    "spent": {
+      "wall_ms": 31613,
+      "cost_usd": 0.1323709,
+      "premium_requests": null,
+      "turns": 14
+    }
+  },
+  {
+    "id": "att-12e9a17dbcd643f2",
+    "task_id": "fix-add",
+    "epoch": 1,
+    "role": "verifier",
+    "host": {
+      "host": "claude-code",
+      "version": "2.1.289"
+    },
+    "agent": "interlock-verifier",
+    "model": "haiku",
+    "worktree": "/tmp/claude-0/-home-user-autonomous-claude-workflow-bundle/533a7202-b2b1-5f9c-8fb9-d9bcdfeb7c84/scratchpad/live-demo/.interlock/worktrees/fix-add-verifier-1",
+    "effective_grant": {
+      "action_classes": [
+        "read",
+        "local_reversible"
+      ],
+      "tools": {
+        "allow": [
+          "read",
+          "shell"
+        ],
+        "deny": [
+          "edit",
+          "shell:git push",
+          "shell:git commit"
+        ]
+      },
+      "landing_authority": "none",
+      "grant_ids": []
+    },
+    "token_hash": "4d1b888c2a832c9bd7adddc73d59614bf8a383250dbefc162391fb6e96360796",
+    "status": "completed",
+    "started_at": "2026-10-06T00:09:04.070037829Z",
+    "ended_at": "2026-10-06T00:09:27.675333976Z",
+    "handoff": {
+      "host": "claude-code",
+      "pid": 7762,
+      "pgid": 7762,
+      "process_start": 289043,
+      "started_at": "2026-10-06T00:09:04.088899943Z",
+      "deadline": "2026-10-06T00:19:04.088899943Z",
+      "budget_deadline": false,
+      "transcript": "/tmp/claude-0/-home-user-autonomous-claude-workflow-bundle/533a7202-b2b1-5f9c-8fb9-d9bcdfeb7c84/scratchpad/live-demo/.interlock/transcripts/att-12e9a17dbcd643f2.jsonl",
+      "host_session_id": "a15b34db-39f1-4642-a2df-5b5e931f16be",
+      "supervisor_pid": 7303
+    },
+    "end": {
+      "reason": "completed",
+      "detail": null,
+      "synthetic": false
+    },
+    "spent": {
+      "wall_ms": 23563,
+      "cost_usd": 0.10232179999999999,
+      "premium_requests": null,
+      "turns": 8
+    }
+  },
+  {
+    "id": "att-65d23b0ef81a4964",
+    "task_id": "fix-add",
+    "epoch": 1,
+    "role": "verifier",
+    "host": {
+      "host": "claude-code",
+      "version": "2.1.289"
+    },
+    "agent": "interlock-verifier",
+    "model": "haiku",
+    "worktree": "/tmp/claude-0/-home-user-autonomous-claude-workflow-bundle/533a7202-b2b1-5f9c-8fb9-d9bcdfeb7c84/scratchpad/live-demo/.interlock/worktrees/fix-add-verifier-2",
+    "effective_grant": {
+      "action_classes": [
+        "read",
+        "local_reversible"
+      ],
+      "tools": {
+        "allow": [
+          "read",
+          "shell"
+        ],
+        "deny": [
+          "edit",
+          "shell:git push",
+          "shell:git commit"
+        ]
+      },
+      "landing_authority": "none",
+      "grant_ids": []
+    },
+    "token_hash": "463bdb8b5a00de42ccdeee424332262122fc6102db0f9e15ef9f539e2bc882cc",
+    "status": "completed",
+    "started_at": "2026-10-06T00:09:27.913331332Z",
+    "ended_at": "2026-10-06T00:09:51.900412166Z",
+    "handoff": {
+      "host": "claude-code",
+      "pid": 9344,
+      "pgid": 9344,
+      "process_start": 291428,
+      "started_at": "2026-10-06T00:09:27.936014727Z",
+      "deadline": "2026-10-06T00:19:27.936014727Z",
+      "budget_deadline": false,
+      "transcript": "/tmp/claude-0/-home-user-autonomous-claude-workflow-bundle/533a7202-b2b1-5f9c-8fb9-d9bcdfeb7c84/scratchpad/live-demo/.interlock/transcripts/att-65d23b0ef81a4964.jsonl",
+      "host_session_id": "8898aed3-1845-40c6-b0a6-6ab997e4497e",
+      "supervisor_pid": 7303
+    },
+    "end": {
+      "reason": "completed",
+      "detail": null,
+      "synthetic": false
+    },
+    "spent": {
+      "wall_ms": 23953,
+      "cost_usd": 0.0542923,
+      "premium_requests": null,
+      "turns": 8
+    }
+  }
+]

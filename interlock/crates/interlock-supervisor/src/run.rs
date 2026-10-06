@@ -129,7 +129,11 @@ impl Lock {
                 }
                 Err(e) if e.kind() == std::io::ErrorKind::AlreadyExists => {
                     let holder = std::fs::read_to_string(&path).unwrap_or_default();
-                    let live = holder.trim().parse::<u32>().is_ok_and(|pid| interlock_adapter::alive(pid, None));
+                    // A file naming this very process is left from a dead holder whose pid was reused.
+                    let live = holder
+                        .trim()
+                        .parse::<u32>()
+                        .is_ok_and(|pid| pid != std::process::id() && interlock_adapter::alive(pid, None));
                     if live {
                         return Err(RunError::Other(format!(
                             "another supervisor (pid {}) is running; lock at {}",

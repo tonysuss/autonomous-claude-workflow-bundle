@@ -1,0 +1,3 @@
+  PID  PGID  PPID STAT     ELAPSED COMMAND
+ 6931  6893  6893 Sl         00:07 /home/user/autonomous-claude-workflow-bundle/.claude/worktrees/agent-a015a201024863c38/interlock/target/debug/interlock run fix-add --host claude-code --model haiku 
+ 7001  7001  6931 Rl         00:06 /opt/node22/bin/claude -p --output-format stream-json --verbose --permission-mode dontAsk --setting-sources  --no-session-persistence --allowedTools Read Grep Glob E

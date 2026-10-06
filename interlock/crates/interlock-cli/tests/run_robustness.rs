@@ -287,6 +287,36 @@ fn a_supervisor_killed_mid_session_reattaches_and_carries_on() {
 }
 
 #[test]
+fn a_verifier_session_is_reattached_too() {
+    let Some(f) = Fixture::new("max_attempts = 3") else { return };
+    let mut slow_verifier = verifier_pass();
+    slow_verifier.insert(1, "sleep 8".into());
+    let model = FakeModel::start(Script {
+        worker: vec![steps(&[FIX, CHECK_FIXED, CLAIM])],
+        verifier: vec![slow_verifier],
+        on_block: vec![],
+    });
+    let mut first = f.spawn_run(&model);
+    wait_until("the verifier reaches its long step", Duration::from_secs(120), || {
+        model.requests().iter().any(|r| r["role"] == "verifier" && r["tools_done"].as_u64() >= Some(1))
+    });
+    std::thread::sleep(Duration::from_millis(1500));
+    let verifier = f.attempts().into_iter().find(|a| a["role"] == "verifier").unwrap();
+    assert_eq!(verifier["status"], "running");
+    kill(&first.id().to_string(), "KILL");
+    let _ = first.wait();
+    assert!(running(verifier["handoff"]["pid"].as_u64().unwrap()));
+
+    let (code, report) = f.run(&model, "120s");
+    assert_eq!(code, 0, "{report:#}");
+    assert_eq!(report["reattached"], serde_json::json!([verifier["id"]]));
+    assert_eq!(report["sessions"][0]["role"], "verifier");
+    assert_eq!(f.signals(), ["G1", "G2", "G3", "G4", "G7"]);
+    assert_eq!(f.attempts().iter().filter(|a| a["role"] == "verifier").count(), 1, "one verifier session");
+    f.assert_every_attempt_ended();
+}
+
+#[test]
 fn a_session_that_died_with_its_supervisor_is_reconciled_and_retried() {
     let Some(f) = Fixture::new("max_attempts = 3") else { return };
     let model = FakeModel::start(Script {
@@ -342,6 +372,9 @@ fn sigint_cancels_the_session_and_the_exported_work_resumes() {
     let handoff = f.live_handoff().unwrap();
     let started = Instant::now();
     kill(&run.id().to_string(), "INT");
+    // An impatient second Ctrl-C must not orphan the host.
+    std::thread::sleep(Duration::from_millis(200));
+    let _ = Command::new("kill").args(["-s", "INT", "--", &run.id().to_string()]).status();
     let (code, report) = finish(run);
     assert_eq!(code, 6, "an interrupted run has its own exit status: {report:#}");
     assert!(started.elapsed() < Duration::from_secs(15), "the run stopped promptly");
@@ -381,6 +414,24 @@ fn sigint_cancels_the_session_and_the_exported_work_resumes() {
     assert_eq!(worker_sessions(&model), 2);
     let tree = f.task()["current_tree"].as_str().unwrap().to_string();
     assert_eq!(tree, export["tree"].as_str().unwrap(), "the accepted output is the exported tree");
+    f.assert_every_attempt_ended();
+}
+
+#[test]
+fn sigterm_stops_a_run_the_same_way() {
+    let Some(f) = Fixture::new("max_attempts = 3") else { return };
+    let model = FakeModel::start(Script { worker: vec![steps(&["sleep 60"])], verifier: vec![], on_block: vec![] });
+    let run = f.spawn_run(&model);
+    wait_for_worker_step(&model, 0);
+    let handoff = f.live_handoff().unwrap();
+    kill(&run.id().to_string(), "TERM");
+    let out = run.wait_with_output().unwrap();
+    assert_eq!(out.status.code(), Some(6));
+    let said: Value = serde_json::from_slice(&out.stderr).unwrap();
+    assert_eq!(said["interrupted"], "SIGTERM");
+    assert_eq!(said["resume"], "interlock run fix-add --host copilot");
+    assert!(!running(handoff["pid"].as_u64().unwrap()));
+    assert_eq!(f.signals(), ["G1", "G2", "R3"]);
     f.assert_every_attempt_ended();
 }
 
