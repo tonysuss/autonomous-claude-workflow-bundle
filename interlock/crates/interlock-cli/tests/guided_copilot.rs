@@ -259,10 +259,13 @@ fn a_bug_fix_runs_end_to_end_in_guidance_mode() {
         ],
         reply: "fix-add is done: verified by the independent verifier.".into(),
     };
+    // The verifier is offered no edit tool, so it tries the shell: a commit, and a write into interlock's store.
+    let write_store = format!("printf x >> {}", repo.join(".interlock/state.db").display());
     let verifier = Conversation {
         marker: HEADLESS_VERIFIER.into(),
         steps: vec![
             bash("git commit --allow-empty -m 'the verifier commits'"),
+            bash(&write_store),
             bash("interlock check run --criterion repro"),
             bash("interlock check run --criterion regression"),
             bash(
@@ -299,12 +302,21 @@ fn a_bug_fix_runs_end_to_end_in_guidance_mode() {
     assert!(!repo.join(".interlock/worktrees/fix-add-worker-1").exists(), "done removes the worktrees");
 
     // The verifier was a separate session, run as interlock's verifier agent: Copilot never offered it an
-    // edit tool, and its commit was denied.
+    // edit tool. Its commit was refused by a deny rule or the hook, and its write into the store by the hook.
     let verifier_requests: Vec<Value> =
         model.log().into_iter().filter(|r| r["conversation"] == HEADLESS_VERIFIER).collect();
-    let after_commit = verifier_requests.iter().find(|r| r["tools_done"] == 1).expect("the verifier's second request");
-    let seen = after_commit["new_text"].as_str().unwrap_or_default();
-    assert!(seen.to_lowercase().contains("denied"), "the verifier's commit went through: {seen}");
+    let seen = |done: u64| {
+        let r = verifier_requests.iter().find(|r| r["tools_done"] == done).expect("a verifier request");
+        r["new_text"].as_str().unwrap_or_default().to_string()
+    };
+    let commit = seen(1);
+    let by_rule = commit.contains("denied due to the following rules: `shell(git commit:*)`");
+    assert!(by_rule || commit.contains("Denied by preToolUse hook"), "the verifier's commit went through: {commit}");
+    let write = seen(2);
+    assert!(
+        write.contains("Denied by preToolUse hook") && write.contains("interlock's own state"),
+        "the verifier's write into the store went through: {write}"
+    );
     for r in &verifier_requests {
         let offered = tools_offered(r);
         assert!(offered.iter().any(|t| t == "bash"), "{offered:?}");

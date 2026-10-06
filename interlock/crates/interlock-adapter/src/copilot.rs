@@ -12,6 +12,20 @@ pub struct Copilot;
 
 const BINARY: &str = "copilot";
 
+/// Whether a failed tool call was refused: by a hook or a rule (`denied`),
+/// or because the session's agent was not given the tool (Copilot 1.0.91:
+/// "Tool 'edit' does not exist.").
+fn denied(error: &serde_json::Value) -> bool {
+    let message = error["message"].as_str().unwrap_or_default();
+    error["code"] == "denied" || (message.starts_with("Tool '") && message.ends_with("' does not exist."))
+}
+
+/// An agent's name is a path component and part of `--agent`: lowercase
+/// letters, digits and hyphens only.
+fn valid_agent_name(name: &str) -> bool {
+    !name.is_empty() && name.bytes().all(|b| b.is_ascii_lowercase() || b.is_ascii_digit() || b == b'-')
+}
+
 /// A custom agent profile for one headless session.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct AgentProfile {
@@ -88,10 +102,11 @@ impl Copilot {
 
     /// The custom agent a session runs as, `copilot -p --agent`: interlock's
     /// profile for the session's role, kept in the hooks plugin, with the
-    /// role's instructions and only the tools its grant leaves it. `None`
-    /// when the session names no agent or loads no hooks plugin.
+    /// role's instructions and, as its tools, only those its grant leaves it
+    /// (Copilot adds its own `skill` and `sql` to every agent). `None` when
+    /// the session names no agent, or an invalid one, or loads no hooks plugin.
     pub fn agent_profile(&self, spec: &SessionSpec) -> Option<AgentProfile> {
-        let (name, plugin) = (spec.agent.as_ref()?, spec.plugin_dir.as_ref()?);
+        let (name, plugin) = (spec.agent.as_ref().filter(|n| valid_agent_name(n))?, spec.plugin_dir.as_ref()?);
         // JSON strings and arrays are valid YAML, so nothing in them needs escaping.
         let json = |v: serde_json::Value| v.to_string();
         let text = format!(
@@ -208,6 +223,9 @@ impl Host for Copilot {
 
     fn plan(&self, probe: &Probe, spec: &SessionSpec) -> Result<CommandPlan, String> {
         let bin = probe.locate(self.name(), BINARY).ok_or("copilot was not found on PATH")?;
+        if let Some(name) = spec.agent.as_deref().filter(|n| !valid_agent_name(n)) {
+            return Err(format!("agent name {name:?} must be lowercase letters, digits and hyphens"));
+        }
         if let Some(agent) = self.agent_profile(spec) {
             agent.write().map_err(|e| format!("cannot write the agent profile {}: {e}", agent.path.display()))?;
         }
@@ -227,8 +245,10 @@ impl Host for Copilot {
                 }
                 Some("assistant.turn_end") => turns += 1,
                 // A denied call fails with error code "denied", whether a hook
-                // or a --deny-tool rule refused it.
-                Some("tool.execution_complete") if e["data"]["error"]["code"] == "denied" => s.denials += 1,
+                // or a --deny-tool rule refused it. A call to a tool the
+                // session's agent was not given fails as a tool that does not
+                // exist; that is a denial too.
+                Some("tool.execution_complete") if denied(&e["data"]["error"]) => s.denials += 1,
                 Some("result") => {
                     saw_result = true;
                     s.session_id = e["sessionId"].as_str().map(str::to_string);
@@ -398,6 +418,14 @@ mod tests {
              attempt\"\ntools: [\"view\",\"grep\",\"glob\",\"bash\"]\n---\n\nYou are the independent verifier.\n"
         );
 
+        // A name that is not lowercase letters, digits and hyphens never becomes a path or an agent.
+        for bad in ["../evil", "Interlock", "a/b", ""] {
+            let named = SessionSpec { agent: Some(bad.into()), ..spec.clone() };
+            assert_eq!(Copilot.agent_profile(&named), None, "{bad:?}");
+            let probe = Probe { overrides: vec![("copilot".into(), "/bin/sh".into())], ..Probe::default() };
+            assert!(Copilot.plan(&probe, &named).is_err(), "{bad:?}");
+        }
+
         // Without the hooks plugin there is nowhere to keep the profile: the instructions lead the prompt.
         let bare = SessionSpec { plugin_dir: None, ..spec };
         assert_eq!(Copilot.agent_profile(&bare), None);
@@ -424,6 +452,8 @@ mod tests {
             r#"{"type":"assistant.message","data":{"content":"","toolRequests":[{"name":"bash"}]}}"#,
             r#"{"type":"tool.execution_complete","data":{"success":false,"error":{"message":"Denied by preToolUse hook: no","code":"denied"}}}"#,
             r#"{"type":"tool.execution_complete","data":{"success":true,"result":{"content":"ok"}}}"#,
+            r#"{"type":"tool.execution_complete","data":{"success":false,"error":{"message":"Tool 'edit' does not exist.","code":"failure"}}}"#,
+            r#"{"type":"tool.execution_complete","data":{"success":false,"error":{"message":"No such file: x","code":"failure"}}}"#,
             r#"{"type":"assistant.turn_end","data":{"turnId":"0"}}"#,
             r#"{"type":"assistant.message","data":{"content":"Fixed the retry."}}"#,
             r#"{"type":"assistant.turn_end","data":{"turnId":"1"}}"#,
@@ -434,9 +464,13 @@ mod tests {
         .collect();
         let s = Copilot.summarize(&lines);
         assert_eq!(s.final_text.as_deref(), Some("Fixed the retry."));
-        assert_eq!((s.denials, s.turns, s.is_error), (1, Some(2), false));
+        assert_eq!(
+            (s.denials, s.turns, s.is_error),
+            (2, Some(2), false),
+            "a missing tool is a denial; a failure is not"
+        );
         assert_eq!(s.session_id.as_deref(), Some("s-1"));
         assert_eq!(s.premium_requests, Some(2.0));
-        assert!(Copilot.summarize(&lines[..5]).is_error, "no result event means the session did not finish");
+        assert!(Copilot.summarize(&lines[..7]).is_error, "no result event means the session did not finish");
     }
 }
