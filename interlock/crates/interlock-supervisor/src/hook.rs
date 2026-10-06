@@ -184,8 +184,11 @@ fn canonical(p: &Path) -> PathBuf {
 }
 
 /// Why a tool call is refused for reaching interlock's own state: the store
-/// directory (outside this attempt's own worktree, which lives there), the
-/// directory holding attempt tokens, or another process's environment. Shell
+/// itself, the directory holding attempt tokens, another process's
+/// environment, and, for headless sessions, anything in the store directory
+/// outside this attempt's own worktree (another session's transcript or
+/// worktree). A guided session a person drives may read there (its skills keep
+/// their references under it); changes are refused by [`state_guard`]. Shell
 /// commands are split on whitespace and shell punctuation and every word that
 /// looks like a path is resolved; the split does not parse shell grammar, so
 /// this narrows what an agent can reach rather than containing it.
@@ -202,7 +205,9 @@ pub fn forbidden(ctx: &HookContext, worktree: Option<&Path>, cwd: Option<&Path>,
             return Some("other processes' environments are off limits".into());
         }
         if text.contains("INTERLOCK_DB") || text.contains("state.db") {
-            return Some("interlock's store is off limits; report through the interlock command".into());
+            return Some(
+                "interlock's own state (its store) is off limits; report through the interlock command".into(),
+            );
         }
         let words = text
             .split(|c: char| c.is_whitespace() || ";|&<>()'\"`=,".contains(c))
@@ -210,15 +215,11 @@ pub fn forbidden(ctx: &HookContext, worktree: Option<&Path>, cwd: Option<&Path>,
         for word in words {
             let path = resolve(&base, word);
             if path.starts_with(&tokens) {
-                return Some("interlock's attempt tokens are off limits".into());
+                return Some("interlock's own state (attempt tokens) is off limits".into());
             }
-            // The generated skills and hooks plugin for guided sessions may be read (skills
-            // point the model at their own references); changing them is refused by state_guard.
-            let guided_plugin = path.starts_with(store_dir.join("guided"));
-            if path.starts_with(&store_dir) && !guided_plugin && !worktree.as_ref().is_some_and(|w| path.starts_with(w))
-            {
+            if ctx.headless && path.starts_with(&store_dir) && !worktree.as_ref().is_some_and(|w| path.starts_with(w)) {
                 return Some(format!(
-                    "{word} is inside interlock's own directory; work only in your worktree and report through the \
+                    "{word} is interlock's own state, inside its directory; work only in your worktree and report through the \
                      interlock command"
                 ));
             }
@@ -605,7 +606,7 @@ mod tests {
         ] {
             let r = pre(&s, "Bash", json!({ "command": cmd }));
             assert_eq!(r.exit_code, 2, "{cmd}");
-            assert!(r.stderr.contains("interlock's own directory"), "{cmd}: {}", r.stderr);
+            assert!(r.stderr.contains("interlock's own state"), "{cmd}: {}", r.stderr);
         }
         let own = format!("cat {}/src/a.rs", s.worktree.display());
         assert_eq!(pre(&s, "Bash", json!({ "command": own })).exit_code, 0, "the attempt's own worktree is fine");

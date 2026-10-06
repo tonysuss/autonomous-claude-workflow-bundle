@@ -118,6 +118,9 @@ enum Command {
         /// Reasoning effort for every session: Claude Code's --effort, Copilot CLI's --reasoning-effort.
         #[arg(long)]
         effort: Option<String>,
+        /// A skills plugin (from `interlock skills generate`) to load into every session.
+        #[arg(long)]
+        skills: Option<PathBuf>,
     },
     /// interlock runs a criterion's check itself and records what happened.
     #[command(subcommand)]
@@ -157,6 +160,9 @@ enum Command {
         /// Reasoning effort for the session: Claude Code's --effort, Copilot CLI's --reasoning-effort.
         #[arg(long)]
         effort: Option<String>,
+        /// A skills plugin (from `interlock skills generate`) to load into the session.
+        #[arg(long)]
+        skills: Option<PathBuf>,
     },
     /// Notes kept on a task: designs, reviews, answers.
     #[command(subcommand)]
@@ -1317,6 +1323,7 @@ fn run_task(
     keep_worktrees: bool,
     capabilities: &Option<Vec<String>>,
     effort: &Option<String>,
+    skills: &Option<PathBuf>,
 ) -> Result<ExitCode> {
     let cwd = std::env::current_dir()?;
     let repo = interlock_supervisor::git::toplevel(&cwd)?;
@@ -1332,6 +1339,7 @@ fn run_task(
         interlock_bin: std::env::current_exe()?,
         capabilities: capabilities.as_deref().map(parse_capabilities).transpose()?,
         effort: effort.clone(),
+        skills: skills_plugin(skills)?,
     };
     // Settle what a previous controller left open at the forge before anything else.
     let reconciled = forge::reconcile_on_start(&db, &repo)?;
@@ -1389,7 +1397,20 @@ fn inspect_to_save(host: &str) -> Result<HostReport> {
     Ok(again)
 }
 
+/// A skills plugin for `--skills`: a directory holding `.claude-plugin/plugin.json`,
+/// as `interlock skills generate --target claude-code` writes it. Made absolute,
+/// since sessions run in their own worktrees.
+fn skills_plugin(dir: &Option<PathBuf>) -> Result<Option<PathBuf>> {
+    let Some(dir) = dir else { return Ok(None) };
+    let dir = std::fs::canonicalize(dir).with_context(|| format!("--skills {}", dir.display()))?;
+    if !dir.join(".claude-plugin").join("plugin.json").is_file() {
+        bail!("--skills {} is not a plugin: it has no .claude-plugin/plugin.json", dir.display());
+    }
+    Ok(Some(dir))
+}
+
 /// `interlock verify`: one verifier session launched by interlock.
+#[allow(clippy::too_many_arguments)]
 fn verify_task(
     cli: &Cli,
     task: &str,
@@ -1398,6 +1419,7 @@ fn verify_task(
     timeout: &str,
     max_turns: u32,
     effort: &Option<String>,
+    skills: &Option<PathBuf>,
 ) -> Result<ExitCode> {
     let db = absolute_db(cli)?;
     let repo = interlock_supervisor::guided::repo_of_store(&db)?;
@@ -1411,6 +1433,7 @@ fn verify_task(
         interlock_bin: std::env::current_exe()?,
         capabilities: None,
         effort: effort.clone(),
+        skills: skills_plugin(skills)?,
     };
     let mut supervisor = interlock_supervisor::Supervisor::new(repo, db, host_by_name(host)?, Probe::from_env(), cfg)?;
     let report = supervisor.verify(task)?;
@@ -1427,9 +1450,30 @@ fn main() -> ExitCode {
         Command::Integrate(IntegrateCmd::Run(args)) => {
             forge::integrate_run(&cli.db.clone().unwrap_or_else(default_db), args)
         }
-        Command::Run { task, host, model, timeout, max_turns, max_sessions, keep_worktrees, capabilities, effort } => {
-            run_task(&cli, task, host, model, timeout, *max_turns, *max_sessions, *keep_worktrees, capabilities, effort)
-        }
+        Command::Run {
+            task,
+            host,
+            model,
+            timeout,
+            max_turns,
+            max_sessions,
+            keep_worktrees,
+            capabilities,
+            effort,
+            skills,
+        } => run_task(
+            &cli,
+            task,
+            host,
+            model,
+            timeout,
+            *max_turns,
+            *max_sessions,
+            *keep_worktrees,
+            capabilities,
+            effort,
+            skills,
+        ),
         Command::Skills(cmd) => skills_cmd::skills(cmd),
         Command::Setup { host, from, force } => absolute_db(&cli).and_then(|db| {
             // The store must live in the repository setup writes to; nothing is created otherwise.
@@ -1442,8 +1486,8 @@ fn main() -> ExitCode {
             }
             skills_cmd::setup(host, &repo, &db, from.as_deref(), &report, *force)
         }),
-        Command::Verify { task, host, model, timeout, max_turns, effort } => {
-            verify_task(&cli, task, host, model, timeout, *max_turns, effort)
+        Command::Verify { task, host, model, timeout, max_turns, effort, skills } => {
+            verify_task(&cli, task, host, model, timeout, *max_turns, effort, skills)
         }
         _ => run(&cli).map(|()| ExitCode::SUCCESS),
     };

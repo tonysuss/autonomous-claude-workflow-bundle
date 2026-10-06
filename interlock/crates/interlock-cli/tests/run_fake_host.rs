@@ -463,6 +463,26 @@ fn an_effort_the_host_cannot_take_is_refused_before_anything_starts() {
 }
 
 #[test]
+fn a_skills_plugin_is_loaded_into_every_session_and_a_non_plugin_is_refused() {
+    let f = Fixture::new("max_attempts = 3", "", "true");
+    let skills = f.here("skills");
+    std::fs::create_dir_all(skills.join(".claude-plugin")).unwrap();
+    std::fs::write(skills.join(".claude-plugin/plugin.json"), r#"{"name": "interlock"}"#).unwrap();
+    let dir = skills.canonicalize().unwrap().display().to_string();
+    f.run(&["--max-sessions", "1", "--skills", &dir]);
+    let args = std::fs::read_to_string(f.here("args.log")).unwrap();
+    assert!(args.contains(&format!("--plugin-dir {dir}")), "the skills plugin reaches the host: {args}");
+    assert_eq!(args.matches("--plugin-dir").count(), 2, "interlock's hooks plugin and the skills plugin: {args}");
+
+    let plain = f.here("not-a-plugin");
+    std::fs::create_dir_all(&plain).unwrap();
+    let (code, _, err) = f.run(&["--skills", &plain.display().to_string()]);
+    assert_ne!(code, 0);
+    assert!(err.contains("is not a plugin"), "{err}");
+    assert_eq!(args, std::fs::read_to_string(f.here("args.log")).unwrap(), "no session started");
+}
+
+#[test]
 fn max_sessions_zero_runs_the_baseline_only() {
     let f = Fixture::new("max_attempts = 3", "", "true");
     let (code, report, err) = f.run(&["--max-sessions", "0"]);

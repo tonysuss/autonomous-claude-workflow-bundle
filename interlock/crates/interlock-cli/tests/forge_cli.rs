@@ -17,6 +17,9 @@ workflow = "bug-fix"
 intent = "add() returns the difference instead of the sum"
 integration_required = true
 
+[scope]
+paths = ["calc.py"]
+
 [[criterion]]
 id = "fixed"
 statement = "add(2, 3) returns 5"
@@ -26,6 +29,7 @@ producer = "self"
 [[criterion]]
 id = "verified"
 statement = "An independent check passes"
+check = "python3 -c 'import calc; assert calc.add(2, 3) == 5'"
 min_strength = "observed"
 producer = "independent"
 "#;
@@ -140,7 +144,11 @@ impl Fixture {
     }
 
     fn attempt(&self, role: &str) -> (String, String) {
-        let v = self.ok(&[
+        self.attempt_with(role, &[])
+    }
+
+    fn attempt_with(&self, role: &str, extra: &[&str]) -> (String, String) {
+        let mut args = vec![
             "attempt",
             "start",
             "fix-add",
@@ -152,7 +160,9 @@ impl Fixture {
             "headless",
             "--capabilities",
             CAPS,
-        ]);
+        ];
+        args.extend(extra);
+        let v = self.ok(&args);
         (v["attempt"]["id"].as_str().unwrap().into(), v["token"].as_str().unwrap().into())
     }
 
@@ -179,8 +189,6 @@ impl Fixture {
             "1",
             "--tree",
             &tree,
-            "--changed",
-            "calc.py",
             "--summary",
             "fixed add",
         ]);
@@ -198,7 +206,11 @@ impl Fixture {
             "--tree",
             &tree,
         ]);
-        let (v, vt) = self.attempt("verifier");
+        // The verifier's own worktree holds the output; interlock runs the check
+        // there, so the assessment counts though no host names the verifier.
+        let (v, vt) = self.attempt_with("verifier", &["--worktree", "auto"]);
+        let run = self.ok(&["check", "run", "--criterion", "verified", "--attempt", &v, "--token", &vt]);
+        assert_eq!(run["passed"], true, "{run:#}");
         self.ok(&[
             "assess",
             "add",

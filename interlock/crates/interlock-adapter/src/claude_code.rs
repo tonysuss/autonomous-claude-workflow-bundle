@@ -73,7 +73,7 @@ impl ClaudeCode {
             args.push("--disallowedTools".into());
             args.extend(tools.deny);
         }
-        if let Some(dir) = &spec.plugin_dir {
+        for dir in spec.plugin_dir.iter().chain(&spec.extra_plugin_dirs) {
             args.extend(["--plugin-dir".into(), dir.display().to_string()]);
         }
         if let Some(m) = &spec.model {
@@ -221,6 +221,7 @@ mod tests {
             model: None,
             max_turns: Some(30),
             plugin_dir: Some("/p".into()),
+            extra_plugin_dirs: vec!["/skills".into()],
             env: vec![],
             timeout: std::time::Duration::from_secs(60),
             transcript: "/t.jsonl".into(),
@@ -232,6 +233,8 @@ mod tests {
         let plan = ClaudeCode.plan_with("/bin/claude".into(), &spec);
         assert_eq!(plan.stdin.as_deref(), Some("Fix it"));
         let joined = plan.args.join(" ");
+        // interlock's hooks plugin, then the skills plugin.
+        assert!(joined.contains("--plugin-dir /p --plugin-dir /skills"), "{joined}");
         assert!(
             joined.contains("--allowedTools Read Grep Glob Bash --disallowedTools Edit Write NotebookEdit"),
             "{joined}"

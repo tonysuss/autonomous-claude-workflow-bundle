@@ -86,7 +86,7 @@ impl Copilot {
         ];
         args.extend(tools.allow.iter().map(|p| format!("--allow-tool={p}")));
         args.extend(tools.deny.iter().map(|p| format!("--deny-tool={p}")));
-        if let Some(dir) = &spec.plugin_dir {
+        for dir in spec.plugin_dir.iter().chain(&spec.extra_plugin_dirs) {
             args.extend(["--plugin-dir".into(), dir.display().to_string()]);
         }
         if let Some(m) = &spec.model {
@@ -249,6 +249,7 @@ mod tests {
             model: Some("gpt-5.4".into()),
             max_turns: Some(10),
             plugin_dir: Some("/p".into()),
+            extra_plugin_dirs: vec!["/skills".into()],
             env: vec![("INTERLOCK_ATTEMPT".into(), "att-1".into())],
             timeout: std::time::Duration::from_secs(60),
             transcript: "/t.jsonl".into(),
@@ -263,6 +264,7 @@ mod tests {
             assert!(plan.args.iter().any(|x| x == a), "{a} in {:?}", plan.args);
         }
         assert!(plan.args.windows(2).any(|w| w == ["--plugin-dir", "/p"]));
+        assert!(plan.args.windows(2).any(|w| w == ["--plugin-dir", "/skills"]), "the skills plugin loads too");
         assert!(plan.env.iter().any(|(k, _)| k == "INTERLOCK_ATTEMPT"));
         assert!(plan.args.iter().any(|a| a == "--session-id=0cb916db-26aa-40f2-86b5-1ba81b225fd2"));
         // Copilot caps AI credits, not dollars, so a dollar budget is enforced by interlock alone.

@@ -63,6 +63,9 @@ pub struct RunConfig {
     pub capabilities: Option<CapabilitySet>,
     /// The reasoning effort for every session, for hosts that have one.
     pub effort: Option<String>,
+    /// A plugin of generated skills (`interlock skills generate`) loaded
+    /// into every session alongside interlock's hooks.
+    pub skills: Option<PathBuf>,
 }
 
 #[derive(Debug, Clone, Serialize)]
@@ -680,6 +683,7 @@ impl Supervisor {
             model: self.cfg.model.clone(),
             max_turns: self.cfg.max_turns,
             plugin_dir: Some(plugin.to_path_buf()),
+            extra_plugin_dirs: self.cfg.skills.iter().cloned().collect(),
             env,
             timeout,
             transcript: self.dir().join("transcripts").join(format!("{}.jsonl", attempt.id)),

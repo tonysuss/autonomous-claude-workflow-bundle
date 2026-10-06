@@ -83,6 +83,7 @@ pub fn run_check_cancellable(
         model: None,
         max_turns: None,
         plugin_dir: None,
+        extra_plugin_dirs: vec![],
         env: vec![],
         timeout: req.timeout,
         transcript: transcript.clone(),

@@ -32,6 +32,8 @@ pub struct SessionSpec {
     pub max_turns: Option<u32>,
     /// A Claude-format plugin carrying interlock's hooks. Both hosts load it.
     pub plugin_dir: Option<PathBuf>,
+    /// Further plugins loaded alongside it, such as the generated skills.
+    pub extra_plugin_dirs: Vec<PathBuf>,
     pub env: Vec<(String, String)>,
     pub timeout: Duration,
     /// Where the raw output stream is written, one event per line.
@@ -604,6 +606,7 @@ mod tests {
             model: None,
             max_turns: None,
             plugin_dir: None,
+            extra_plugin_dirs: vec![],
             env: vec![],
             timeout: Duration::from_millis(timeout_ms),
             transcript: dir.join("t.jsonl"),

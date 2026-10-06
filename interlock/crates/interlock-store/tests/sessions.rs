@@ -32,6 +32,7 @@ fn create(store: &mut Store, budget: serde_json::Value) {
         "intent": "Fix duplicate rows when an export retries",
         "environment": "linux-x86_64",
         "budget": budget,
+        "scope": {"paths": ["src/**"]},
         "criteria": [
             {"id": "repro", "statement": "Retrying an export produces no duplicate rows",
              "min_strength": "observed", "producer": "independent"}

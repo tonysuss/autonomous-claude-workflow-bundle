@@ -111,6 +111,7 @@ impl Fixture {
             "workflow": "bug-fix",
             "intent": "add() returns the difference instead of the sum",
             "integration_required": true,
+            "scope": {"paths": ["calc.py"]},
             "criteria": [
                 {"id": "fixed", "statement": "add(2, 3) returns 5", "min_strength": "tested", "producer": "self"},
                 {"id": "verified", "statement": "An independent check passes",
