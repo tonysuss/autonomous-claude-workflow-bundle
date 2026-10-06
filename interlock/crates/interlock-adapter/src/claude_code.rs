@@ -133,6 +133,10 @@ impl Host for ClaudeCode {
 
     fn summarize(&self, lines: &[String]) -> SessionSummary {
         let mut s = SessionSummary { events: lines.len() as u64, is_error: true, ..Default::default() };
+        // The init event names the model the session actually runs on.
+        for e in json_lines(lines).filter(|e| e["type"] == "system" && e["subtype"] == "init") {
+            s.model = e["model"].as_str().map(str::to_string).or(s.model);
+        }
         for e in json_lines(lines).filter(|e| e["type"] == "result") {
             s.finished = true;
             s.is_error = e["is_error"].as_bool().unwrap_or(true);
@@ -260,11 +264,12 @@ mod tests {
     #[test]
     fn summarizes_the_result_event() {
         let lines = vec![
-            r#"{"type":"system","subtype":"init"}"#.to_string(),
+            r#"{"type":"system","subtype":"init","model":"claude-sonnet-5-5"}"#.to_string(),
             r#"{"type":"result","subtype":"success","is_error":false,"result":"Done.","num_turns":4,"total_cost_usd":0.12,"permission_denials":[{"tool_name":"Write"}],"session_id":"s"}"#.to_string(),
         ];
         let s = ClaudeCode.summarize(&lines);
         assert_eq!((s.final_text.as_deref(), s.turns, s.denials, s.is_error), (Some("Done."), Some(4), 1, false));
+        assert_eq!(s.model.as_deref(), Some("claude-sonnet-5-5"), "the model the host reports, not the one asked for");
         assert!(ClaudeCode.summarize(&lines[..1]).is_error, "no result event means the session did not finish");
     }
 }

@@ -132,7 +132,7 @@ fn end(reason: EndReason, detail: &str) -> AttemptEnd {
 }
 
 fn ended(store: &mut Store, h: &Handle, status: Option<AttemptStatus>, end: AttemptEnd, wall_ms: u64) -> Attempt {
-    let spent = Spent { wall_ms, cost_usd: Some(0.1), premium_requests: None, turns: Some(3) };
+    let spent = Spent { wall_ms, cost_usd: Some(0.1), premium_requests: None, turns: Some(3), model: None };
     store.end_session(&h.id, &h.token, SessionEnd { status, end, spent: Some(spent) }, t(9)).unwrap()
 }
 
@@ -422,4 +422,31 @@ fn resuming_sets_where_the_next_worker_starts() {
     start(&mut store, Role::Worker, 3);
     let err = store.resume_from(TASK, "c0ffee1", TREE_A, t(4)).unwrap_err();
     assert!(err.to_string().contains("needs the task ready"), "{err}");
+}
+
+#[test]
+fn a_brief_carries_what_upstream_tasks_produced() {
+    let mut store = store();
+    let spec: TaskSpec = serde_json::from_value(serde_json::json!({
+        "id": "report", "repository": "/work/repo", "workflow": "feature", "intent": "Report on exported rows",
+        "dependencies": [TASK], "scope": {"paths": ["src/report/**"]},
+        "criteria": [{"id": "c", "statement": "s", "min_strength": "tested", "producer": "self"}]
+    }))
+    .unwrap();
+    store.create_task(spec, t(2)).unwrap();
+    let before = store.brief("report", Role::Worker, Profile::Conservative, &HostPolicy::open(), t(3)).unwrap();
+    assert_eq!(before.upstream.len(), 1);
+    assert_eq!(before.upstream[0].summary, None, "nothing accepted upstream yet");
+
+    let w = start(&mut store, Role::Worker, 4);
+    submit(&mut store, &w, TREE_A, 5);
+    let after = store.brief("report", Role::Worker, Profile::Conservative, &HostPolicy::open(), t(6)).unwrap();
+    let up = &after.upstream[0];
+    assert_eq!(up.task_id, TASK);
+    assert_eq!(up.state, "awaiting_verification");
+    assert_eq!(up.output_tree.as_deref(), Some(TREE_A));
+    assert_eq!(up.summary.as_deref(), Some("made retries idempotent"));
+    assert_eq!(up.changed_paths, ["src/export/retry.rs"]);
+    let text = after.to_markdown();
+    assert!(text.contains("## Upstream results") && text.contains("made retries idempotent"), "{text}");
 }

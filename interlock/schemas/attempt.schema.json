@@ -116,7 +116,11 @@
         "wall_ms": { "type": "integer", "minimum": 0 },
         "cost_usd": { "type": ["number", "null"], "minimum": 0 },
         "premium_requests": { "type": ["number", "null"], "minimum": 0 },
-        "turns": { "type": ["integer", "null"], "minimum": 0 }
+        "turns": { "type": ["integer", "null"], "minimum": 0 },
+        "model": {
+          "description": "The model the host reported using, where it reports one.",
+          "type": ["string", "null"]
+        }
       }
     }
   }

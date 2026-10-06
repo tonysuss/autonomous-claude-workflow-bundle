@@ -101,7 +101,9 @@ That run's report and records use the old metric name "unsupported completion cl
 | **Total reported** (the rows are rounded) | **8.98** |
 | Not reported: ten sessions killed by forced interruptions after integration, four before, and one skills probe session whose result was not parsed | unavailable |
 
-For the post-integration step, the cap was $8.50 of reported spend, with $0.30 reserved for each killed session: $4.89 reported plus $3.00 reserved for the ten killed sessions, **$7.89**. The budget never stopped a run.
+For the post-integration step, the cap was $8.50 of reported spend, with $0.30 reserved for each killed session: $4.89 reported plus $3.00 reserved for the ten killed sessions, **$7.89**. The budget never stopped a run. The report's own line ("$7.81 charged against the $8.41 budget") covers the runs only: the three probe sessions ($0.08) ran first, outside the harness's budget, which was set to what was left of the $8.50.
+
+The report's row "Runs whose transcripts reach hidden material" counts the two leak-scan flags on go-dotted-section (one plain, one skills). Both are false positives: the agent's Go test named `../../checks/dotted.conf`, which the scanner resolved against the shell's directory rather than the test's. docs/evaluation.md explains them; the scanner and the report were left unchanged.
 
 ## Secrets scan
 

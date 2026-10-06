@@ -265,6 +265,7 @@ mod tests {
         }
         assert!(plan.args.windows(2).any(|w| w == ["--plugin-dir", "/p"]));
         assert!(plan.args.windows(2).any(|w| w == ["--plugin-dir", "/skills"]), "the skills plugin loads too");
+        assert!(plan.args.windows(2).any(|w| w == ["--model", "gpt-5.4"]), "{:?}", plan.args);
         assert!(plan.env.iter().any(|(k, _)| k == "INTERLOCK_ATTEMPT"));
         assert!(plan.args.iter().any(|a| a == "--session-id=0cb916db-26aa-40f2-86b5-1ba81b225fd2"));
         // Copilot caps AI credits, not dollars, so a dollar budget is enforced by interlock alone.

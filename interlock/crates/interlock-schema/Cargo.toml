@@ -18,6 +18,9 @@ serde_json.workspace = true
 
 [dev-dependencies]
 jsonschema.workspace = true
+# The conformance tests validate records, so they build with `validate` on
+# even when this crate is tested alone.
+interlock-schema = { path = ".", features = ["validate"] }
 
 [lints]
 workspace = true

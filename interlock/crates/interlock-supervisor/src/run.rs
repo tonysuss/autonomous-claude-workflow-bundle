@@ -19,7 +19,7 @@ use interlock_adapter::{Exit, Host, HostReport, Probe, SessionOutcome, SessionSp
 use interlock_core::budget;
 use interlock_core::capability::{Capability, CapabilitySet};
 use interlock_core::evidence;
-use interlock_core::grants::{HostPolicy, Profile};
+use interlock_core::grants::Profile;
 use interlock_core::lifecycle::Move;
 use interlock_core::workflow::Mode;
 use interlock_schema::{
@@ -317,7 +317,7 @@ impl Supervisor {
                         repository: self.repo.display().to_string(),
                         protected_paths: checks::protected_paths(&self.repo, &base_commit, &task.criteria),
                         base_commit,
-                        untracked_hash: None,
+                        untracked_hash: git::untracked_tree(&self.repo)?,
                     };
                     if let Err(e) = self.store.ready(task_id, snapshot, Utc::now()) {
                         break format!("cannot start: {e}");
@@ -569,7 +569,7 @@ impl Supervisor {
                 host: HostRef { host: self.host.name().into(), version },
                 capabilities,
                 profile: self.cfg.profile,
-                host_policy: HostPolicy::open(),
+                host_policy: self.config.host_policy(self.host.name()),
                 agent: Some(format!("interlock-{}", if role == Role::Worker { "worker" } else { "verifier" })),
                 model: self.cfg.model.clone(),
                 worktree: Some(worktree.display().to_string()),
@@ -876,7 +876,13 @@ impl Supervisor {
         };
         self.tokens().save(&attempt.id, &token)?;
         fresh_worktree(&self.repo, &wt, &start_commit)?;
-        let brief = self.store.brief(task_id, Role::Worker, self.cfg.profile, &HostPolicy::open(), Utc::now())?;
+        let brief = self.store.brief(
+            task_id,
+            Role::Worker,
+            self.cfg.profile,
+            &self.config.host_policy(self.host.name()),
+            Utc::now(),
+        )?;
         let env = self.env(&attempt.id, &token, None);
         let (timeout, budget_deadline, cost_left) = self.limits(&task)?;
         let prompt = format!("{}{context}", prompts::worker(&brief.to_markdown()));
@@ -999,7 +1005,13 @@ impl Supervisor {
         };
         self.tokens().save(&attempt.id, &token)?;
         fresh_worktree(&self.repo, &wt, &commit)?;
-        let brief = self.store.brief(task_id, Role::Verifier, self.cfg.profile, &HostPolicy::open(), Utc::now())?;
+        let brief = self.store.brief(
+            task_id,
+            Role::Verifier,
+            self.cfg.profile,
+            &self.config.host_policy(self.host.name()),
+            Utc::now(),
+        )?;
         let env = self.env(&attempt.id, &token, Some(&tree));
         let (timeout, budget_deadline, cost_left) = self.limits(&task)?;
         let prompt =
@@ -1088,6 +1100,7 @@ fn spent_of(outcome: &SessionOutcome) -> Spent {
         cost_usd: outcome.summary.cost_usd,
         premium_requests: outcome.summary.premium_requests,
         turns: outcome.summary.turns,
+        model: outcome.summary.model.clone(),
     }
 }
 

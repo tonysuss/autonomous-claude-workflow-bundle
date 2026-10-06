@@ -96,6 +96,29 @@ pub fn worktree_tree(dir: &Path) -> Result<String> {
     result
 }
 
+/// The input snapshot's untracked part: a tree of the files git does not
+/// track and does not ignore (generated files and interlock's own directory
+/// excluded), or `None` when there are none. Written through a temporary
+/// index; the user's index is untouched.
+pub fn untracked_tree(dir: &Path) -> Result<Option<String>> {
+    let root = toplevel(dir)?;
+    let mut list = vec!["ls-files", "--others", "--exclude-standard", "-z", "--", "."];
+    list.extend(GENERATED);
+    let files = git(&root, &list, &[])?;
+    let files: Vec<&str> = files.split('\0').filter(|f| !f.is_empty()).collect();
+    if files.is_empty() {
+        return Ok(None);
+    }
+    let tmp = std::env::temp_dir().join(format!("interlock-untracked-{}", uuid::Uuid::new_v4().simple()));
+    let tmp_str = tmp.display().to_string();
+    let env = [("GIT_INDEX_FILE", tmp_str.as_str())];
+    let mut add = vec!["add", "--"];
+    add.extend(files.iter().copied());
+    let result = git(&root, &add, &env).and_then(|_| git(&root, &["write-tree"], &env));
+    let _ = std::fs::remove_file(&tmp);
+    result.map(Some)
+}
+
 /// A commit holding `tree`, with `parent` as its parent. No ref points at it.
 pub fn commit_tree(repo: &Path, tree: &str, parent: Option<&str>, message: &str) -> Result<String> {
     let mut args = vec!["commit-tree", tree, "-m", message];
@@ -220,6 +243,24 @@ pub(crate) mod tests {
         let tree = worktree_tree(repo.path()).unwrap();
         let blob = git(repo.path(), &["show", &format!("{tree}:calc.py")], &[]).unwrap();
         assert!(blob.contains("a + b"), "the tree holds stale content: {blob}");
+    }
+
+    #[test]
+    fn the_untracked_part_of_the_snapshot_is_hashed_and_generated_files_are_not() {
+        let repo = repo_with(&[("a.txt", "a\n"), (".gitignore", "target/\n")]);
+        assert_eq!(untracked_tree(repo.path()).unwrap(), None, "a clean checkout has no untracked part");
+        std::fs::create_dir_all(repo.path().join("target")).unwrap();
+        std::fs::write(repo.path().join("target/out"), "ignored\n").unwrap();
+        std::fs::create_dir_all(repo.path().join("pkg/__pycache__")).unwrap();
+        std::fs::write(repo.path().join("pkg/__pycache__/m.pyc"), "x").unwrap();
+        assert_eq!(untracked_tree(repo.path()).unwrap(), None, "ignored and generated files do not count");
+        std::fs::write(repo.path().join("notes.txt"), "input\n").unwrap();
+        let first = untracked_tree(repo.path()).unwrap().expect("an untracked input is hashed");
+        assert_eq!(untracked_tree(repo.path()).unwrap().as_deref(), Some(first.as_str()), "stable");
+        std::fs::write(repo.path().join("notes.txt"), "changed\n").unwrap();
+        assert_ne!(untracked_tree(repo.path()).unwrap().as_deref(), Some(first.as_str()), "content counts");
+        let status = git(repo.path(), &["status", "--porcelain"], &[]).unwrap();
+        assert!(status.contains("?? notes.txt"), "the user's index is untouched: {status}");
     }
 
     #[test]

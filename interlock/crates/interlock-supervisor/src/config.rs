@@ -14,11 +14,21 @@
 //!
 //! [env]
 //! pass = ["MY_TOOL_HOME", "PIP_*"]
+//!
+//! [host_policy.copilot]
+//! deny = ["web", "shell:curl"]        # host-neutral tools no session on this host may use
+//! classes = ["read", "local_reversible"]  # the action classes this host allows
 //! ```
+//!
+//! `[host_policy.<host>]` is the host side of the effective grant (user grant
+//! ∩ host policy ∩ task needs). Without it a host allows every grantable
+//! class and tool.
 
 use std::collections::BTreeMap;
 use std::path::{Path, PathBuf};
 
+use interlock_core::grants::HostPolicy;
+use interlock_schema::ActionClass;
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Clone, Default, Deserialize)]
@@ -28,6 +38,20 @@ pub struct Config {
     pub pins: BTreeMap<String, String>,
     #[serde(default)]
     pub env: EnvConfig,
+    /// Host name to what interlock may grant on that host.
+    #[serde(default)]
+    pub host_policy: BTreeMap<String, HostPolicyConfig>,
+}
+
+#[derive(Debug, Clone, Default, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct HostPolicyConfig {
+    /// Host-neutral tools no session on this host may use.
+    #[serde(default)]
+    pub deny: Vec<String>,
+    /// The action classes this host allows; every grantable class when absent.
+    #[serde(default)]
+    pub classes: Option<Vec<ActionClass>>,
 }
 
 #[derive(Debug, Clone, Default, Deserialize)]
@@ -55,6 +79,13 @@ impl Config {
             Err(e) => return Err(format!("{}: {e}", path.display())),
         };
         let known: Vec<&str> = interlock_adapter::hosts().iter().map(|h| h.name()).collect();
+        if let Some(host) = config.host_policy.keys().find(|h| !known.contains(&h.as_str())) {
+            return Err(format!(
+                "{}: [host_policy] names an unknown host `{host}`; known hosts: {}",
+                path.display(),
+                known.join(", ")
+            ));
+        }
         if let Some(host) = config.pins.keys().find(|h| !known.contains(&h.as_str())) {
             return Err(format!(
                 "{}: [pins] names an unknown host `{host}`; known hosts: {}",
@@ -70,6 +101,22 @@ impl Config {
 
     pub fn pin(&self, host: &str) -> Option<&str> {
         self.pins.get(host).map(String::as_str)
+    }
+
+    /// The host side of the effective grant: open, narrowed by `[host_policy.<host>]`.
+    pub fn host_policy(&self, host: &str) -> HostPolicy {
+        let mut policy = HostPolicy::open();
+        if let Some(limits) = self.host_policy.get(host) {
+            if let Some(classes) = &limits.classes {
+                policy.action_classes.retain(|c| classes.contains(c));
+            }
+            for d in &limits.deny {
+                if !policy.tools.deny.contains(d) {
+                    policy.tools.deny.push(d.clone());
+                }
+            }
+        }
+        policy
     }
 }
 

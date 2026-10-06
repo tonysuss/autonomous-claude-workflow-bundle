@@ -47,11 +47,13 @@ pub struct IntegrateRun {
     pub call_timeout: String,
 }
 
-/// Forge commands are the operator's. An agent inside an attempt may not run
-/// them, whatever the hooks let through.
+/// Operator-only commands (grants, unblocking, delivery, reconcile, run) do
+/// not run inside a session interlock launched, whatever the hooks let
+/// through and however the agent changed its own environment: an ancestor
+/// process still carries the session's marker.
 pub fn operator_only(command: &str) -> Result<()> {
-    if inside_attempt() {
-        bail!("`interlock {command}` is the operator's; it does not run inside an attempt (INTERLOCK_ATTEMPT is set)");
+    if inside_attempt() || interlock_adapter::in_launched_session() {
+        bail!("`interlock {command}` is the operator's; it does not run inside an agent's session");
     }
     Ok(())
 }

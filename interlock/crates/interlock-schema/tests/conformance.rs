@@ -306,7 +306,13 @@ fn session_handoff_end_and_spending_conform() {
         detail: Some("interrupted by SIGINT".into()),
         synthetic: false,
     });
-    attempt.spent = Some(Spent { wall_ms: 240_000, cost_usd: None, premium_requests: Some(1.0), turns: Some(3) });
+    attempt.spent = Some(Spent {
+        wall_ms: 240_000,
+        cost_usd: None,
+        premium_requests: Some(1.0),
+        turns: Some(3),
+        model: Some("claude-sonnet-5-5".into()),
+    });
     v.check(RecordKind::Attempt, &attempt).unwrap();
     let back: Attempt = serde_json::from_value(serde_json::to_value(&attempt).unwrap()).unwrap();
     assert_eq!(back, attempt);

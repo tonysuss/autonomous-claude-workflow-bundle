@@ -2,6 +2,7 @@ mod common;
 
 use common::*;
 use interlock_core::capability::{Capability, CapabilitySet};
+use interlock_core::grants::{self, HostPolicy, Profile};
 use interlock_core::lifecycle::{self, MergeReport, RefusalCode, Signal, Start, Submission};
 use interlock_core::workflow::Mode;
 use interlock_schema::*;
@@ -86,6 +87,57 @@ fn g2_blocks_when_a_required_capability_has_no_fallback() {
     assert_eq!(out.task.resume_point, Some(State::Ready));
     // Unblocking returns to the exact state it left.
     assert_eq!(lifecycle::unblock(&out.task, t(3)).unwrap().task.state, State::Ready);
+}
+
+#[test]
+fn g2_refuses_when_the_host_policy_takes_away_a_tool_the_role_needs() {
+    let task = lifecycle::ready(&bug_fix_task(), &[], snapshot(), t(1)).unwrap().task;
+    let workflow = bug_fix();
+    let grant_with = |host: &HostPolicy| {
+        grants::effective(&task.id, Profile::Conservative, &[], host, workflow.role(Role::Worker), t(0))
+    };
+    // A narrower deny leaves the tool usable.
+    let mut narrow = HostPolicy::open();
+    narrow.tools.deny.push("shell:curl".into());
+    let ok = lifecycle::start_worker(
+        &task,
+        &workflow,
+        Mode::Headless,
+        &all_capabilities(),
+        &grant_with(&narrow),
+        "w1",
+        t(2),
+    );
+    assert!(matches!(ok, Ok(Start::Allowed { .. })), "{ok:?}");
+    // Denying a whole tool the worker needs refuses G2 and names it.
+    let mut no_edit = HostPolicy::open();
+    no_edit.tools.deny.push("edit".into());
+    let err = lifecycle::start_worker(
+        &task,
+        &workflow,
+        Mode::Headless,
+        &all_capabilities(),
+        &grant_with(&no_edit),
+        "w1",
+        t(2),
+    )
+    .unwrap_err();
+    assert_eq!(err.code, RefusalCode::GrantInsufficient);
+    assert_eq!(err.missing, ["edit"]);
+    // So does a host that never allows it.
+    let mut no_shell = HostPolicy::open();
+    no_shell.tools.allow.retain(|t| t != "shell");
+    let err = lifecycle::start_worker(
+        &task,
+        &workflow,
+        Mode::Headless,
+        &all_capabilities(),
+        &grant_with(&no_shell),
+        "w1",
+        t(2),
+    )
+    .unwrap_err();
+    assert!(err.missing.contains(&"shell".to_string()), "{err:?}");
 }
 
 #[test]

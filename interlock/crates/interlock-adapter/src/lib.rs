@@ -21,8 +21,8 @@ pub use copilot::Copilot;
 pub use probe::Probe;
 pub use session::{
     CommandPlan, Exit, SESSION_MARKER, SessionOutcome, SessionSpec, SessionSummary, Spawned, Target, alive, attach,
-    become_subreaper, classify, contain, marked, process_start, run, shell_quote, spawn, stderr_path,
-    write_hooks_plugin,
+    become_subreaper, classify, contain, in_launched_session, marked, process_start, run, shell_quote, spawn,
+    stderr_path, write_hooks_plugin,
 };
 
 /// How a capability's availability was established.

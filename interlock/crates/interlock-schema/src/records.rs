@@ -337,6 +337,10 @@ pub struct Spent {
     pub premium_requests: Option<f64>,
     #[serde(default)]
     pub turns: Option<u64>,
+    /// The model the host reported using, where it reports one (Claude Code's
+    /// init event); `None` when the host does not say.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub model: Option<String>,
 }
 
 /// Spending comes from hosts' reports and sums of them; NaN never compares equal, so

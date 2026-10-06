@@ -75,6 +75,9 @@ pub struct SessionSummary {
     pub stop_reason: Option<String>,
     pub denials: u64,
     pub events: u64,
+    /// The model the host reported using, where it says.
+    #[serde(default)]
+    pub model: Option<String>,
     /// The host reported the session's end: its final `result` event arrived.
     #[serde(default)]
     pub finished: bool,
@@ -487,6 +490,36 @@ fn carries_marker(pid: u32, session: &str) -> bool {
     std::fs::read(format!("/proc/{pid}/environ"))
         .map(|env| env.split(|b| *b == 0).any(|kv| kv == want.as_bytes()))
         .unwrap_or(false)
+}
+
+/// Whether this process runs inside a session interlock launched: its own
+/// environment names an attempt or a session, or an ancestor's carries the
+/// session marker. An agent can clear its own environment, not its
+/// ancestors', and a process that left its session was killed with it.
+pub fn in_launched_session() -> bool {
+    let own = |k: &str| std::env::var(k).is_ok_and(|v| !v.is_empty());
+    if own("INTERLOCK_ATTEMPT") || own("INTERLOCK_TOKEN") || own(SESSION_MARKER) {
+        return true;
+    }
+    let prefix = format!("{SESSION_MARKER}=");
+    let marked = |pid: u32| {
+        std::fs::read(format!("/proc/{pid}/environ"))
+            .map(|env| env.split(|b| *b == 0).any(|kv| kv.starts_with(prefix.as_bytes()) && kv.len() > prefix.len()))
+            .unwrap_or(false)
+    };
+    let mut pid = std::process::id();
+    for _ in 0..128 {
+        match parent_and_group(pid) {
+            Some((parent, _)) if parent > 1 => {
+                if marked(parent) {
+                    return true;
+                }
+                pid = parent;
+            }
+            _ => break,
+        }
+    }
+    false
 }
 
 /// Processes, other than this one, still running with the session's marker.

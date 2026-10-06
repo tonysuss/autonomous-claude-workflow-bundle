@@ -568,6 +568,7 @@ name = "interlock-schema"
 version = "0.1.0"
 dependencies = [
  "chrono",
+ "interlock-schema",
  "jsonschema",
  "serde",
  "serde_json",

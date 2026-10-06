@@ -121,6 +121,7 @@ pub fn salvage_spent(h: &Handoff) -> Spent {
         cost_usd: summary.cost_usd,
         premium_requests: summary.premium_requests,
         turns: summary.turns,
+        model: summary.model,
     }
 }
 

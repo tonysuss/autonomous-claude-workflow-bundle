@@ -463,6 +463,97 @@ fn an_effort_the_host_cannot_take_is_refused_before_anything_starts() {
 }
 
 #[test]
+fn a_session_cannot_grant_itself_authority_however_it_calls_interlock() {
+    // The session drops its attempt variables and the session marker from its
+    // own environment, and calls interlock through a variable the hook's text
+    // check cannot see. An ancestor still carries the marker.
+    let body = "I=interlock; env -u INTERLOCK_ATTEMPT -u INTERLOCK_TOKEN -u INTERLOCK_SESSION \
+                $I grant create --principal worker --tasks fix-add --classes landing --landing coordinator \
+                --origin self > \"$here/grant.out\" 2>&1; echo \"exit $?\" >> \"$here/grant.out\"; \
+                env -u INTERLOCK_ATTEMPT -u INTERLOCK_TOKEN -u INTERLOCK_SESSION \
+                $I task unblock fix-add >> \"$here/grant.out\" 2>&1; echo \"exit $?\" >> \"$here/grant.out\"";
+    let f = Fixture::new("max_attempts = 3", "", body);
+    f.run(&["--max-sessions", "1"]);
+    let out = std::fs::read_to_string(f.here("grant.out")).unwrap();
+    assert!(out.contains("is the operator's"), "{out}");
+    assert!(!out.contains("exit 0"), "both commands are refused: {out}");
+    assert_eq!(f.ok(&["grant", "list"]), serde_json::json!([]), "no grant exists afterwards");
+    // From the operator's own shell the same command works.
+    let made = f.ok(&[
+        "grant",
+        "create",
+        "--principal",
+        "operator",
+        "--tasks",
+        "fix-add",
+        "--classes",
+        "landing",
+        "--landing",
+        "coordinator",
+        "--origin",
+        "operator",
+    ]);
+    assert!(made["id"].as_str().is_some_and(|id| id.starts_with("grant-")), "{made:#}");
+}
+
+#[test]
+fn the_host_policy_narrows_every_session_and_a_tool_the_worker_needs_refuses_g2() {
+    let f = Fixture::new("max_attempts = 3", "", "true");
+    let config = f.repo.path().join(".interlock/config.toml");
+    // A narrower deny reaches the host's own tool filter.
+    std::fs::write(&config, "[host_policy.claude-code]\ndeny = [\"shell:curl\"]\n").unwrap();
+    f.run(&["--max-sessions", "1"]);
+    let args = std::fs::read_to_string(f.here("args.log")).unwrap();
+    assert!(args.contains("Bash(curl:*)"), "the host denies what its policy denies: {args}");
+    let worker = &f.attempts()[0];
+    assert!(
+        worker["effective_grant"]["tools"]["deny"].as_array().unwrap().iter().any(|d| d == "shell:curl"),
+        "{worker:#}"
+    );
+
+    // Taking away a tool the worker needs refuses G2 and starts no session.
+    let g = Fixture::new("max_attempts = 3", "", "true");
+    std::fs::write(g.repo.path().join(".interlock/config.toml"), "[host_policy.claude-code]\ndeny = [\"edit\"]\n")
+        .unwrap();
+    let (code, report, err) = g.run(&["--max-sessions", "1"]);
+    assert_ne!(code, 0, "{report:#}");
+    assert!(format!("{report}{err}").contains("lacks tools a Worker needs: edit"), "{report:#} {err}");
+    assert!(!g.here("args.log").exists(), "no session started");
+
+    // An unknown host in the policy is a config error, not a silent no-op.
+    let h = Fixture::new("max_attempts = 3", "", "true");
+    std::fs::write(h.repo.path().join(".interlock/config.toml"), "[host_policy.claud]\ndeny = [\"web\"]\n").unwrap();
+    let (code, report, err) = h.run(&["--max-sessions", "1"]);
+    assert_ne!(code, 0);
+    assert!(format!("{report}{err}").contains("unknown host `claud`"), "{report:#} {err}");
+}
+
+#[test]
+fn capabilities_the_adapter_finds_missing_give_the_declared_fallback_or_block() {
+    // No --model in the host's help: model selection falls back to the current
+    // model, which the session then reports and the attempt records.
+    let no_model = "printf '  -p, --print\\n  --output-format <format> (choices: \"text\", \"json\", \"stream-json\")\\n  \
+                    --allowedTools, --allowed-tools <tools...>\\n  --disallowedTools, --disallowed-tools <tools...>\\n  \
+                    --plugin-dir <path>\\n'; exit 0; ";
+    let f = Fixture::new("max_attempts = 3", no_model, "true");
+    f.run(&["--max-sessions", "1"]);
+    let log = f.ok(&["task", "log", "fix-add"]);
+    let g2 = log.as_array().unwrap().iter().find(|t| t["signal"] == "G2").expect("the worker started");
+    assert!(g2["reason"].as_str().unwrap().contains("CurrentModel for model selection"), "{g2:#}");
+
+    // Neither tool restriction nor hooks: nothing could hold the worker to its
+    // grant, so the task is blocked with the reason and no session starts.
+    let bare = "printf '  -p, --print\\n  --output-format <format> (choices: \"text\", \"json\", \"stream-json\")\\n'; exit 0; ";
+    let g = Fixture::new("max_attempts = 3", bare, "true");
+    let (code, report, err) = g.run(&["--max-sessions", "1"]);
+    assert_eq!(code, 5, "{report:#} {err}");
+    assert_eq!(report["final_state"], "blocked", "{report:#}");
+    let task = g.ok(&["task", "show", "fix-add"]);
+    assert!(task["blocked_reason"].as_str().unwrap().contains("tool restriction enforced by the host"), "{task:#}");
+    assert!(!g.here("args.log").exists(), "no session started");
+}
+
+#[test]
 fn a_skills_plugin_is_loaded_into_every_session_and_a_non_plugin_is_refused() {
     let f = Fixture::new("max_attempts = 3", "", "true");
     let skills = f.here("skills");

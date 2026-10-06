@@ -6,7 +6,7 @@ use interlock_core::lifecycle::{self, RefusalCode};
 use interlock_schema::*;
 
 fn spent(attempt: &mut Attempt, wall_ms: u64, cost_usd: Option<f64>, premium: Option<f64>) {
-    attempt.spent = Some(Spent { wall_ms, cost_usd, premium_requests: premium, turns: Some(2) });
+    attempt.spent = Some(Spent { wall_ms, cost_usd, premium_requests: premium, turns: Some(2), model: None });
 }
 
 #[test]
@@ -29,7 +29,7 @@ fn spending_sums_over_attempts_in_each_hosts_unit() {
 #[test]
 fn a_budget_is_exhausted_by_any_limit_it_sets() {
     let mut budget = Budget::attempts(3);
-    let used = Spent { wall_ms: 61_000, cost_usd: Some(1.2), premium_requests: Some(4.0), turns: None };
+    let used = Spent { wall_ms: 61_000, cost_usd: Some(1.2), premium_requests: Some(4.0), turns: None, model: None };
     assert_eq!(exhausted(&budget, &used), None, "attempts only: time and cost are free");
     assert_eq!(wall_left_ms(&budget, &used), None);
     assert_eq!(cost_left_usd(&budget, &used), None);

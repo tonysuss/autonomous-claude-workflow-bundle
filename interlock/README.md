@@ -2,7 +2,7 @@
 
 A workflow runtime that only lets work advance on evidence. Agents propose moves; `interlock` checks each one against recorded evidence, the current attempt, and granted authority before a task advances. It is one Rust binary with a SQLite store.
 
-This directory builds the design draft "A workflow runtime that only lets work advance on evidence" (draft 1, October 4, 2026). Every phase of its plan, P0 to P4, has code, tests and recorded runs. Where a gate could not be met here, the gap is stated under [What is not proven](#what-is-not-proven).
+This directory builds the design draft "A workflow runtime that only lets work advance on evidence" (draft 1, October 4, 2026). Phases P0 to P4 have code, tests and recorded runs, except spike S2 (the Copilot SDK), which was not run. An independent audit checked the build against the design item by item: [docs/conformance.md](docs/conformance.md). Gates not met here are listed under [What is not proven](#what-is-not-proven).
 
 ## Hosts
 
@@ -38,7 +38,7 @@ One policy, two hosts. `interlock host tools <task> --role verifier --host <host
 `interlock run <task> --host <copilot|claude-code>` drives a task through headless sessions until it is done, blocked, failed, or waiting on the operator:
 
 1. **Reconcile**: settles whatever a previous controller left open: forge operations nobody confirmed, and sessions without a recorded end in any task (live ones are re-attached or stopped, dead ones get a synthetic crash report).
-2. **G1**: records the repository's `HEAD` as the input snapshot, with the files the checks run marked as protected.
+2. **G1**: records the repository's `HEAD` and a hash of its untracked inputs as the input snapshot, with the files the checks run marked as protected.
 3. **Baseline**: interlock runs each check that promises a baseline on the input snapshot. A reproduction must fail there and a regression guard must pass there, and neither may run nothing. A task that breaks its promise is blocked before any session starts. `--max-sessions 0` stops here.
 4. **Worker**: opens an attempt (G2) in a fresh git worktree under `.interlock/worktrees/`, with a brief built from records and the attempt's effective grant as the host's tool filters. When the session ends, interlock writes the worktree's tree through a temporary index and submits it as the result (G3), reading the changed files from the tree itself. The repository's branch and index are never touched.
 5. **Verifier**: opens an independent attempt in a worktree checked out at that tree, with read and test tools only. It records one assessment per criterion, at the strength each criterion needs.
@@ -48,7 +48,7 @@ One policy, two hosts. `interlock host tools <task> --role verifier --host <host
 Every tool call in those sessions passes through `interlock hook pre-tool-use`. That hook:
 - denies edits outside the attempt's worktree or the task's scope;
 - denies anything that reaches interlock's own state: the store, attempt tokens, other processes' environments and, for headless sessions, anything under `.interlock/` outside the attempt's own worktree;
-- denies commands the grant does not cover, including the operator's own commands (`grant`, `task unblock`, `integrate`, `reconcile`, `run`) and pushes anywhere but an interlock branch (headless sessions have nobody to ask).
+- denies commands the grant does not cover, including the operator's own commands (`grant`, `task unblock`, `integrate`, `reconcile`, `run`) and pushes anywhere but an interlock branch (headless sessions have nobody to ask). interlock also refuses those operator commands itself when its caller descends from a session it launched, however the command was spelled.
 
 `interlock hook stop` holds a worker until interlock has run each self-checked criterion's check on its final files and the worker has claimed it, and holds a verifier until it has done the same for every criterion at the strength the criterion needs.
 
@@ -70,7 +70,7 @@ A criterion with no check is decided by assessments alone, so for it a verifier 
 
 A result whose changed files leave the task's scope, or touch a file a check runs, is rejected at G3. An empty scope allows no change, and an investigation may change nothing at all. The change set is read from the output tree in the repository that owns the store, so neither a shell write (`sed -i`, `>`) nor a misleading `GIT_DIR` gets around it.
 
-Recorded runs of the [export-retry example](examples/export-retry/README.md) on Claude Code: the corrected task went from create to done in two sessions, and the original task, whose regression command ran no tests, was blocked before any session started.
+Runs of the [export-retry example](examples/export-retry/README.md) on Claude Code, described there (the raw records of those October 5 runs were not kept; later live runs keep theirs under `evidence/`): the corrected task went from create to done in two sessions, and the original task, whose regression command ran no tests, was blocked before any session started.
 
 ## Guided sessions
 
@@ -91,21 +91,21 @@ A verified task that needs integration lands through `interlock-forge`, which dr
 
 ## Evaluation
 
-[docs/evaluation.md](docs/evaluation.md) is the harness for the design's §13 evaluation, run on a stand-in for the S3 frozen task set: eleven tasks with hidden executable checks, including two forced interruptions and three tasks whose prompts leave out a requirement a careful engineer should find. Conditions: the host's plain workflow, skills alone, and skills with interlock, with host, model and effort pinned, tools at parity, and each run isolated from the answers.
+[docs/evaluation.md](docs/evaluation.md) is the harness for the design's §13 evaluation, run on a stand-in for the S3 frozen task set: eleven tasks with hidden executable checks, including two forced interruptions and three tasks whose prompts leave out a requirement a careful engineer should find. The "harder tasks" below are those three plus the second interruption task, `py-date-filter`. Conditions: the host's plain workflow, skills alone, and skills with interlock, with host, model and effort pinned, tools at parity, and each run isolated from the answers.
 
 The run on the integrated build (Claude Code 2.1.289, `claude-sonnet-5-5`, medium effort, 15 counted runs per condition, ABBA order):
 
 | | plain | skills | interlock with skills |
 | --- | --- | --- | --- |
 | Accepted | 14/15 | 15/15 | 12/15 |
-| On the four harder tasks | 7/8 | 8/8 | 5/8 |
+| On the harder tasks (two repeats each) | 7/8 | 8/8 | 5/8 |
 | False completion claims | 1 | 0 | 3 |
 | Scope violations | 0 | 0 | 0 |
 | Recovery after a forced interruption | 3/3 | 3/3 | 3/3 |
 | Cost and wall time against plain, paired | | 1.1x, 1.1x | 2.5x, 2.3x |
 
 What it shows, and does not:
-- **No difference is significant at this size** (Fisher two-sided p = 0.60 for interlock against plain, 0.22 against skills).
+- **No difference is significant at this size** (Fisher two-sided p = 0.60 for interlock against plain, 0.22 against skills). Seven of the eleven tasks ran once per condition.
 - **interlock did not make outcomes better here.** All three of its failures were on the harder tasks, whose prompts leave out a requirement, and in each one the independent verifier passed the work. The verifier checks the criteria, and the criteria only restated the prompt, so it did not catch what the worker missed. One suspect is the worker prompt's "make the smallest change that meets the criteria"; three failures cannot confirm it.
 - **No session invoked a skill in any condition**, though every session had them loaded: the skills describe themselves as steps of an interlock task. So the skills condition measured their descriptions sitting in context, not skills in use.
 - **The verifier is about three quarters of interlock's extra cost.**
@@ -128,7 +128,7 @@ The earlier run, before the harness review, accepted 14 of 14 in both conditions
 | P4 delivery: forge adapter, pinned merges, operations, reconcile | Done against a fake `gh`; live GitHub not yet | [docs](docs/forge.md), [evidence](evidence/forge/README.md) |
 | §13 evaluation and S3 baseline | Harness, stand-in task set and a three-condition run on Claude Code done; interlock showed no benefit at this size (see [Evaluation](#evaluation)) | [docs](docs/evaluation.md), [evidence](evidence/evaluation/README.md) |
 
-Each workstream was built, then reviewed by an independent agent that tried to break it; every confirmed finding became a regression test that fails before its fix. The review rounds are recorded in each evidence README.
+Each workstream was built, then reviewed by an independent agent that tried to break it. Confirmed findings became regression tests that fail before their fix, with two exceptions recorded in the evidence: one skills finding was fixed in skill text only, and one forge mutation (m08b) still passes with its fix undone, because git 2.43 ignores the setting it guards. The review rounds are recorded in each evidence README.
 
 ## Invariant tests
 
@@ -137,11 +137,11 @@ Each invariant in the design has a fault test that passes today. The last rows a
 | Invariant | Test |
 | --- | --- |
 | 1. No current evidence, no pass | A verifier pass on another tree is kept but does not count; the task stays awaiting. A tree recorded while integrating sends the task back (R2) and nothing merges |
-| 2. Workers cannot override verifiers or grant themselves authority | Verifier fails, worker then claims pass: R1, never verified. Workers cannot record assessments; in a guided session, the session that did the work cannot open a verifier attempt for it, and a verifier attempt nobody bound counts only where interlock ran the check. Evidence tables reject UPDATE and DELETE. Irreversible grants are refused. On Copilot, a worker's `interlock grant create` is denied by the hook and no grant exists afterwards. A worker process that escapes its process group is stopped before any verifier starts, so it cannot report as one |
+| 2. Workers cannot override verifiers or grant themselves authority | Verifier fails, worker then claims pass: R1, never verified. Workers cannot record assessments; in a guided session, the session that did the work cannot open a verifier attempt for it, and a verifier attempt nobody bound counts only where interlock ran the check. Evidence tables reject UPDATE and DELETE. Irreversible grants are refused. On Copilot, a worker's `interlock grant create` is denied by the hook and no grant exists afterwards. A session that strips its own environment and calls interlock through a variable the hook cannot read is still refused every operator command, because an ancestor process carries the session's marker. A worker process that escapes its process group is stopped before any verifier starts, so it cannot report as one |
 | 3. Changes invalidate evidence | A rebase after verification sends the task back through R2, and landing is refused. A merge onto a base nobody verified is not G6. The stop guard rejects a claim made before the worker's last edit |
 | 4. Late workers cannot advance tasks | Retry, respawn, then the old result arrives: stored as superseded. A restarted supervisor re-attaches to a live session rather than starting a second |
 | 5. Apply and acknowledge together | A duplicate event is a no-op; the process aborted mid-write, then the replay applies exactly once |
-| 6. Permissions are bounded | On Copilot, a worker's `git push` is denied inside the live session; edits outside the worktree or scope, commands touching interlock's state, and the operator's commands are denied. Sessions get an allowlisted environment |
+| 6. Permissions are bounded | On the real Copilot CLI (driven by a scripted model), a worker's `git push` is denied inside the session; edits outside the worktree or scope, commands touching interlock's state, and the operator's commands are denied. Sessions get an allowlisted environment |
 | 7. External effects are reconciled | Every forge call runs under an operation row already marked started. A fake `gh` kills `interlock` with SIGKILL right after merging; `interlock reconcile` and a restarted `interlock run` each finish at G6 with exactly one merge. A merge call that dies unanswered stays unknown until the forge shows the merge. On the attempt side, every session left without a recorded end, in any task, is re-attached, or stopped and reconciled with a synthetic report |
 | Added: checks cannot be faked or emptied | On Copilot, end to end: a regression check that runs no tests, and a reproduction that already passes, each block the task before any session; a worker that rewrites the check to `exit 0` has its result rejected, however it builds and submits the tree, and the next worker must really fix the bug. Runs that tested nothing never pass or fail (property-tested) |
 | Added: only the verified head lands | Property-tested over abbreviated and prefix SHAs; end to end, a moved head is refused by `--match-head-commit` |
@@ -159,6 +159,11 @@ Each invariant in the design has a fault test that passes today. The last rows a
 - **Landing authority `operator`** means interlock opens the pinned pull request and the operator merges it; interlock never merges or arms auto-merge under it.
 - **The push is part of opening the pull request** rather than its own operation kind, and reads of the forge get no operation row.
 - **Skills by host:** Claude Code gets a plugin namespaced `interlock:`, because it ships its own `verify` and `design` skills; Copilot gets skills named `interlock-<name>`. User-invoked skills keep `disable-model-invocation`, which S1 showed works as intended on both hosts.
+- **Copilot through its CLI, not its SDK.** The draft chose between the Rust Copilot SDK and a Node sidecar after spike S2. S2 was not run. The adapter runs `copilot -p --output-format json` as a subprocess behind the same `Host` trait as Claude Code, so there is no `interlock-copilot` crate and no out-of-process adapter protocol. This works offline and needs no SDK, and cancelling is a process-group kill, but SDK parity (sessions over JSON-RPC, sub-agent lifecycle events) is unverified.
+- **Threads, not tokio.** Sessions, watchers and signal handling use threads and `signal-hook`; nothing needed an async runtime.
+- **Scope holds under every profile.** The draft lets the permissive profile edit freely; this build enforces the task's scope at the hook and at G3 under both profiles.
+- **The host policy is configuration.** `[host_policy.<host>]` in `.interlock/config.toml` denies tools or limits action classes for one host; G2 refuses a task whose grant then lacks a tool its role needs.
+- **Verification on Copilot** uses `interlock verify` (a session interlock launches) rather than a custom agent, because Copilot's hooks cannot name the calling subagent.
 
 ## Open questions from the draft (§14)
 
@@ -166,8 +171,12 @@ These are the defaults this build uses until they are decided:
 
 - **Name**: interlock.
 - **Default authorization**: the conservative profile.
+- **S3 baseline repository**: none named yet; the evaluation uses a stand-in task set. The harness takes a real one with `source = {git, commit}`.
+- **PR watcher**: written in Rust as the forge adapter's readiness polling, not a TypeScript sidecar.
+- **The six v1 skills and four workflows**: built as drafted; whether they cover what you need first is yours to say.
 - **Forge**: GitHub only.
-- **S3 task set**: a stand-in task set until a real repository is named. The harness takes one with `source = {git, commit}`.
+
+Of the draft's risks: S1 settled skill loading on both hosts; S2 (the Rust SDK) was not run, see above; a second host, Claude Code, is now tested, so portability is shown for two hosts; the store stays one controller per checkout on local disk, and nothing detects a network filesystem.
 
 ## What is not proven
 
@@ -175,7 +184,10 @@ These are the defaults this build uses until they are decided:
 - **Copilot CLI with a real model.** Copilot runs exercise the real CLI, hooks, permissions, skills and custom agents with a scripted model. Model behaviour under the skills is evidenced on Claude Code only.
 - **That interlock improves outcomes.** On the stand-in tasks it did not: it accepted fewer runs than plain or skills alone (not a significant difference), at about 2.5 times the cost. Its verifier checks the stated criteria, so it cannot catch a requirement nobody wrote down.
 - **The real S3 task set and its baseline.** The evaluation runs on stand-in tasks.
-- **Containment is not a security boundary.** Hooks read command text and do not parse shell grammar; a path computed at run time gets past them. A same-user process can read another's environment. Attempt tokens are bookkeeping. Real containment comes from the host's tool restrictions and the operating system ([docs/runtime.md](docs/runtime.md) says what holds).
+- **Spike S2 and the P0 adapter decision.** See "Copilot through its CLI" above. The P0 gate's choice between a Rust SDK adapter and a Node sidecar was not made; a third option was taken without S2.
+- **Schemas are still v0.** P1 asked for v1 schemas; the records grew fields (check runs, bindings, handoffs, operations) but their `$id`s still say `v0`.
+- **Lifecycle guards are tested by example, not by property.** The evidence policy, empty-run detection and pinned landing are property-tested; G1 to G7 have example fault tests.
+- **Containment is not a security boundary.** Hooks read command text and do not parse shell grammar; a path computed at run time gets past them. Operator commands check their caller's process ancestry, which holds in sessions interlock launches; in a guided session a person drives, they rely on the hook asking the person, which a command hidden behind a shell variable gets past. A same-user process can read another's environment. Attempt tokens are bookkeeping. Real containment comes from the host's tool restrictions and the operating system ([docs/runtime.md](docs/runtime.md) says what holds).
 
 ## Use
 

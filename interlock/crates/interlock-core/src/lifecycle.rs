@@ -260,6 +260,25 @@ fn check_start(
             missing: missing_classes.iter().map(|c| format!("{c:?}")).collect(),
         });
     }
+    // The tools the workflow's role needs must survive the grant: allowed, and
+    // not denied as a whole (a narrower deny, such as `shell:git push`, leaves
+    // `shell` usable).
+    let missing_tools: Vec<String> = workflow
+        .role(role)
+        .tools
+        .allow
+        .iter()
+        .filter(|t| !grant.tools.allow.contains(t) || grant.tools.deny.contains(t))
+        .cloned()
+        .collect();
+    if !missing_tools.is_empty() {
+        return Err(Refusal {
+            signal: Some(signal),
+            code: RefusalCode::GrantInsufficient,
+            message: format!("the effective grant lacks tools a {role:?} needs: {}", missing_tools.join(", ")),
+            missing: missing_tools,
+        });
+    }
     let check = capability::check(&workflow.requirements(role, mode), capabilities);
     if !check.ok() {
         let reason = format!("host is missing: {}", check.missing.join("; "));
@@ -293,11 +312,14 @@ pub fn start_worker(
         Err(blocked) => Ok(Start::Blocked(blocked)),
         Ok(fallbacks) => {
             let epoch = task.lease_epoch + 1;
+            // A declared fallback stands in for a capability the host lacks; say which.
+            let using: Vec<String> = fallbacks.iter().map(|(f, why)| format!("{f:?} for {why}")).collect();
+            let note = if using.is_empty() { String::new() } else { format!("; fallbacks: {}", using.join(", ")) };
             let mut out = transition(
                 task,
                 Signal::G2,
                 State::Running,
-                format!("attempt {attempt_id} opened at epoch {epoch}"),
+                format!("attempt {attempt_id} opened at epoch {epoch}{note}"),
                 now,
             );
             out.task.lease_epoch = epoch;

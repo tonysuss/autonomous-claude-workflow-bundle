@@ -1333,7 +1333,20 @@ impl Store {
         let last = results.iter().rev().find(|r| r.status == ResultStatus::Accepted);
         let rejected = results.iter().rev().find(|r| r.status == ResultStatus::Rejected);
         let runs = self.check_runs(task_id)?;
-        Ok(brief::build(&task, role, &report, last, rejected, &runs, Some(&grant)))
+        let mut out = brief::build(&task, role, &report, last, rejected, &runs, Some(&grant));
+        for dep in &task.dependencies {
+            let upstream = self.task(dep)?;
+            let results = self.results(dep)?;
+            let accepted = results.iter().rev().find(|r| r.status == ResultStatus::Accepted);
+            out.upstream.push(brief::UpstreamResult {
+                task_id: dep.clone(),
+                state: upstream.state.to_string(),
+                output_tree: accepted.map(|r| r.output_tree.clone()),
+                summary: accepted.map(|r| r.summary.clone()),
+                changed_paths: accepted.map(|r| r.changed_paths.clone()).unwrap_or_default(),
+            });
+        }
+        Ok(out)
     }
 
     pub fn save_host_report(&mut self, host: &str, record: &serde_json::Value, now: Timestamp) -> Result<()> {

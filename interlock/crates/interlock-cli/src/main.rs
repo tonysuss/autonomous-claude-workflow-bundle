@@ -878,22 +878,36 @@ fn run(cli: &Cli) -> Result<()> {
                     };
                     let criteria = store.task(task)?.criteria;
                     // Checks name files in the repository that owns the store, not the caller's.
-                    let protected = interlock_supervisor::guided::repo_of_store(&absolute_db(cli)?)
-                        .ok()
-                        .map(|root| interlock_supervisor::checks::protected_paths(&root, base, &criteria))
+                    let root = interlock_supervisor::guided::repo_of_store(&absolute_db(cli)?).ok();
+                    let protected = root
+                        .as_ref()
+                        .map(|root| interlock_supervisor::checks::protected_paths(root, base, &criteria))
                         .unwrap_or_default();
+                    // Untracked inputs are part of the snapshot unless the caller names them.
+                    let untracked = match (untracked_hash, &root) {
+                        (Some(h), _) => Some(h.clone()),
+                        (None, Some(root)) => interlock_supervisor::git::untracked_tree(root)?,
+                        (None, None) => None,
+                    };
                     let snapshot = Snapshot {
                         repository: repo,
                         base_commit: base.clone(),
                         protected_paths: protected,
-                        untracked_hash: untracked_hash.clone(),
+                        untracked_hash: untracked,
                     };
                     print(&store.ready(task, snapshot, now()?)?)
                 }
-                TaskCmd::Tree { task, tree } => print(&store.record_new_tree(task, tree, now()?)?),
+                TaskCmd::Tree { task, tree } => {
+                    forge::operator_only("task tree")?;
+                    print(&store.record_new_tree(task, tree, now()?)?)
+                }
                 TaskCmd::Block { task, reason } => print(&store.block(task, reason, now()?)?),
-                TaskCmd::Unblock { task } => print(&store.unblock(task, now()?)?),
+                TaskCmd::Unblock { task } => {
+                    forge::operator_only("task unblock")?;
+                    print(&store.unblock(task, now()?)?)
+                }
                 TaskCmd::Retry { task, reason } => {
+                    forge::operator_only("task retry")?;
                     let mv = store.retry(task, reason, now()?)?;
                     print(&with_stopped_sessions(cli, &mut store, task, &mv, "`interlock task retry`")?)
                 }
@@ -901,6 +915,7 @@ fn run(cli: &Cli) -> Result<()> {
                     // Stop any session its supervisor left behind, then close
                     // the attempts and tidy their worktrees.
                     let cancel = matches!(cmd, TaskCmd::Cancel { .. });
+                    forge::operator_only(if cancel { "task cancel" } else { "task fail" })?;
                     let mv = store.stop(task, cancel, reason, now()?)?;
                     let context = if cancel { "`interlock task cancel`" } else { "`interlock task fail`" };
                     let mut moved = with_stopped_sessions(cli, &mut store, task, &mv, context)?;
@@ -929,6 +944,10 @@ fn run(cli: &Cli) -> Result<()> {
             match cmd {
                 AttemptCmd::Start { task, role, host, mode, capabilities, agent, model, worktree } => {
                     let (caps, version) = host_profile(&mut store, host, capabilities.as_deref())?;
+                    // The host side of the effective grant, from `[host_policy.<host>]`.
+                    let host_policy = interlock_supervisor::config::Config::load(&store_dir(cli))
+                        .map_err(|e| anyhow!(e))?
+                        .host_policy(host);
                     let db = absolute_db(cli)?;
                     let interactive = matches!(mode, ModeArg::Interactive);
                     // In a guided session the hooks saw who ran this command; nobody else can say.
@@ -1110,6 +1129,9 @@ fn run(cli: &Cli) -> Result<()> {
         }
         Command::Reconcile { task } => forge::reconcile(&cli.db.clone().unwrap_or_else(default_db), task.as_deref()),
         Command::Grant(cmd) => {
+            if !matches!(cmd, GrantCmd::List) {
+                forge::operator_only("grant")?;
+            }
             let mut store = open(cli)?;
             match cmd {
                 GrantCmd::Create { principal, tasks, classes, landing, deny, expires_in, expires_at, origin } => {
@@ -1214,6 +1236,7 @@ fn run(cli: &Cli) -> Result<()> {
             let nonempty = |v: &Option<String>| v.clone().filter(|s| !s.is_empty());
             // An attempt's run checks the files in its own worktree, wherever the command runs.
             let (attempt, task_id, dir) = if *operator {
+                forge::operator_only("check run --operator")?;
                 let task = task.clone().ok_or_else(|| anyhow!("--operator needs --task"))?;
                 (None, task, std::env::current_dir()?)
             } else {

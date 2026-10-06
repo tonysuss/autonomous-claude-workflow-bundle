@@ -21,6 +21,8 @@ pub struct Brief {
     pub current_tree: Option<String>,
     pub criteria: Vec<BriefCriterion>,
     pub previous_result: Option<PreviousResult>,
+    /// What the tasks this one depends on produced, from their records.
+    pub upstream: Vec<UpstreamResult>,
     pub failures_to_fix: Vec<String>,
     pub grant: Option<EffectiveGrant>,
     pub next_moves: Vec<NextMove>,
@@ -44,6 +46,16 @@ pub struct PreviousResult {
     pub summary: String,
     pub changed_paths: Vec<String>,
     pub open_questions: Vec<String>,
+}
+
+/// An upstream (dependency) task's state and its last accepted result.
+#[derive(Debug, Clone, Serialize)]
+pub struct UpstreamResult {
+    pub task_id: String,
+    pub state: String,
+    pub output_tree: Option<String>,
+    pub summary: Option<String>,
+    pub changed_paths: Vec<String>,
 }
 
 pub fn build(
@@ -149,6 +161,7 @@ pub fn build(
             changed_paths: r.changed_paths.clone(),
             open_questions: r.open_questions.clone(),
         }),
+        upstream: vec![],
         failures_to_fix,
         grant: grant.cloned(),
         next_moves: next_moves(task, report),
@@ -207,6 +220,20 @@ impl Brief {
             line("## Fix first".into());
             for f in &self.failures_to_fix {
                 line(format!("- {f}"));
+            }
+        }
+        if !self.upstream.is_empty() {
+            line(String::new());
+            line("## Upstream results".into());
+            for u in &self.upstream {
+                let what = match (&u.summary, &u.output_tree) {
+                    (Some(s), Some(t)) => format!("{s} (tree {t})"),
+                    _ => "no accepted result yet".into(),
+                };
+                line(format!("- {} ({}): {what}", u.task_id, u.state));
+                if !u.changed_paths.is_empty() {
+                    line(format!("  Changed: {}", u.changed_paths.join(", ")));
+                }
             }
         }
         if let Some(r) = &self.previous_result {
