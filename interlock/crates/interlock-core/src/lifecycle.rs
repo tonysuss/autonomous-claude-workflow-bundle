@@ -593,11 +593,16 @@ pub enum MergeReport {
     },
 }
 
-/// G6, integrating to done: the forge merged exactly the verified head.
+/// G6, integrating to done: the forge merged exactly the pinned head, built
+/// from the tree that is still the task's, and the evidence still passes for
+/// it. A merge of the pinned head after the tree changed, or after the
+/// evidence went stale or failed, took effect but proves nothing: the task is
+/// blocked with the reason, for the operator to reconcile.
 pub fn confirm_integration(
     task: &Task,
     operation: &Operation,
     report: &MergeReport,
+    evidence: &EvidenceReport,
     now: Timestamp,
 ) -> Result<Outcome, Refusal> {
     require_state(task, Signal::G6, &[State::Integrating])?;
@@ -610,14 +615,39 @@ pub fn confirm_integration(
         }
         MergeReport::Merged { head_sha } => {
             let expected = operation.intent.expected_head_sha.as_deref().unwrap_or("");
-            let matches =
-                expected.len() >= 7 && (head_sha.starts_with(expected) || expected.starts_with(head_sha.as_str()));
-            if !matches {
+            // Both sides must name at least seven characters: an empty or
+            // short head would match any pinned head as its prefix. Object
+            // ids are hex, in either case.
+            if !crate::evidence::same_tree(&head_sha.to_ascii_lowercase(), &expected.to_ascii_lowercase()) {
                 return Err(refuse(
                     Some(Signal::G6),
                     RefusalCode::HeadMismatch,
                     format!("forge merged {head_sha}, but the verified head was {expected}; reconcile by hand"),
                 ));
+            }
+            // The head was built from the tree the operation pinned; the
+            // task's evidence is about its current tree.
+            let current = task.current_tree.as_deref().unwrap_or("");
+            if let Some(pinned) = operation.intent.tree.as_deref()
+                && !crate::evidence::same_tree(pinned, current)
+            {
+                let reason = format!(
+                    "merged at {head_sha}, built from tree {pinned}, but the task's tree is now {current}; \
+                     reconcile by hand"
+                );
+                let mut out = transition(task, Signal::Block, State::Blocked, reason.clone(), now);
+                out.task.resume_point = Some(State::Integrating);
+                out.task.blocked_reason = Some(reason);
+                return Ok(out);
+            }
+            if !evidence.all_pass {
+                let reason = format!(
+                    "merged at {head_sha}, but the evidence no longer covers the task's current tree; reconcile by hand"
+                );
+                let mut out = transition(task, Signal::Block, State::Blocked, reason.clone(), now);
+                out.task.resume_point = Some(State::Integrating);
+                out.task.blocked_reason = Some(reason);
+                return Ok(out);
             }
             Ok(transition(task, Signal::G6, State::Done, format!("merged at {head_sha}"), now))
         }

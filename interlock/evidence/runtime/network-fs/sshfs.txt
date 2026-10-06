@@ -1,0 +1,14 @@
+mount type: fuse.sshfs
+statfs magic: 0x65735546
+== interlock init, no override
+{
+  "error": "network_filesystem",
+  "message": "opening mnt/.interlock/state.db: the store's directory mnt/.interlock is on a network filesystem (FUSE sshfs). interlock keeps its store on local disk, one controller per checkout: SQLite's locks do not hold across machines. Use a checkout on local disk, or put the store there with --db (INTERLOCK_DB); set INTERLOCK_ALLOW_NETWORK_FS=1 to open it anyway"
+}
+exit 2
+== interlock init, INTERLOCK_ALLOW_NETWORK_FS=1
+{
+  "error": "failed",
+  "message": "opening mnt/.interlock/state.db: cannot create mnt/.interlock: Read-only file system (os error 30)"
+}
+exit 1

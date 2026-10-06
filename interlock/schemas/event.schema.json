@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://schemas.interlock.dev/v0/event.schema.json",
+  "$id": "https://schemas.interlock.dev/v1/event.schema.json",
   "title": "Event",
   "description": "An inbound report. Applied and acknowledged in one transaction; a repeated id is a no-op.",
   "type": "object",

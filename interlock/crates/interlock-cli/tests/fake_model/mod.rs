@@ -120,8 +120,18 @@ fn respond(req: &Value, script: &Script, state: &Mutex<State>) -> Value {
     let tools_done = msgs.iter().filter(|m| m["role"] == "tool").count();
     let blocked = msgs.iter().filter(|m| m["role"] == "user" && text_of(m).contains("Before you finish")).count();
 
+    // What Copilot put in the system prompt from the custom agent the session runs as.
+    let system: String = msgs.iter().filter(|m| m["role"] == "system").map(text_of).collect();
+    let agent = system
+        .split_once("<agent_instructions>")
+        .and_then(|(_, rest)| rest.split_once("</agent_instructions>"))
+        .map(|(inside, _)| inside.trim().to_string());
+    let offered: Vec<&str> =
+        req["tools"].as_array().into_iter().flatten().filter_map(|t| t["function"]["name"].as_str()).collect();
+
     let mut st = state.lock().unwrap();
-    st.requests.push(json!({"role": role, "tools_done": tools_done, "last": msgs.last()}));
+    st.requests.push(json!({"role": role, "tools_done": tools_done, "last": msgs.last(), "agent": agent,
+                            "offered": offered}));
     // Every request replays the session's first user message, so it names the session.
     let key = msgs.iter().find(|m| m["role"] == "user").map(text_of).unwrap_or_default();
     let seen = st.sessions.entry(role).or_default();

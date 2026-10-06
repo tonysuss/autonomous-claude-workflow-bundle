@@ -228,23 +228,154 @@ fn g5_without_landing_authority_blocks_at_verified() {
         id: "op1".into(),
         task_id: task.id.clone(),
         kind: OperationKind::Merge,
-        intent: OperationIntent { expected_head_sha: Some(TREE_A.into()), base: None, pull_request: Some(7) },
+        intent: OperationIntent {
+            expected_head_sha: Some(TREE_A.into()),
+            base: None,
+            pull_request: Some(7),
+            tree: None,
+        },
         state: OperationState::Started,
         outcome: None,
         created_at: t(9),
         updated_at: t(9),
     };
     // The head moved: the forge refuses the pinned merge and R2 re-verifies.
-    let refused =
-        lifecycle::confirm_integration(&out.task, &op, &MergeReport::Refused { reason: "head moved".into() }, t(10))
-            .unwrap();
+    let refused = MergeReport::Refused { reason: "head moved".into() };
+    let refused = lifecycle::confirm_integration(&out.task, &op, &refused, &report, t(10)).unwrap();
     assert_eq!((refused.mv.signal, refused.task.state), (Signal::R2, State::AwaitingVerification));
     // A confirmed merge of the verified head finishes it.
-    let done = lifecycle::confirm_integration(&out.task, &op, &MergeReport::Merged { head_sha: TREE_A.into() }, t(10))
-        .unwrap();
+    let merged = |head: &str| MergeReport::Merged { head_sha: head.into() };
+    let done = lifecycle::confirm_integration(&out.task, &op, &merged(TREE_A), &report, t(10)).unwrap();
     assert_eq!((done.mv.signal, done.task.state), (Signal::G6, State::Done));
-    let wrong = lifecycle::confirm_integration(&out.task, &op, &MergeReport::Merged { head_sha: TREE_B.into() }, t(10));
+    let wrong = lifecycle::confirm_integration(&out.task, &op, &merged(TREE_B), &report, t(10));
     assert_eq!(wrong.unwrap_err().code, RefusalCode::HeadMismatch);
+}
+
+/// An integrating task, its landing operation pinned to TREE_A, and the evidence that verified it.
+fn integrating() -> (Task, Operation, Vec<Evidence>) {
+    let (mut task, _) = to_awaiting();
+    task.integration_required = true;
+    let assessments = vec![
+        evidence(&task, "a1", "repro", "v1", Strength::Observed, TREE_A),
+        evidence(&task, "a2", "regression", "v1", Strength::Tested, TREE_A),
+    ];
+    let report = eval(&task, &[], &assessments);
+    let task = lifecycle::advance(&task, &report, t(6)).unwrap().task;
+    let task = lifecycle::begin_integration(&task, &report, LandingAuthority::Coordinator, t(7)).unwrap().task;
+    let op = Operation {
+        id: "op1".into(),
+        task_id: task.id.clone(),
+        kind: OperationKind::Merge,
+        intent: OperationIntent {
+            expected_head_sha: Some(TREE_A.into()),
+            base: None,
+            pull_request: Some(7),
+            tree: None,
+        },
+        state: OperationState::Started,
+        outcome: None,
+        created_at: t(8),
+        updated_at: t(8),
+    };
+    (task, op, assessments)
+}
+
+#[test]
+fn g6_needs_the_pinned_head_named_by_at_least_seven_characters() {
+    // Found by `lifecycle_props`: an empty head matched every pinned head as its prefix.
+    let (task, op, assessments) = integrating();
+    let report = eval(&task, &[], &assessments);
+    for short in ["", "a", "aaaaaa"] {
+        let merged = MergeReport::Merged { head_sha: short.into() };
+        let err = lifecycle::confirm_integration(&task, &op, &merged, &report, t(9)).unwrap_err();
+        assert_eq!(err.code, RefusalCode::HeadMismatch, "{short:?} landed");
+    }
+    let merged = MergeReport::Merged { head_sha: TREE_A[..7].into() };
+    let out = lifecycle::confirm_integration(&task, &op, &merged, &report, t(9)).unwrap();
+    assert_eq!((out.mv.signal, out.task.state), (Signal::G6, State::Done), "an abbreviated head still lands");
+}
+
+#[test]
+fn a_merge_confirmed_after_the_evidence_went_stale_or_failed_is_not_g6() {
+    // Found by `lifecycle_props`: G6 never read the evidence, so a tree
+    // recorded while integrating, or a verifier's later failure, still landed.
+    let (task, op, assessments) = integrating();
+    let merged = MergeReport::Merged { head_sha: TREE_A.into() };
+    let rebased = lifecycle::record_new_tree(&task, TREE_B, t(9)).unwrap();
+    let mut failed = assessments.clone();
+    failed.push(evidence(&task, "a3", "repro", "v2", Strength::Failed, TREE_A));
+    for (task, assessments) in [(&rebased, &assessments), (&task, &failed)] {
+        let report = eval(task, &[], assessments);
+        let out = lifecycle::confirm_integration(task, &op, &merged, &report, t(10)).unwrap();
+        assert_eq!((out.mv.signal, out.task.state), (Signal::Block, State::Blocked));
+        assert_eq!(out.task.resume_point, Some(State::Integrating));
+        assert!(out.task.blocked_reason.unwrap().contains("reconcile by hand"));
+    }
+}
+
+#[test]
+fn a_merge_of_the_pinned_head_lands_only_while_its_tree_is_the_tasks() {
+    // Found in review: a head pinned to TREE_A, confirmed by hand after TREE_B
+    // was recorded and verified, landed on TREE_B's evidence.
+    let (task, mut op, _) = integrating();
+    op.intent.tree = Some(TREE_A.into());
+    let rebased = lifecycle::record_new_tree(&task, TREE_B, t(9)).unwrap();
+    let on_b = vec![
+        evidence(&rebased, "b1", "repro", "v2", Strength::Observed, TREE_B),
+        evidence(&rebased, "b2", "regression", "v2", Strength::Tested, TREE_B),
+    ];
+    let report = eval(&rebased, &[], &on_b);
+    assert!(report.all_pass, "TREE_B is verified");
+    let merged = MergeReport::Merged { head_sha: TREE_A.into() };
+    let out = lifecycle::confirm_integration(&rebased, &op, &merged, &report, t(10)).unwrap();
+    assert_eq!((out.mv.signal, out.task.state), (Signal::Block, State::Blocked));
+    assert!(out.task.blocked_reason.unwrap().contains("the task's tree is now"));
+    // While the pinned tree is still the task's, the same merge lands, whatever case the forge reports it in.
+    let report = eval(&task, &[], &integrating().2);
+    let shouted = MergeReport::Merged { head_sha: TREE_A.to_uppercase() };
+    let out = lifecycle::confirm_integration(&task, &op, &shouted, &report, t(10)).unwrap();
+    assert_eq!((out.mv.signal, out.task.state), (Signal::G6, State::Done));
+}
+
+/// Guards the property tests cannot reach: no move leaves a task in the
+/// state that would exercise them, so they are tested on a task set up by hand.
+#[test]
+fn g2_refuses_once_the_attempt_budget_is_spent() {
+    let mut task = lifecycle::ready(&bug_fix_task(), &[], snapshot(), t(1)).unwrap().task;
+    task.attempts_used = task.budget.max_attempts;
+    let err = lifecycle::start_worker(
+        &task,
+        &bug_fix(),
+        Mode::Headless,
+        &all_capabilities(),
+        &grant_for(&task, Role::Worker),
+        "w9",
+        t(2),
+    )
+    .unwrap_err();
+    assert_eq!(err.code, RefusalCode::BudgetExhausted);
+}
+
+#[test]
+fn g3_supersedes_another_attempt_at_the_current_epoch() {
+    // Each G2 opens one worker attempt at a new epoch, so only an attempt made
+    // by hand can share the current epoch without being the current attempt.
+    let task = lifecycle::ready(&bug_fix_task(), &[], snapshot(), t(1)).unwrap().task;
+    let Start::Allowed { outcome: Some(out), .. } = lifecycle::start_worker(
+        &task,
+        &bug_fix(),
+        Mode::Headless,
+        &all_capabilities(),
+        &grant_for(&task, Role::Worker),
+        "w1",
+        t(2),
+    )
+    .unwrap() else {
+        panic!("expected start")
+    };
+    let impostor = attempt(&out.task, "w0", Role::Worker, out.task.lease_epoch);
+    let submitted = lifecycle::submit_result(&out.task, &impostor, out.task.lease_epoch, TREE_A, &[], t(3)).unwrap();
+    assert!(matches!(submitted, Submission::Superseded { .. }), "{submitted:?}");
 }
 
 #[test]

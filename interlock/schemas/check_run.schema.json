@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://schemas.interlock.dev/v0/check_run.schema.json",
+  "$id": "https://schemas.interlock.dev/v1/check_run.schema.json",
   "title": "Check run",
   "description": "interlock's own execution of a criterion's check on one tree. Append-only. A run passes only when the command exited 0, did not time out, and did not run nothing.",
   "type": "object",

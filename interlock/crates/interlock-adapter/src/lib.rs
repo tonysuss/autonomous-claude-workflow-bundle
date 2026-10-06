@@ -17,12 +17,12 @@ use interlock_schema::ToolPolicy;
 use serde::{Deserialize, Serialize};
 
 pub use claude_code::ClaudeCode;
-pub use copilot::Copilot;
+pub use copilot::{AgentProfile, Copilot};
 pub use probe::Probe;
 pub use session::{
-    CommandPlan, Exit, SESSION_MARKER, SessionOutcome, SessionSpec, SessionSummary, Spawned, Target, alive, attach,
-    become_subreaper, classify, contain, in_launched_session, marked, process_start, run, shell_quote, spawn,
-    stderr_path, write_hooks_plugin,
+    CommandPlan, Exit, HOOKS_PLUGIN, SESSION_MARKER, SessionOutcome, SessionSpec, SessionSummary, Spawned, Target,
+    alive, attach, become_subreaper, classify, contain, in_launched_session, marked, process_start, run, shell_quote,
+    spawn, stderr_path, write_hooks_plugin,
 };
 
 /// How a capability's availability was established.

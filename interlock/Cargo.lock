@@ -595,6 +595,7 @@ dependencies = [
  "chrono",
  "interlock-core",
  "interlock-schema",
+ "nix",
  "rusqlite",
  "serde",
  "serde_json",

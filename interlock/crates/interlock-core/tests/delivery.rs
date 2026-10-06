@@ -39,6 +39,7 @@ fn op_at(kind: OperationKind, state: OperationState, head: &str) -> Operation {
             expected_head_sha: Some(head.into()),
             base: Some("main".into()),
             pull_request: Some(7),
+            tree: None,
         },
         state,
         outcome: None,

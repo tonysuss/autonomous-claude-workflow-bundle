@@ -675,10 +675,16 @@ impl Supervisor {
         timeout: Duration,
         max_cost_usd: Option<f64>,
     ) -> SessionSpec {
+        // A host that runs custom agents runs the session as interlock's agent for the role.
+        let custom_agents = match &self.cfg.capabilities {
+            Some(c) => c.has(Capability::CustomAgents),
+            None => self.inspected.as_ref().is_some_and(|r| r.capability_set().has(Capability::CustomAgents)),
+        };
         SessionSpec {
             workdir: workdir.to_path_buf(),
             prompt,
             append_system: Some(system.to_string()),
+            agent: attempt.agent.clone().filter(|_| custom_agents),
             tools: attempt.effective_grant.tools.clone(),
             model: self.cfg.model.clone(),
             max_turns: self.cfg.max_turns,

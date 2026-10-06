@@ -1,0 +1,8 @@
+remote: fuse.sshfs
+plain: fuse.gocryptfs from <work>/remote
+== interlock init, store on plain/
+{
+  "error": "network_filesystem",
+  "message": "opening plain/.interlock/state.db: the store's directory plain/.interlock is on a network filesystem (FUSE gocryptfs over FUSE sshfs). interlock keeps its store on local disk, one controller per checkout: SQLite's locks do not hold across machines. Use a checkout on local disk, or put the store there with --db (INTERLOCK_DB); set INTERLOCK_ALLOW_NETWORK_FS=1 to open it anyway"
+}
+exit 2

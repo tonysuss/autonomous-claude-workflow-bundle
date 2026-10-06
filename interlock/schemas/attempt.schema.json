@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://schemas.interlock.dev/v0/attempt.schema.json",
+  "$id": "https://schemas.interlock.dev/v1/attempt.schema.json",
   "title": "Attempt",
   "description": "One run of an agent against a task. The role comes from here, never from the caller.",
   "type": "object",

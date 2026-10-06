@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://schemas.interlock.dev/v0/operation.schema.json",
+  "$id": "https://schemas.interlock.dev/v1/operation.schema.json",
   "title": "Operation",
   "description": "An external effect. Written before the call is made and reconciled on start; never assumed.",
   "type": "object",
@@ -16,7 +16,11 @@
       "properties": {
         "expected_head_sha": { "$ref": "common.schema.json#/$defs/object_id" },
         "base": { "type": "string" },
-        "pull_request": { "type": "integer", "minimum": 1 }
+        "pull_request": { "type": "integer", "minimum": 1 },
+        "tree": {
+          "description": "The task's tree when the operation was planned: the tree the pinned head was built from. A merge of that head lands only while it is still the task's tree.",
+          "$ref": "common.schema.json#/$defs/object_id"
+        }
       }
     },
     "state": { "enum": ["planned", "started", "confirmed", "unknown", "failed"] },

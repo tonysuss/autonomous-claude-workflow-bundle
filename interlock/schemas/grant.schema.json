@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://schemas.interlock.dev/v0/grant.schema.json",
+  "$id": "https://schemas.interlock.dev/v1/grant.schema.json",
   "title": "Grant",
   "description": "Authority given by the operator. Written only by the operator path. No grant can cover the irreversible class.",
   "type": "object",

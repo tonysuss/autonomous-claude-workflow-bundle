@@ -92,13 +92,16 @@ impl Store {
         &mut self,
         task_id: &str,
         kind: OperationKind,
-        intent: OperationIntent,
+        mut intent: OperationIntent,
         now: Timestamp,
     ) -> Result<Operation> {
         let (tx, v) = self.begin()?;
         let task = get_task(&tx, task_id)?;
         if task.state != State::Integrating {
             return Err(refused(RefusalCode::WrongState, format!("task {task_id} is {}, not integrating", task.state)));
+        }
+        if intent.tree.is_none() {
+            intent.tree = task.current_tree.clone();
         }
         let op = Operation {
             id: new_id("op"),
@@ -179,7 +182,8 @@ impl Store {
                     "the head was built from tree {tree}, but the task's tree is now {current}; landing starts again from verification"
                 );
                 fail_uncalled(&tx, v, &mut op, &why, now)?;
-                let out = lifecycle::confirm_integration(&task, &op, &MergeReport::Refused { reason: why }, now)?;
+                let refused = MergeReport::Refused { reason: why };
+                let out = lifecycle::confirm_integration(&task, &op, &refused, &report_for(&tx, &task)?, now)?;
                 let mv = apply(&tx, v, &out, None, now)?;
                 tx.commit()?;
                 return Ok(Err(mv));
@@ -271,7 +275,7 @@ impl Store {
                     block(&mut task, &why, &mut moves)?;
                 } else {
                     let merged = MergeReport::Merged { head_sha: head_sha.clone() };
-                    match lifecycle::confirm_integration(&task, &op, &merged, now) {
+                    match lifecycle::confirm_integration(&task, &op, &merged, &report, now) {
                         Ok(out) => moves.push(apply(&tx, v, &out, None, now)?),
                         Err(refusal) => block(&mut task, &refusal.message, &mut moves)?,
                     }
@@ -279,7 +283,8 @@ impl Store {
                 OperationState::Confirmed
             }
             Verdict::Land { report: report @ MergeReport::Refused { .. }, .. } if task.state == State::Integrating => {
-                match lifecycle::confirm_integration(&task, &op, report, now) {
+                let evidence = report_for(&tx, &task)?;
+                match lifecycle::confirm_integration(&task, &op, report, &evidence, now) {
                     Ok(out) => moves.push(apply(&tx, v, &out, None, now)?),
                     Err(refusal) => block(&mut task, &refusal.message, &mut moves)?,
                 }
@@ -330,7 +335,7 @@ impl Store {
         let task = get_task(&tx, &op.task_id)?;
         let rebased = delivery::rebase(&task, base, tree, now)?;
         let report = MergeReport::Refused { reason: reason.to_string() };
-        let out = lifecycle::confirm_integration(&rebased, &op, &report, now)?;
+        let out = lifecycle::confirm_integration(&rebased, &op, &report, &report_for(&tx, &rebased)?, now)?;
         let mv = apply(&tx, v, &out, None, now)?;
         op.state = OperationState::Failed;
         op.outcome = Some(serde_json::json!({ "withdrawn": reason, "base": base, "tree": tree, "called": false }));

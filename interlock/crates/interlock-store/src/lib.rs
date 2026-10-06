@@ -14,6 +14,7 @@ use interlock_schema::*;
 use rusqlite::{Connection, OptionalExtension, Transaction, TransactionBehavior, params};
 use serde::{Deserialize, Serialize, de::DeserializeOwned};
 
+pub mod netfs;
 mod operations;
 
 pub use operations::{Pin, Settled};
@@ -39,6 +40,12 @@ pub enum StoreError {
     Json(#[from] serde_json::Error),
     #[error("injected fault: {0}")]
     Fault(&'static str),
+    #[error(
+        "the store's directory {dir} is on a network filesystem ({kind}). interlock keeps its store on local \
+         disk, one controller per checkout: SQLite's locks do not hold across machines. Use a checkout on local \
+         disk, or put the store there with --db (INTERLOCK_DB); set INTERLOCK_ALLOW_NETWORK_FS=1 to open it anyway"
+    )]
+    NetworkFilesystem { dir: String, kind: String },
 }
 
 pub type Result<T> = std::result::Result<T, StoreError>;
@@ -463,7 +470,10 @@ fn check_fault(fault: Option<Fault>) -> Result<()> {
 }
 
 impl Store {
+    /// Opens, or creates, the store at `path`. A directory on a network
+    /// filesystem is refused unless `INTERLOCK_ALLOW_NETWORK_FS=1`.
     pub fn open(path: &Path) -> Result<Store> {
+        netfs::ensure_local(path.parent().unwrap_or(Path::new("")))?;
         if let Some(dir) = path.parent() {
             std::fs::create_dir_all(dir)
                 .map_err(|e| StoreError::Invalid(format!("cannot create {}: {e}", dir.display())))?;
@@ -1180,6 +1190,9 @@ impl Store {
             if intent.expected_head_sha.is_none() {
                 intent.expected_head_sha = task.current_tree.clone();
             }
+            if intent.tree.is_none() {
+                intent.tree = task.current_tree.clone();
+            }
             let op = Operation {
                 id: new_id("op"),
                 task_id: task.id.clone(),
@@ -1200,7 +1213,12 @@ impl Store {
         Ok((mv, op))
     }
 
-    /// G6, or R2 when the forge refused the pinned merge.
+    /// The operator's own report of what the forge did with an operation
+    /// (`interlock integrate confirm`): G6, or R2 when the forge refused the
+    /// pinned merge. It is held to what settling the operation checks: an
+    /// operation already settled is refused, and a merge made without
+    /// landing authority, of a tree that is no longer the task's, or whose
+    /// evidence no longer passes is recorded and blocks the task.
     pub fn confirm_integration(
         &mut self,
         task_id: &str,
@@ -1215,7 +1233,26 @@ impl Store {
             .optional()?
             .ok_or_else(|| StoreError::NotFound(format!("operation {operation_id}")))
             .and_then(decode)?;
-        let out = lifecycle::confirm_integration(&task, &op, &report, now)?;
+        if matches!(op.state, OperationState::Confirmed | OperationState::Failed) {
+            return Err(StoreError::Refused(Refusal {
+                signal: Some(lifecycle::Signal::G6),
+                code: lifecycle::RefusalCode::WrongState,
+                message: format!("operation {} is already {:?}", op.id, op.state),
+                missing: vec![],
+            }));
+        }
+        let evidence = report_for(&tx, &task)?;
+        let mut out = lifecycle::confirm_integration(&task, &op, &report, &evidence, now)?;
+        // Landing authority must have held when the forge merged; the operator's report says now.
+        if let (lifecycle::Signal::G6, MergeReport::Merged { head_sha }) = (out.mv.signal, &report)
+            && grants::landing_authority(&task.id, &all_grants(&tx)?, now) == LandingAuthority::None
+        {
+            let why = format!(
+                "merged at {head_sha} at {}, when no landing authority was granted for this task; reconcile by hand",
+                ts(now)
+            );
+            out = lifecycle::block(&task, &why, now)?;
+        }
         op.state = match report {
             MergeReport::Merged { .. } => OperationState::Confirmed,
             MergeReport::Refused { .. } => OperationState::Failed,

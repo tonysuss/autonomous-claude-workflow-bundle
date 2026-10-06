@@ -259,11 +259,13 @@ fn a_bug_fix_runs_end_to_end_in_guidance_mode() {
         ],
         reply: "fix-add is done: verified by the independent verifier.".into(),
     };
-    let verifier_calc = repo.join(".interlock/worktrees/fix-add-verifier-1/calc.py").display().to_string();
+    // The verifier is offered no edit tool, so it tries the shell: a commit, and a write into interlock's store.
+    let write_store = format!("printf x >> {}", repo.join(".interlock/state.db").display());
     let verifier = Conversation {
         marker: HEADLESS_VERIFIER.into(),
         steps: vec![
-            tool("edit", json!({"path": verifier_calc, "old_str": "a + b", "new_str": "b + a"})),
+            bash("git commit --allow-empty -m 'the verifier commits'"),
+            bash(&write_store),
             bash("interlock check run --criterion repro"),
             bash("interlock check run --criterion regression"),
             bash(
@@ -299,13 +301,27 @@ fn a_bug_fix_runs_end_to_end_in_guidance_mode() {
     assert_eq!(verifier_bindings(&g, "fix-add"), ["interlock_launched"], "one verifier, launched by interlock");
     assert!(!repo.join(".interlock/worktrees/fix-add-worker-1").exists(), "done removes the worktrees");
 
-    // The verifier was a separate session, and its edit was denied: Copilot offers the tool, interlock refuses it.
+    // The verifier was a separate session, run as interlock's verifier agent: Copilot never offered it an
+    // edit tool. Its commit was refused by a deny rule or the hook, and its write into the store by the hook.
     let verifier_requests: Vec<Value> =
         model.log().into_iter().filter(|r| r["conversation"] == HEADLESS_VERIFIER).collect();
-    let after_edit = verifier_requests.iter().find(|r| r["tools_done"] == 1).expect("the verifier's second request");
-    let seen = after_edit["new_text"].as_str().unwrap_or_default();
-    assert!(seen.to_lowercase().contains("denied"), "the verifier's edit went through: {seen}");
-    assert!(tools_offered(after_edit).iter().any(|t| t == "bash"));
+    let seen = |done: u64| {
+        let r = verifier_requests.iter().find(|r| r["tools_done"] == done).expect("a verifier request");
+        r["new_text"].as_str().unwrap_or_default().to_string()
+    };
+    let commit = seen(1);
+    let by_rule = commit.contains("denied due to the following rules: `shell(git commit:*)`");
+    assert!(by_rule || commit.contains("Denied by preToolUse hook"), "the verifier's commit went through: {commit}");
+    let write = seen(2);
+    assert!(
+        write.contains("Denied by preToolUse hook") && write.contains("interlock's own state"),
+        "the verifier's write into the store went through: {write}"
+    );
+    for r in &verifier_requests {
+        let offered = tools_offered(r);
+        assert!(offered.iter().any(|t| t == "bash"), "{offered:?}");
+        assert!(!offered.iter().any(|t| t == "edit" || t == "create"), "the verifier was offered {offered:?}");
+    }
 }
 
 const EXPORTER: &str = "def export(rows, sink, retries=2):\n    \"\"\"Write rows; on a transient failure, retry the whole batch.\"\"\"\n    for attempt in range(retries + 1):\n        try:\n            for row in rows:\n                sink.write(row)\n            return attempt + 1\n        except IOError:\n            continue\n    raise IOError(\"export failed\")\n";

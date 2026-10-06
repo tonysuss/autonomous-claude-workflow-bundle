@@ -197,3 +197,28 @@ The outcome:
 - `handoff.env` lists only allowlisted names, the same set as in round 2.
 
 The script is [`live-claude-reattach-integrated/live_reattach.sh`](live-claude-reattach-integrated/live_reattach.sh). It is round 2's script with `max_cost_usd = 0.5` instead of `1.0`.
+
+## 8. No store on a network filesystem
+
+October 6, 2026, rerun on the build that added FUSE layers (docs/runtime.md, "No store on a network filesystem"). No NFS or SMB mount could be made in the container, so this is a manual check of the code path on a real mount: [`network-fs/fuse_probe.py`](network-fs/fuse_probe.py) serves an empty, read-only FUSE filesystem from this machine, mounted with the type it is given, and [`network-fs/run.sh`](network-fs/run.sh) runs `interlock init` with the store on it.
+
+| Mount type | `statfs` magic | `interlock init` | With `INTERLOCK_ALLOW_NETWORK_FS=1` | Raw output |
+| --- | --- | --- | --- | --- |
+| `fuse.sshfs` | `0x65735546` (FUSE) | Refused, exit 2, `"error": "network_filesystem"`, naming `FUSE sshfs` and the override | The check passes; creating the store then fails because the probe is read-only (exit 1) | [`network-fs/sshfs.txt`](network-fs/sshfs.txt) |
+| `fuse.fuse-overlayfs` | `0x65735546` (FUSE) | The check passes; the read-only probe then fails the same way | Same | [`network-fs/fuse-overlayfs.txt`](network-fs/fuse-overlayfs.txt) |
+| `fuse.gocryptfs`, its source the `fuse.sshfs` mount ([`network-fs/layered.sh`](network-fs/layered.sh)) | `0x65735546` (FUSE) | Refused, exit 2, naming `FUSE gocryptfs over FUSE sshfs` | not run | [`network-fs/layered.txt`](network-fs/layered.txt) |
+
+So `statfs` and the mount table are read correctly on a live mount. Whether a real NFS, SMB or sshfs mount reports what the tests assume is not shown here: the magic numbers come from `statfs(2)` and the kernel's headers, and the FUSE types from the tools' own mounts.
+
+## 9. Copilot runs headless sessions as interlock's agents
+
+October 6, 2026. The probes behind `copilot -p --agent` (docs/host-spike-2026-10-05.md, "Custom agents for headless sessions"): Copilot CLI 1.0.91 offline, against the S1 spike model ([`evidence/skills/scripts/spike_model.py`](../skills/scripts/spike_model.py)) with the system prompt logged. All results are in [`copilot-agent/probes.txt`](copilot-agent/probes.txt); the scripts, plugins and model script are beside it. Runs `a1` and `a2` used an earlier `script.json` with two steps, `bash` then `create`.
+
+| Run | What | Outcome |
+| --- | --- | --- |
+| a1 | `--agent interlock-worker`, the agent in `--plugin-dir` | Exit 1: "No such agent: interlock-worker, available: interlock-hooks:interlock-worker" |
+| a2 | `--agent interlock-hooks:interlock-worker` | Runs. The profile's body is in the system prompt's `<agent_instructions>`, after Copilot's own; only the profile's tools are offered |
+| a0, a3, a4 | No agent; an agent with `tools`; an agent with no `tools` line. Each with `--deny-tool 'shell(git push:*)'` and a hook that denies `DENY-ME` | In all three, the push is denied by the rule and `DENY-ME` by the hook. With an agent, Copilot's session log records `subagent.selected` with the agent's name |
+| t-* | One agent per `tools` list | Tool names work; `shell`, `execute`, `agent`, `custom-agent` and `read` work as aliases; `search`, `todo` and, offline, `web` and an MCP name give nothing |
+
+The tests that keep this true are `run_copilot::each_session_runs_as_interlocks_agent_for_its_role_and_the_tool_filters_hold` and `run_copilot::copilot_keeps_the_deny_rules_for_a_session_run_as_an_agent`.

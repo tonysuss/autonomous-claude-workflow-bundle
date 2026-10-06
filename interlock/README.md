@@ -23,7 +23,7 @@ Both hosts load the same Claude-format hooks plugin with `--plugin-dir`, send it
 | Model and effort | `--model`, `--reasoning-effort` | `--model`, `--effort` |
 | Session id chosen by interlock | `--session-id` | `--session-id` |
 | Skills | `.github/skills/interlock-*` | plugin, namespaced `interlock:` |
-| Custom agents | `--agent` | `--agents` |
+| Custom agents | `--agent`: each headless session runs as interlock's worker or verifier agent | `--agents` |
 
 One policy, two hosts. `interlock host tools <task> --role verifier --host <host>` turns the bug-fix verifier's host-neutral policy into each host's patterns:
 
@@ -40,7 +40,7 @@ One policy, two hosts. `interlock host tools <task> --role verifier --host <host
 1. **Reconcile**: settles whatever a previous controller left open: forge operations nobody confirmed, and sessions without a recorded end in any task (live ones are re-attached or stopped, dead ones get a synthetic crash report).
 2. **G1**: records the repository's `HEAD` and a hash of its untracked inputs as the input snapshot, with the files the checks run marked as protected.
 3. **Baseline**: interlock runs each check that promises a baseline on the input snapshot. A reproduction must fail there and a regression guard must pass there, and neither may run nothing. A task that breaks its promise is blocked before any session starts. `--max-sessions 0` stops here.
-4. **Worker**: opens an attempt (G2) in a fresh git worktree under `.interlock/worktrees/`, with a brief built from records and the attempt's effective grant as the host's tool filters. When the session ends, interlock writes the worktree's tree through a temporary index and submits it as the result (G3), reading the changed files from the tree itself. The repository's branch and index are never touched.
+4. **Worker**: opens an attempt (G2) in a fresh git worktree under `.interlock/worktrees/`, with a brief built from records and the attempt's effective grant as the host's tool filters. On Copilot the session runs as interlock's worker agent, which is offered the tools the grant leaves it and Copilot's own `skill` and `sql`, nothing else. When the session ends, interlock writes the worktree's tree through a temporary index and submits it as the result (G3), reading the changed files from the tree itself. The repository's branch and index are never touched.
 5. **Verifier**: opens an independent attempt in a worktree checked out at that tree, with read and test tools only. It records one assessment per criterion, at the strength each criterion needs.
 6. **Advance**: G4 when the evidence holds; R1 with a fix brief when an independent check fails; R3 when a session times out, crashes or is cancelled.
 7. **Deliver**: G7 when the workflow needs no delivery. Otherwise G5, the pinned merge and G6 through the forge (see [Delivery](#delivery)), if the task's grant gives landing authority.
@@ -116,11 +116,11 @@ The earlier run, before the harness review, accepted 14 of 14 in both conditions
 
 | Area | State | Docs and evidence |
 | --- | --- | --- |
-| S4: JSON Schemas for all records (`schemas/`), ten with `check_run` | Done; Rust types are checked against them by a conformance test | |
-| Policy core: lifecycle, G1–G7, R1–R3, block, fail, cancel | Done; pure functions, no IO | |
+| S4 and P1: JSON Schemas v1 for all records (`schemas/`), ten with `check_run` | Done; Rust types are checked against them by a conformance test, and a store written under v0 opens and conforms | [changelog](schemas/CHANGELOG.md) |
+| Policy core: lifecycle, G1–G7, R1–R3, block, fail, cancel | Done; pure functions, no IO; property-tested | |
 | Evidence policy v2: check runs by interlock, baselines, empty-run detection, output scope at G3, verifier binding | Done; property-tested | |
 | Grants: profiles, intersection, expiry, landing authority, irreversible never grantable | Done | |
-| SQLite store: one transaction per move, append-only evidence, idempotent events, operation rows | Done | |
+| SQLite store: one transaction per move, append-only evidence, idempotent events, operation rows, refused on a network filesystem | Done | [runtime](docs/runtime.md) |
 | Host adapters, session runner, hooks plugin | Done for Copilot CLI and Claude Code | [host spike](docs/host-spike-2026-10-05.md) |
 | P2 supervisor (`interlock run`) | Done | [export-retry runs](examples/export-retry/README.md) |
 | P1 skills, generator, guided sessions, S1 | Done; live on Claude Code, scripted on Copilot | [docs](docs/skills.md), [evidence](evidence/skills/README.md) |
@@ -136,12 +136,12 @@ Each invariant in the design has a fault test that passes today. The last rows a
 
 | Invariant | Test |
 | --- | --- |
-| 1. No current evidence, no pass | A verifier pass on another tree is kept but does not count; the task stays awaiting. A tree recorded while integrating sends the task back (R2) and nothing merges |
+| 1. No current evidence, no pass | A verifier pass on another tree is kept but does not count; the task stays awaiting. A tree recorded while integrating sends the task back (R2) and nothing merges, and a merge of the old head confirmed by hand after that blocks the task instead of landing it, even once the new tree is verified. Property-tested: over random sequences of moves, done comes only through G7, or G5 then G6, after G4, on current passing evidence, and G6 lands only the pinned head of the task's current tree |
 | 2. Workers cannot override verifiers or grant themselves authority | Verifier fails, worker then claims pass: R1, never verified. Workers cannot record assessments; in a guided session, the session that did the work cannot open a verifier attempt for it, and a verifier attempt nobody bound counts only where interlock ran the check. Evidence tables reject UPDATE and DELETE. Irreversible grants are refused. On Copilot, a worker's `interlock grant create` is denied by the hook and no grant exists afterwards. A session that strips its own environment and calls interlock through a variable the hook cannot read is still refused every operator command, because an ancestor process carries the session's marker. A worker process that escapes its process group is stopped before any verifier starts, so it cannot report as one |
 | 3. Changes invalidate evidence | A rebase after verification sends the task back through R2, and landing is refused. A merge onto a base nobody verified is not G6. The stop guard rejects a claim made before the worker's last edit |
-| 4. Late workers cannot advance tasks | Retry, respawn, then the old result arrives: stored as superseded. A restarted supervisor re-attaches to a live session rather than starting a second |
+| 4. Late workers cannot advance tasks | Retry, respawn, then the old result arrives: stored as superseded. A restarted supervisor re-attaches to a live session rather than starting a second. Property-tested: a result applies only from the current attempt at the current epoch, and the epoch never goes back |
 | 5. Apply and acknowledge together | A duplicate event is a no-op; the process aborted mid-write, then the replay applies exactly once |
-| 6. Permissions are bounded | On the real Copilot CLI (driven by a scripted model), a worker's `git push` is denied inside the session; edits outside the worktree or scope, commands touching interlock's state, and the operator's commands are denied. Sessions get an allowlisted environment |
+| 6. Permissions are bounded | On the real Copilot CLI (driven by a scripted model), a worker's `git push` is denied inside the session; edits outside the worktree or scope, commands touching interlock's state, and the operator's commands are denied. Each Copilot session runs as interlock's agent for its role, offered the tools its grant leaves it and Copilot's own `skill` and `sql`: the verifier is never offered an edit tool, and Copilot's own deny rules still hold under the agent. Sessions get an allowlisted environment |
 | 7. External effects are reconciled | Every forge call runs under an operation row already marked started. A fake `gh` kills `interlock` with SIGKILL right after merging; `interlock reconcile` and a restarted `interlock run` each finish at G6 with exactly one merge. A merge call that dies unanswered stays unknown until the forge shows the merge. On the attempt side, every session left without a recorded end, in any task, is re-attached, or stopped and reconciled with a synthetic report |
 | Added: checks cannot be faked or emptied | On Copilot, end to end: a regression check that runs no tests, and a reproduction that already passes, each block the task before any session; a worker that rewrites the check to `exit 0` has its result rejected, however it builds and submits the tree, and the next worker must really fix the bug. Runs that tested nothing never pass or fail (property-tested) |
 | Added: only the verified head lands | Property-tested over abbreviated and prefix SHAs; end to end, a moved head is refused by `--match-head-commit` |
@@ -163,7 +163,9 @@ Each invariant in the design has a fault test that passes today. The last rows a
 - **Threads, not tokio.** Sessions, watchers and signal handling use threads and `signal-hook`; nothing needed an async runtime.
 - **Scope holds under every profile.** The draft lets the permissive profile edit freely; this build enforces the task's scope at the hook and at G3 under both profiles.
 - **The host policy is configuration.** `[host_policy.<host>]` in `.interlock/config.toml` denies tools or limits action classes for one host; G2 refuses a task whose grant then lacks a tool its role needs.
-- **Verification on Copilot** uses `interlock verify` (a session interlock launches) rather than a custom agent, because Copilot's hooks cannot name the calling subagent.
+- **Verification on Copilot** uses `interlock verify`, a session interlock launches as its verifier agent (`copilot -p --agent`), rather than a verifier subagent the person's session delegates to, because Copilot's hooks cannot name the calling subagent.
+- **G6 reads the evidence and the tree.** The draft's G6 guard names the merged head only. Here G6 also needs a head of at least seven characters, the pinned head's tree still to be the task's, and current passing evidence, as invariant 1 asks; a merge of the pinned head after the tree changed or the evidence went stale blocks the task with the reason. The lifecycle property tests found the short head and the evidence gap; review found the tree.
+- **The store can be allowed onto a network filesystem.** The draft rules it out; `INTERLOCK_ALLOW_NETWORK_FS=1` overrides the check for an operator who accepts the risk.
 
 ## Open questions from the draft (§14)
 
@@ -176,17 +178,16 @@ These are the defaults this build uses until they are decided:
 - **The six v1 skills and four workflows**: built as drafted; whether they cover what you need first is yours to say.
 - **Forge**: GitHub only.
 
-Of the draft's risks: S1 settled skill loading on both hosts; S2 (the Rust SDK) was not run, see above; a second host, Claude Code, is now tested, so portability is shown for two hosts; the store stays one controller per checkout on local disk, and nothing detects a network filesystem.
+Of the draft's risks: S1 settled skill loading on both hosts; S2 (the Rust SDK) was not run, see above; a second host, Claude Code, is now tested, so portability is shown for two hosts; the store stays one controller per checkout, and it refuses to open on a network filesystem it recognizes (on Linux; on macOS the check is compiled but has not run).
 
 ## What is not proven
 
 - **Live GitHub.** The container's GitHub token is invalid, so delivery ran against a fake `gh` and a local bare repository. GitHub's real messages, timing and branch protection are untested; [docs/forge.md](docs/forge.md) lists what a live run would add. Under auto-merge, a base that moves while the merge waits is detected after the merge, not prevented, unless the branch requires up-to-date branches.
-- **Copilot CLI with a real model.** Copilot runs exercise the real CLI, hooks, permissions, skills and custom agents with a scripted model. Model behaviour under the skills is evidenced on Claude Code only.
+- **Copilot CLI with a real model.** Copilot runs exercise the real CLI, hooks, permissions, skills and custom agents with a scripted model. Model behaviour under the skills, and under interlock's agent profiles, is evidenced on Claude Code only. Offline, Copilot offers no web or MCP tools, so the names the profiles give them are unchecked.
 - **That interlock improves outcomes.** On the stand-in tasks it did not: it accepted fewer runs than plain or skills alone (not a significant difference), at about 2.5 times the cost. Its verifier checks the stated criteria, so it cannot catch a requirement nobody wrote down.
 - **The real S3 task set and its baseline.** The evaluation runs on stand-in tasks.
 - **Spike S2 and the P0 adapter decision.** See "Copilot through its CLI" above. The P0 gate's choice between a Rust SDK adapter and a Node sidecar was not made; a third option was taken without S2.
-- **Schemas are still v0.** P1 asked for v1 schemas; the records grew fields (check runs, bindings, handoffs, operations) but their `$id`s still say `v0`.
-- **Lifecycle guards are tested by example, not by property.** The evidence policy, empty-run detection and pinned landing are property-tested; G1 to G7 have example fault tests.
+- **A refusal on a real network filesystem.** The store's check classifies filesystems by `statfs` magic number and FUSE mount type and source. That classification is unit-tested, and FUSE mounts served on this machine with the types `fuse.sshfs` and `fuse.gocryptfs` over it were refused, but no NFS, SMB or real sshfs mount could be made here. On macOS the check reads `statfs` type names; it compiles there but has not run. encfs layered on a network mount, and sshfs on macOS, are not caught ([docs/runtime.md](docs/runtime.md)).
 - **Containment is not a security boundary.** Hooks read command text and do not parse shell grammar; a path computed at run time gets past them. Operator commands check their caller's process ancestry, which holds in sessions interlock launches; in a guided session a person drives, they rely on the hook asking the person, which a command hidden behind a shell variable gets past. A same-user process can read another's environment. Attempt tokens are bookkeeping. Real containment comes from the host's tool restrictions and the operating system ([docs/runtime.md](docs/runtime.md) says what holds).
 
 ## Use

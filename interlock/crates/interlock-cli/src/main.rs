@@ -1110,8 +1110,12 @@ fn run(cli: &Cli) -> Result<()> {
             let mut store = open(cli)?;
             match cmd {
                 IntegrateCmd::Begin { task, pr, base, head } => {
-                    let intent =
-                        OperationIntent { expected_head_sha: head.clone(), base: base.clone(), pull_request: *pr };
+                    let intent = OperationIntent {
+                        expected_head_sha: head.clone(),
+                        base: base.clone(),
+                        pull_request: *pr,
+                        tree: None,
+                    };
                     let (moved, operation) = store.begin_integration(task, OperationKind::Merge, intent, now()?)?;
                     print(&json!({"moved": moved, "operation": operation}))
                 }
@@ -1531,6 +1535,9 @@ fn main() -> ExitCode {
                     (3, json!({"error": "not_found", "message": format!("not found: {what}")}))
                 }
                 Some(StoreError::BadToken(_)) => (4, json!({"error": "bad_token", "message": err.to_string()})),
+                Some(StoreError::NetworkFilesystem { .. }) => {
+                    (2, json!({"error": "network_filesystem", "message": format!("{err:#}")}))
+                }
                 _ => (1, json!({"error": "failed", "message": format!("{err:#}")})),
             };
             eprintln!("{}", serde_json::to_string_pretty(&body).unwrap_or_default());
