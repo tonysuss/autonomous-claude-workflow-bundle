@@ -2,7 +2,8 @@
 directory with a chosen subtype (so /proc/self/mountinfo says fuse.<subtype>)
 and answers just enough of the protocol for stat, statfs and lookups.
 
-Usage: python3 -I fuse_probe.py <mountpoint> <subtype> <seconds>
+Usage: python3 -I fuse_probe.py <mountpoint> <subtype> <seconds> [<source>]
+The source is what mountinfo shows as the mount's source ("probe" if not given).
 """
 import ctypes
 import os
@@ -15,10 +16,11 @@ LOOKUP, FORGET, GETATTR, STATFS, INIT, INTERRUPT, BATCH_FORGET = 1, 2, 3, 17, 26
 ENOENT, ENOSYS = 2, 38
 
 target, subtype, seconds = sys.argv[1], sys.argv[2], float(sys.argv[3])
+source = sys.argv[4] if len(sys.argv) > 4 else "probe"
 libc = ctypes.CDLL("libc.so.6", use_errno=True)
 fd = os.open("/dev/fuse", os.O_RDWR)
 opts = f"fd={fd},rootmode=40000,user_id=0,group_id=0,default_permissions"
-if libc.mount(b"probe", target.encode(), f"fuse.{subtype}".encode(), 1, opts.encode()) != 0:  # MS_RDONLY
+if libc.mount(source.encode(), target.encode(), f"fuse.{subtype}".encode(), 1, opts.encode()) != 0:  # MS_RDONLY
     sys.exit(f"mount failed: {os.strerror(ctypes.get_errno())}")
 print("mounted", flush=True)
 
