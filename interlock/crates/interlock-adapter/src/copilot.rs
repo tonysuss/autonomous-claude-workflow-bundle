@@ -1,6 +1,7 @@
 //! GitHub Copilot CLI.
 
 use interlock_core::capability::{CONTRACT_VERSION, Capability as C};
+use interlock_schema::ToolPolicy;
 
 use crate::{
     AuthStatus, CommandPlan, Host, HostReport, Probe, SessionSpec, SessionSummary, flag_capability, json_lines,
@@ -10,6 +11,23 @@ use crate::{
 pub struct Copilot;
 
 const BINARY: &str = "copilot";
+
+/// A custom agent profile for one headless session.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct AgentProfile {
+    /// What `--agent` takes: `<plugin>:<agent>`.
+    pub name: String,
+    /// `agents/<agent>.agent.md` in the hooks plugin.
+    pub path: std::path::PathBuf,
+    pub text: String,
+}
+
+impl AgentProfile {
+    pub fn write(&self) -> std::io::Result<()> {
+        std::fs::create_dir_all(self.path.parent().expect("an agent profile lives in a plugin"))?;
+        std::fs::write(&self.path, &self.text)
+    }
+}
 
 /// What Copilot CLI prints when it cannot sign in, lowercased. Captured from 1.0.91.
 pub(crate) const AUTH_FAILURES: &[&str] = &["no authentication information found"];
@@ -68,13 +86,67 @@ impl Copilot {
         }
     }
 
+    /// The custom agent a session runs as, `copilot -p --agent`: interlock's
+    /// profile for the session's role, kept in the hooks plugin, with the
+    /// role's instructions and only the tools its grant leaves it. `None`
+    /// when the session names no agent or loads no hooks plugin.
+    pub fn agent_profile(&self, spec: &SessionSpec) -> Option<AgentProfile> {
+        let (name, plugin) = (spec.agent.as_ref()?, spec.plugin_dir.as_ref()?);
+        // JSON strings and arrays are valid YAML, so nothing in them needs escaping.
+        let json = |v: serde_json::Value| v.to_string();
+        let text = format!(
+            "---\nname: {}\ndescription: {}\ntools: {}\n---\n\n{}\n",
+            json(name.as_str().into()),
+            json(format!("{name}, launched by interlock for one attempt").into()),
+            json(self.agent_tools(&spec.tools).into()),
+            spec.append_system.as_deref().unwrap_or_default(),
+        );
+        Some(AgentProfile {
+            name: format!("{}:{name}", crate::HOOKS_PLUGIN),
+            path: plugin.join("agents").join(format!("{name}.agent.md")),
+            text,
+        })
+    }
+
+    /// The tools an agent profile lists: every tool the policy allows and does
+    /// not deny outright, by the names Copilot 1.0.91 offers. Copilot then
+    /// offers nothing else but its `skill` and `sql` tools; narrower denials
+    /// (`shell:git push`) are still `--deny-tool` rules.
+    fn agent_tools(&self, policy: &ToolPolicy) -> Vec<String> {
+        let mut out: Vec<String> = Vec::new();
+        for tool in policy.allow.iter().filter(|t| !policy.deny.contains(t)) {
+            let names: Vec<String> = match tool.as_str() {
+                "read" => vec!["view".into(), "grep".into(), "glob".into()],
+                "edit" => vec!["create".into(), "edit".into()],
+                "shell" => vec!["bash".into()],
+                "web" => vec!["web_fetch".into(), "web_search".into()],
+                "agent" => vec!["agent".into()],
+                t if t.starts_with("shell:") => vec!["bash".into()],
+                // An MCP tool is `<server>/<tool>`; a whole server, `<server>/*`.
+                t => match t.strip_prefix("mcp:") {
+                    Some(tool) if tool.contains('/') => vec![tool.to_string()],
+                    Some(server) => vec![format!("{server}/*")],
+                    None => vec![t.to_string()],
+                },
+            };
+            for n in names {
+                if !out.contains(&n) {
+                    out.push(n);
+                }
+            }
+        }
+        out
+    }
+
     /// The command for a session, given the binary's location.
     pub fn plan_with(&self, bin: std::path::PathBuf, spec: &SessionSpec) -> CommandPlan {
         let tools = self.translate(&spec.tools);
-        // Copilot has no flag for extra system instructions, so they lead the prompt.
-        let prompt = match &spec.append_system {
-            Some(sys) => format!("{sys}\n\n{}", spec.prompt),
-            None => spec.prompt.clone(),
+        let agent = self.agent_profile(spec);
+        let prompt = match (&spec.append_system, &agent) {
+            // The agent's profile carries the role's instructions into the system prompt.
+            (_, Some(_)) | (None, None) => spec.prompt.clone(),
+            // Without one, Copilot has no flag for extra system instructions, so they lead the prompt.
+            (Some(sys), None) => format!("{sys}\n\n{}", spec.prompt),
         };
         let mut args: Vec<String> = vec![
             "-p".into(),
@@ -88,6 +160,9 @@ impl Copilot {
         args.extend(tools.deny.iter().map(|p| format!("--deny-tool={p}")));
         for dir in spec.plugin_dir.iter().chain(&spec.extra_plugin_dirs) {
             args.extend(["--plugin-dir".into(), dir.display().to_string()]);
+        }
+        if let Some(a) = &agent {
+            args.extend(["--agent".into(), a.name.clone()]);
         }
         if let Some(m) = &spec.model {
             args.extend(["--model".into(), m.clone()]);
@@ -133,6 +208,9 @@ impl Host for Copilot {
 
     fn plan(&self, probe: &Probe, spec: &SessionSpec) -> Result<CommandPlan, String> {
         let bin = probe.locate(self.name(), BINARY).ok_or("copilot was not found on PATH")?;
+        if let Some(agent) = self.agent_profile(spec) {
+            agent.write().map_err(|e| format!("cannot write the agent profile {}: {e}", agent.path.display()))?;
+        }
         Ok(self.plan_with(bin, spec))
     }
 
@@ -206,7 +284,6 @@ impl Host for Copilot {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use interlock_schema::ToolPolicy;
 
     const HELP: &str = "  -p, --prompt <text>\n  --reasoning-effort <level>\n  --output-format <format>\n  --model <model>\n  --agent <agent>\n  --available-tools [<tools>...]\n  --allow-tool [<tools>...]\n  --deny-tool [<tools>...]\n  --plugin-dir <directory>\n  --fleet\n";
 
@@ -242,6 +319,7 @@ mod tests {
             workdir: "/w".into(),
             prompt: "Fix it".into(),
             append_system: Some("You are the worker.".into()),
+            agent: None,
             tools: ToolPolicy {
                 allow: vec!["read".into(), "edit".into(), "shell".into()],
                 deny: vec!["shell:git push".into()],
@@ -271,6 +349,73 @@ mod tests {
         // Copilot caps AI credits, not dollars, so a dollar budget is enforced by interlock alone.
         assert!(!plan.args.iter().any(|a| a.contains("credits")));
         assert!(plan.args.iter().any(|a| a == "--reasoning-effort=high"));
+        assert!(!plan.args.iter().any(|a| a == "--agent"), "no agent was named");
+    }
+
+    fn policy(allow: &[&str], deny: &[&str]) -> ToolPolicy {
+        ToolPolicy {
+            allow: allow.iter().map(|s| s.to_string()).collect(),
+            deny: deny.iter().map(|s| s.to_string()).collect(),
+        }
+    }
+
+    #[test]
+    fn plans_a_session_as_interlocks_agent_for_its_role() {
+        let spec = SessionSpec {
+            workdir: "/w".into(),
+            prompt: "Check it".into(),
+            append_system: Some("You are the independent verifier.".into()),
+            agent: Some("interlock-verifier".into()),
+            tools: policy(&["read", "shell"], &["edit", "shell:git push", "shell:git commit"]),
+            model: None,
+            max_turns: None,
+            plugin_dir: Some("/p".into()),
+            extra_plugin_dirs: vec![],
+            env: vec![],
+            timeout: std::time::Duration::from_secs(60),
+            transcript: "/t.jsonl".into(),
+            session_id: None,
+            max_cost_usd: None,
+            effort: None,
+            clear_env: true,
+        };
+        let plan = Copilot.plan_with("/bin/copilot".into(), &spec);
+        assert!(
+            plan.args.windows(2).any(|w| w == ["--agent", "interlock-hooks:interlock-verifier"]),
+            "{:?}",
+            plan.args
+        );
+        assert_eq!(plan.args[1], "Check it", "the role's instructions go to the agent, not the prompt");
+        // The tool filters stay as they were.
+        for a in ["--allow-tool=shell", "--deny-tool=write", "--deny-tool=shell(git push:*)"] {
+            assert!(plan.args.iter().any(|x| x == a), "{a} in {:?}", plan.args);
+        }
+        let agent = Copilot.agent_profile(&spec).unwrap();
+        assert_eq!(agent.path, std::path::Path::new("/p/agents/interlock-verifier.agent.md"));
+        assert_eq!(
+            agent.text,
+            "---\nname: \"interlock-verifier\"\ndescription: \"interlock-verifier, launched by interlock for one \
+             attempt\"\ntools: [\"view\",\"grep\",\"glob\",\"bash\"]\n---\n\nYou are the independent verifier.\n"
+        );
+
+        // Without the hooks plugin there is nowhere to keep the profile: the instructions lead the prompt.
+        let bare = SessionSpec { plugin_dir: None, ..spec };
+        assert_eq!(Copilot.agent_profile(&bare), None);
+        assert!(
+            Copilot.plan_with("/bin/copilot".into(), &bare).args[1].starts_with("You are the independent verifier.")
+        );
+    }
+
+    #[test]
+    fn an_agent_lists_only_the_tools_its_grant_leaves_it() {
+        let tools = |allow: &[&str], deny: &[&str]| Copilot.agent_tools(&policy(allow, deny));
+        let worker = tools(&["read", "edit", "shell"], &["shell:git push", "shell:git commit"]);
+        assert_eq!(worker, ["view", "grep", "glob", "create", "edit", "bash"]);
+        assert!(!worker.contains(&"agent".to_string()), "no sub-agents unless the grant has `agent`");
+        assert_eq!(tools(&["read", "edit"], &["edit"]), ["view", "grep", "glob"], "a whole denial removes the tool");
+        assert_eq!(tools(&["shell:cargo test"], &[]), ["bash"], "a narrower allow still needs the shell");
+        assert_eq!(tools(&["agent", "mcp:github/get_pr", "mcp:jira"], &[]), ["agent", "github/get_pr", "jira/*"]);
+        assert_eq!(tools(&["web"], &[]), ["web_fetch", "web_search"]);
     }
 
     #[test]

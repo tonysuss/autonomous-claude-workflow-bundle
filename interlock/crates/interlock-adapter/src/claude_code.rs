@@ -221,6 +221,7 @@ mod tests {
             workdir: "/w".into(),
             prompt: "Fix it".into(),
             append_system: Some("You are the verifier.".into()),
+            agent: None,
             tools: ToolPolicy { allow: vec!["read".into(), "shell".into()], deny: vec!["edit".into()] },
             model: None,
             max_turns: Some(30),

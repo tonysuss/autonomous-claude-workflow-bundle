@@ -79,6 +79,7 @@ pub fn run_check_cancellable(
         workdir,
         prompt: String::new(),
         append_system: None,
+        agent: None,
         tools: ToolPolicy::default(),
         model: None,
         max_turns: None,

@@ -26,6 +26,11 @@ pub struct SessionSpec {
     pub prompt: String,
     /// Role instructions appended to the host's system prompt, where supported.
     pub append_system: Option<String>,
+    /// interlock's agent for the session's role, such as `interlock-worker`.
+    /// A host that runs custom agents headless runs the session as this
+    /// agent, kept in the hooks plugin, with `append_system` as its
+    /// instructions. `None` where the host has no custom agents.
+    pub agent: Option<String>,
     /// Host-neutral tool policy; the host translates it.
     pub tools: ToolPolicy,
     pub model: Option<String>,
@@ -603,13 +608,17 @@ pub fn shell_quote(s: &str) -> String {
     }
 }
 
+/// The name of interlock's hooks plugin. Copilot names the plugin's agents
+/// `interlock-hooks:<agent>`.
+pub const HOOKS_PLUGIN: &str = "interlock-hooks";
+
 /// Writes interlock's hooks as a Claude-format plugin, which both Claude Code
 /// and Copilot CLI load with `--plugin-dir`.
 pub fn write_hooks_plugin(dir: &std::path::Path, interlock_bin: &std::path::Path) -> std::io::Result<()> {
     std::fs::create_dir_all(dir.join(".claude-plugin"))?;
     std::fs::create_dir_all(dir.join("hooks"))?;
     let manifest = serde_json::json!({
-        "name": "interlock-hooks",
+        "name": HOOKS_PLUGIN,
         "version": env!("CARGO_PKG_VERSION"),
         "description": "interlock per-call policy and stop guard"
     });
@@ -635,6 +644,7 @@ mod tests {
             workdir: dir.to_path_buf(),
             prompt: "hi".into(),
             append_system: None,
+            agent: None,
             tools: ToolPolicy::default(),
             model: None,
             max_turns: None,

@@ -1,0 +1,5 @@
+{
+  "hooks": {
+    "PreToolUse": [{ "matcher": "*", "hooks": [{ "type": "command", "command": "sh <scratch>/agentspike/scripts/hook.sh", "timeout": 60 }] }]
+  }
+}

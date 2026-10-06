@@ -1,0 +1,6 @@
+{"sessions": [{"match": "AGENT-PROBE", "steps": [
+  {"tool": "bash", "args": {"command": "echo hello-from-agent"}},
+  {"tool": "bash", "args": {"command": "git push origin main"}},
+  {"tool": "bash", "args": {"command": "echo DENY-ME"}},
+  {"tool": "create", "args": {"path": "b.txt", "file_text": "x"}}
+], "final": "probe done"}]}

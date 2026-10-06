@@ -259,11 +259,10 @@ fn a_bug_fix_runs_end_to_end_in_guidance_mode() {
         ],
         reply: "fix-add is done: verified by the independent verifier.".into(),
     };
-    let verifier_calc = repo.join(".interlock/worktrees/fix-add-verifier-1/calc.py").display().to_string();
     let verifier = Conversation {
         marker: HEADLESS_VERIFIER.into(),
         steps: vec![
-            tool("edit", json!({"path": verifier_calc, "old_str": "a + b", "new_str": "b + a"})),
+            bash("git commit --allow-empty -m 'the verifier commits'"),
             bash("interlock check run --criterion repro"),
             bash("interlock check run --criterion regression"),
             bash(
@@ -299,13 +298,18 @@ fn a_bug_fix_runs_end_to_end_in_guidance_mode() {
     assert_eq!(verifier_bindings(&g, "fix-add"), ["interlock_launched"], "one verifier, launched by interlock");
     assert!(!repo.join(".interlock/worktrees/fix-add-worker-1").exists(), "done removes the worktrees");
 
-    // The verifier was a separate session, and its edit was denied: Copilot offers the tool, interlock refuses it.
+    // The verifier was a separate session, run as interlock's verifier agent: Copilot never offered it an
+    // edit tool, and its commit was denied.
     let verifier_requests: Vec<Value> =
         model.log().into_iter().filter(|r| r["conversation"] == HEADLESS_VERIFIER).collect();
-    let after_edit = verifier_requests.iter().find(|r| r["tools_done"] == 1).expect("the verifier's second request");
-    let seen = after_edit["new_text"].as_str().unwrap_or_default();
-    assert!(seen.to_lowercase().contains("denied"), "the verifier's edit went through: {seen}");
-    assert!(tools_offered(after_edit).iter().any(|t| t == "bash"));
+    let after_commit = verifier_requests.iter().find(|r| r["tools_done"] == 1).expect("the verifier's second request");
+    let seen = after_commit["new_text"].as_str().unwrap_or_default();
+    assert!(seen.to_lowercase().contains("denied"), "the verifier's commit went through: {seen}");
+    for r in &verifier_requests {
+        let offered = tools_offered(r);
+        assert!(offered.iter().any(|t| t == "bash"), "{offered:?}");
+        assert!(!offered.iter().any(|t| t == "edit" || t == "create"), "the verifier was offered {offered:?}");
+    }
 }
 
 const EXPORTER: &str = "def export(rows, sink, retries=2):\n    \"\"\"Write rows; on a transient failure, retry the whole batch.\"\"\"\n    for attempt in range(retries + 1):\n        try:\n            for row in rows:\n                sink.write(row)\n            return attempt + 1\n        except IOError:\n            continue\n    raise IOError(\"export failed\")\n";

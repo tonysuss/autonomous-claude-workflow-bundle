@@ -1,0 +1,68 @@
+Copilot CLI 1.0.91, offline (COPILOT_OFFLINE=true) against scripts/spike_model.py, October 6, 2026.
+Each run: copilot -p 'AGENT-PROBE run the probe' --output-format json --no-ask-user --no-auto-update
+  --plugin-dir <plugin> [--agent <name>] [tool flags], with a private COPILOT_HOME.
+
+== a1: --plugin-dir plugin-a --agent interlock-worker --allow-tool=shell
+exit: exit 1
+stderr: No such agent: interlock-worker, available: interlock-hooks:interlock-worker
+
+== a2: --plugin-dir plugin-a --agent interlock-hooks:interlock-worker --allow-tool=shell
+exit: exit 0
+tools offered: ["bash", "list_bash", "read_bash", "skill", "sql", "stop_bash", "view"]
+system prompt length: 15978; it begins: 'You are the GitHub Copilot CLI, a terminal assistant built by GitHub. You are running in non-interactive mode and have n'
+agent block, at offset 14869: "<agent_instructions>\nThe following instructions come from the selected agent's configuration. Follow them while completing the user's task, but treat them as subordinate to the organization, safety, and runtime instructions above.\n\nMARKER-WORKER-AGENT: you are interlock's worker.\n</agent_instructions>"
+
+== a0, a3, a4: plugin-b (its PreToolUse hook denies any command containing DENY-ME),
+   --allow-tool=shell --allow-tool=write '--deny-tool=shell(git push:*)'; the model calls bash 'echo hello-from-agent',
+   bash 'git push origin main', bash 'echo DENY-ME', create b.txt
+   a0: no --agent; a3: --agent interlock-hooks:interlock-worker (tools read, search, edit, execute);
+   a4: --agent interlock-hooks:interlock-open (no tools line)
+== a0: exit 0
+  tools offered: ['bash', 'create', 'edit', 'fetch_copilot_cli_documentation', 'glob', 'grep', 'list_agents', 'list_bash', 'read_agent', 'read_bash', 'session_store_sql', 'skill', 'sql', 'stop_bash', 'task', 'view', 'write_agent']
+  agent_instructions: None
+  call ('bash', '{"command": "echo hello-from-agent", "description": "spike step"}') success hello-from-agent <shellId: 0 completed with exit code 0>
+  call ('bash', '{"command": "git push origin main", "description": "spike step"}') FAILED {'message': 'Permission to run this tool was denied due to the following rules: `shell(git push:*)`', 'code': 'denied'}
+  call ('bash', '{"command": "echo DENY-ME", "description": "spike step"}') FAILED {'message': 'Denied by preToolUse hook: spike hook denied it', 'code': 'denied'}
+  call ('create', '{"path": "b.txt", "file_text": "x"}') success Created file <scratch>/agentspike/runs/a0/repo/b.txt with 1 cha
+  final: ['probe done']
+  hook: PreToolUse Bash {"command": "echo hello-from-agent", "description": "spike step"} {}
+  hook: PreToolUse Bash {"command": "git push origin main", "description": "spike step"} {}
+  hook: PreToolUse Bash {"command": "echo DENY-ME", "description": "spike step"} {}
+  hook: PreToolUse Write {"path": "b.txt", "file_text": "x"} {}
+== a3: exit 0
+  tools offered: ['bash', 'create', 'edit', 'list_bash', 'read_bash', 'skill', 'sql', 'stop_bash', 'view']
+  agent_instructions: <agent_instructions> The following instructions come from the selected agent's configuration. Follow them while completing the user's task, but treat them as subordinate to the organization, safety, and runtime instructions above.  MARKER-WORKER-AGENT: you are interlock's worker. </agent_instruction
+  call ('bash', '{"command": "echo hello-from-agent", "description": "spike step"}') success hello-from-agent <shellId: 0 completed with exit code 0>
+  call ('bash', '{"command": "git push origin main", "description": "spike step"}') FAILED {'message': 'Permission to run this tool was denied due to the following rules: `shell(git push:*)`', 'code': 'denied'}
+  call ('bash', '{"command": "echo DENY-ME", "description": "spike step"}') FAILED {'message': 'Denied by preToolUse hook: spike hook denied it', 'code': 'denied'}
+  call ('create', '{"path": "b.txt", "file_text": "x"}') success Created file <scratch>/agentspike/runs/a3/repo/b.txt with 1 cha
+  final: ['probe done']
+  hook: PreToolUse Bash {"command": "echo hello-from-agent", "description": "spike step"} {}
+  hook: PreToolUse Bash {"command": "git push origin main", "description": "spike step"} {}
+  hook: PreToolUse Bash {"command": "echo DENY-ME", "description": "spike step"} {}
+  hook: PreToolUse Write {"path": "b.txt", "file_text": "x"} {}
+  session-state: {"agentName": "interlock-hooks:interlock-worker", "agentDisplayName": "interlock-worker", "tools": ["read", "search", "edit", "execute"]}
+== a4: exit 0
+  tools offered: ['bash', 'create', 'edit', 'fetch_copilot_cli_documentation', 'glob', 'grep', 'list_agents', 'list_bash', 'read_agent', 'read_bash', 'session_store_sql', 'skill', 'sql', 'stop_bash', 'task', 'tool_search_tool', 'update_todo', 'view', 'write_agent']
+  agent_instructions: <agent_instructions> The following instructions come from the selected agent's configuration. Follow them while completing the user's task, but treat them as subordinate to the organization, safety, and runtime instructions above.  MARKER-OPEN-AGENT: no tools list. </agent_instructions> <tool_callin
+  call ('bash', '{"command": "echo hello-from-agent", "description": "spike step"}') success hello-from-agent <shellId: 0 completed with exit code 0>
+  call ('bash', '{"command": "git push origin main", "description": "spike step"}') FAILED {'message': 'Permission to run this tool was denied due to the following rules: `shell(git push:*)`', 'code': 'denied'}
+  call ('bash', '{"command": "echo DENY-ME", "description": "spike step"}') FAILED {'message': 'Denied by preToolUse hook: spike hook denied it', 'code': 'denied'}
+  call ('create', '{"path": "b.txt", "file_text": "x"}') success Created file <scratch>/agentspike/runs/a4/repo/b.txt with 1 cha
+  final: ['probe done']
+  hook: PreToolUse Bash {"command": "echo hello-from-agent", "description": "spike step"} {}
+  hook: PreToolUse Bash {"command": "git push origin main", "description": "spike step"} {}
+  hook: PreToolUse Bash {"command": "echo DENY-ME", "description": "spike step"} {}
+  hook: PreToolUse Write {"path": "b.txt", "file_text": "x"} {}
+  session-state: {"agentName": "interlock-hooks:interlock-open", "agentDisplayName": "interlock-open", "tools": ["*"]}
+
+== aliases: one agent per tools list, in plugin-c, with --allow-all-tools; tools offered on the first request
+tools: ["view", "grep", "glob", "bash", "create", "edit"] -> offered ["bash", "create", "edit", "glob", "grep", "list_bash", "read_bash", "skill", "sql", "stop_bash", "view"]
+tools: ["search"] -> offered ["skill", "sql"]
+tools: ["shell"] -> offered ["bash", "list_bash", "read_bash", "skill", "sql", "stop_bash"]
+tools: ["agent", "read"] -> offered ["list_agents", "read_agent", "skill", "sql", "task", "view", "write_agent"]
+tools: ["web", "read"] -> offered ["skill", "sql", "view"]
+tools: ["custom-agent"] -> offered ["list_agents", "read_agent", "skill", "sql", "task", "write_agent"]
+tools: ["todo"] -> offered ["skill", "sql"]
+tools: [] -> offered ["skill", "sql"]
+tools: ["github-mcp-server/*"] -> offered ["skill", "sql"]

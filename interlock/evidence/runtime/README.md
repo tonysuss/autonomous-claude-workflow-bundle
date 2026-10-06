@@ -208,3 +208,16 @@ October 6, 2026, on the build that added the check (docs/runtime.md, "No store o
 | `fuse.fuse-overlayfs` | `0x65735546` (FUSE) | The check passes; the read-only probe then fails the same way | Same | [`network-fs/fuse-overlayfs.txt`](network-fs/fuse-overlayfs.txt) |
 
 So `statfs` and the mount table are read correctly on a live mount. Whether a real NFS, SMB or sshfs mount reports what the tests assume is not shown here: the magic numbers come from `statfs(2)` and the kernel's headers, and the FUSE types from the tools' own mounts.
+
+## 9. Copilot runs headless sessions as interlock's agents
+
+October 6, 2026. The probes behind `copilot -p --agent` (docs/host-spike-2026-10-05.md, "Custom agents for headless sessions"): Copilot CLI 1.0.91 offline, against the S1 spike model ([`evidence/skills/scripts/spike_model.py`](../skills/scripts/spike_model.py)) with the system prompt logged. All results are in [`copilot-agent/probes.txt`](copilot-agent/probes.txt); the scripts, plugins and model script are beside it. Runs `a1` and `a2` used an earlier `script.json` with two steps, `bash` then `create`.
+
+| Run | What | Outcome |
+| --- | --- | --- |
+| a1 | `--agent interlock-worker`, the agent in `--plugin-dir` | Exit 1: "No such agent: interlock-worker, available: interlock-hooks:interlock-worker" |
+| a2 | `--agent interlock-hooks:interlock-worker` | Runs. The profile's body is in the system prompt's `<agent_instructions>`, after Copilot's own; only the profile's tools are offered |
+| a0, a3, a4 | No agent; an agent with `tools`; an agent with no `tools` line. Each with `--deny-tool 'shell(git push:*)'` and a hook that denies `DENY-ME` | In all three, the push is denied by the rule and `DENY-ME` by the hook. With an agent, Copilot's session log records `subagent.selected` with the agent's name |
+| t-* | One agent per `tools` list | Tool names work; `shell`, `execute`, `agent`, `custom-agent` and `read` work as aliases; `search`, `todo` and, offline, `web` and an MCP name give nothing |
+
+The tests that keep this true are `run_copilot::each_session_runs_as_interlocks_agent_for_its_role_and_the_tool_filters_hold` and `run_copilot::copilot_keeps_the_deny_rules_for_a_session_run_as_an_agent`.
