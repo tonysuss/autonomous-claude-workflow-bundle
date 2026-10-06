@@ -14,6 +14,7 @@ use interlock_schema::*;
 use rusqlite::{Connection, OptionalExtension, Transaction, TransactionBehavior, params};
 use serde::{Deserialize, Serialize, de::DeserializeOwned};
 
+pub mod netfs;
 mod operations;
 
 pub use operations::{Pin, Settled};
@@ -39,6 +40,12 @@ pub enum StoreError {
     Json(#[from] serde_json::Error),
     #[error("injected fault: {0}")]
     Fault(&'static str),
+    #[error(
+        "the store's directory {dir} is on a network filesystem ({kind}). interlock keeps its store on local \
+         disk, one controller per checkout: SQLite's locks do not hold across machines. Use a checkout on local \
+         disk, or put the store there with --db (INTERLOCK_DB); set INTERLOCK_ALLOW_NETWORK_FS=1 to open it anyway"
+    )]
+    NetworkFilesystem { dir: String, kind: String },
 }
 
 pub type Result<T> = std::result::Result<T, StoreError>;
@@ -463,7 +470,10 @@ fn check_fault(fault: Option<Fault>) -> Result<()> {
 }
 
 impl Store {
+    /// Opens, or creates, the store at `path`. A directory on a network
+    /// filesystem is refused unless `INTERLOCK_ALLOW_NETWORK_FS=1`.
     pub fn open(path: &Path) -> Result<Store> {
+        netfs::ensure_local(path.parent().unwrap_or(Path::new("")))?;
         if let Some(dir) = path.parent() {
             std::fs::create_dir_all(dir)
                 .map_err(|e| StoreError::Invalid(format!("cannot create {}: {e}", dir.display())))?;

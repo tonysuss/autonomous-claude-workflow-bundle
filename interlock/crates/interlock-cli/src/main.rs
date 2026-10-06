@@ -1531,6 +1531,9 @@ fn main() -> ExitCode {
                     (3, json!({"error": "not_found", "message": format!("not found: {what}")}))
                 }
                 Some(StoreError::BadToken(_)) => (4, json!({"error": "bad_token", "message": err.to_string()})),
+                Some(StoreError::NetworkFilesystem { .. }) => {
+                    (2, json!({"error": "network_filesystem", "message": format!("{err:#}")}))
+                }
                 _ => (1, json!({"error": "failed", "message": format!("{err:#}")})),
             };
             eprintln!("{}", serde_json::to_string_pretty(&body).unwrap_or_default());

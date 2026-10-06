@@ -393,6 +393,29 @@ fn schema_validate_checks_files() {
     assert!(!env.run(&["schema", "validate", "task", file.to_str().unwrap()]).status.success());
 }
 
+#[test]
+fn a_store_on_local_disk_opens_without_the_network_override() {
+    // Every command that opens the store checks its directory's filesystem
+    // and refuses NFS, SMB/CIFS and network FUSE. A temporary directory is
+    // local, so init and the commands after it run with no override set.
+    let dir = tempfile::tempdir().unwrap();
+    assert_eq!(interlock_store::netfs::network_filesystem(dir.path()), None);
+    let interlock = |args: &[&str]| {
+        Command::new(env!("CARGO_BIN_EXE_interlock"))
+            .args(args)
+            .env_remove("INTERLOCK_DB")
+            .env_remove(interlock_store::netfs::ALLOW)
+            .current_dir(dir.path())
+            .output()
+            .unwrap()
+    };
+    for args in [&["init"][..], &["task", "list"]] {
+        let out = interlock(args);
+        assert!(out.status.success(), "{args:?}: {}", String::from_utf8_lossy(&out.stderr));
+    }
+    assert!(dir.path().join(".interlock/state.db").is_file());
+}
+
 fn git(dir: &std::path::Path, args: &[&str]) {
     let out = Command::new("git").args(args).current_dir(dir).output().unwrap();
     assert!(out.status.success(), "git {args:?}: {}", String::from_utf8_lossy(&out.stderr));

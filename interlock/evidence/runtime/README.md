@@ -197,3 +197,14 @@ The outcome:
 - `handoff.env` lists only allowlisted names, the same set as in round 2.
 
 The script is [`live-claude-reattach-integrated/live_reattach.sh`](live-claude-reattach-integrated/live_reattach.sh). It is round 2's script with `max_cost_usd = 0.5` instead of `1.0`.
+
+## 8. No store on a network filesystem
+
+October 6, 2026, on the build that added the check (docs/runtime.md, "No store on a network filesystem"). No NFS or SMB mount could be made in the container, so this is a manual check of the code path on a real mount: [`network-fs/fuse_probe.py`](network-fs/fuse_probe.py) serves an empty, read-only FUSE filesystem from this machine, mounted with the type it is given, and [`network-fs/run.sh`](network-fs/run.sh) runs `interlock init` with the store on it.
+
+| Mount type | `statfs` magic | `interlock init` | With `INTERLOCK_ALLOW_NETWORK_FS=1` | Raw output |
+| --- | --- | --- | --- | --- |
+| `fuse.sshfs` | `0x65735546` (FUSE) | Refused, exit 2, `"error": "network_filesystem"`, naming `FUSE sshfs` and the override | The check passes; creating the store then fails because the probe is read-only (exit 1) | [`network-fs/sshfs.txt`](network-fs/sshfs.txt) |
+| `fuse.fuse-overlayfs` | `0x65735546` (FUSE) | The check passes; the read-only probe then fails the same way | Same | [`network-fs/fuse-overlayfs.txt`](network-fs/fuse-overlayfs.txt) |
+
+So `statfs` and the mount table are read correctly on a live mount. Whether a real NFS, SMB or sshfs mount reports what the tests assume is not shown here: the magic numbers come from `statfs(2)` and the kernel's headers, and the FUSE types from the tools' own mounts.
