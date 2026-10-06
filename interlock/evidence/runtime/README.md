@@ -156,4 +156,7 @@ These probes shaped the adapters:
 
 Before the environment allowlist was written, two console probes ran Claude Code with a reduced environment: one scrubbed of the parent agent's session variables ($0.039), and one with only the allowlist ($0.016). Both signed in. Their output was not kept; the round-2 live run above shows the same thing with records.
 
-Model spend for this work in total: $0.289 + $0.0009 (round 1), and $0.039 + $0.016 + $0.127 (round 2).
+Model spend for this work, about $0.53 in all:
+
+- **Round 1, $0.344:** the live demo ($0.289), the cost-cap probe ($0.0009), and two earlier headless probes, one with the full environment and one with a scrubbed one ($0.030 and $0.025). Round 1's notes left those two out, and their output is not kept.
+- **Round 2, $0.183:** the two environment probes ($0.039 and $0.016) and the live demo ($0.127).
