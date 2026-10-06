@@ -173,6 +173,12 @@ fn a_guided_worker_gets_a_worktree_and_scope_holds_on_the_tree() {
 
     // From inside the worktree, with no INTERLOCK_DB, interlock finds the repository's store.
     assert_eq!(repo.ok_in(&wt, &["status", "fix-add"])["task"]["state"], "running");
+    // A separate repository nested in this one still gets its own store.
+    let nested = root.join("vendor/other");
+    std::fs::create_dir_all(&nested).unwrap();
+    assert!(Command::new("git").args(["init", "-q"]).current_dir(&nested).status().unwrap().success());
+    repo.ok_in(&nested, &["init"]);
+    assert!(nested.join(".interlock/state.db").exists());
 
     // The hooks find the guided attempt with nothing in the environment.
     let edit = |path: &Path| serde_json::json!({"hook_event_name": "PreToolUse", "tool_name": "Edit", "tool_input": {"file_path": path}, "cwd": root});

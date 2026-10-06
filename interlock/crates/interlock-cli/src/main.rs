@@ -509,10 +509,10 @@ fn now() -> Result<DateTime<Utc>> {
 
 fn default_db() -> PathBuf {
     let cwd = std::env::current_dir().unwrap_or_else(|_| PathBuf::from("."));
-    // Attempt worktrees live under .interlock/worktrees, so the nearest store
-    // wins over the nearest repository root.
-    if let Some(dir) = cwd.ancestors().find(|d| d.join(".interlock").join("state.db").exists()) {
-        return dir.join(".interlock").join("state.db");
+    // An attempt's worktree under <repo>/.interlock/worktrees uses the repository's store.
+    let worktrees = Path::new(".interlock").join("worktrees");
+    if let Some(repo) = cwd.ancestors().find(|d| d.ends_with(&worktrees)).and_then(|d| d.parent()?.parent()) {
+        return repo.join(".interlock").join("state.db");
     }
     let root = cwd.ancestors().find(|d| d.join(".git").exists()).unwrap_or(&cwd);
     root.join(".interlock").join("state.db")

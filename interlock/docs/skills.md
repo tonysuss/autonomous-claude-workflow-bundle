@@ -141,7 +141,7 @@ The hooks run `INTERLOCK_MODE=interactive INTERLOCK_HOST=<host> INTERLOCK_DB=<st
 - **Ask, not deny.** In interactive mode a call the grant does not cover gets `permissionDecision: ask`; the person decides. Hard rules still deny: edits outside the attempt's worktree or the task's scope, commands that touch the store, and the grant's own deny list.
 - **One worktree per attempt.** `--worktree auto` makes a fresh git worktree under `.interlock/worktrees/` (workers at the input snapshot or the last accepted output; verifiers and reviewers at the output under verification) and records it on the attempt.
 - **Results come from the tree.** `result submit --tree auto` records the worktree's tree, and the change set is read from it, so scope holds whatever the caller lists.
-- **The store is found from inside a worktree.** Without `INTERLOCK_DB`, interlock uses the nearest `.interlock/state.db` above the current directory, so commands run inside `.interlock/worktrees/...` reach the repository's store.
+- **The store is found from inside a worktree.** Without `INTERLOCK_DB`, a command run anywhere under `<repo>/.interlock/worktrees/` uses `<repo>/.interlock/state.db`; everywhere else the store is still found at the nearest repository root.
 - **The stop guard holds the session** until the open attempt's evidence is recorded, once per stop, as in the headless path.
 
 ### Verification is delegated
