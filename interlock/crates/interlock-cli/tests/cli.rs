@@ -483,3 +483,52 @@ fn assessments_weaker_than_the_criterion_needs_come_back_with_a_warning() {
     assert!(assess("observed").get("warning").is_none(), "no warning when the strength suffices");
     assert!(assess("failed").get("warning").is_none(), "a failure is not a weak pass");
 }
+
+/// `interlock where` reports the store every other command would open from a directory, and
+/// creates nothing: the standalone skills ask it whether the work is an interlock task.
+#[test]
+fn where_finds_the_store_every_command_uses_and_creates_none() {
+    let dir = tempfile::tempdir().unwrap();
+    let repo = dir.path().canonicalize().unwrap();
+    git_out(&repo, &["init", "-q", "-b", "main"]);
+    std::fs::create_dir_all(repo.join("sub/deep")).unwrap();
+    let interlock = |cwd: &Path, db: Option<&Path>, args: &[&str]| -> (i32, Value) {
+        let mut c = Command::new(env!("CARGO_BIN_EXE_interlock"));
+        c.args(args).current_dir(cwd).env_remove("INTERLOCK_DB").env_remove("INTERLOCK_ATTEMPT");
+        if let Some(db) = db {
+            c.env("INTERLOCK_DB", db);
+        }
+        let out = c.output().unwrap();
+        (out.status.code().unwrap(), serde_json::from_slice(&out.stdout).unwrap_or(Value::Null))
+    };
+    let default_store = repo.join(".interlock/state.db");
+
+    // No store yet: exit 3, and asking made none.
+    let (code, v) = interlock(&repo.join("sub/deep"), None, &["where"]);
+    assert_eq!((code, &v["exists"]), (3, &Value::Bool(false)), "{v}");
+    assert_eq!(v["store"], default_store.display().to_string());
+    assert!(!repo.join(".interlock").exists(), "where created the store's directory");
+
+    // The default store, from the root, a subdirectory, and inside an attempt's worktree.
+    assert_eq!(interlock(&repo, None, &["init"]).0, 0);
+    std::fs::create_dir_all(repo.join(".interlock/worktrees/t1-worker-1/src")).unwrap();
+    for cwd in [repo.clone(), repo.join("sub/deep"), repo.join(".interlock/worktrees/t1-worker-1/src")] {
+        let (code, v) = interlock(&cwd, None, &["where"]);
+        assert_eq!(code, 0, "{}: {v}", cwd.display());
+        assert_eq!(v["store"], default_store.display().to_string(), "{}", cwd.display());
+        assert_eq!((&v["exists"], &v["repo"]), (&Value::Bool(true), &Value::String(repo.display().to_string())));
+    }
+
+    // A store set with INTERLOCK_DB, as a guided setup can choose: found only through it.
+    let elsewhere = repo.join("tools/interlock/state.db");
+    assert_eq!(interlock(&repo.join("sub"), Some(&elsewhere), &["init"]).0, 0);
+    let (code, v) = interlock(&repo.join("sub/deep"), Some(&elsewhere), &["where"]);
+    assert_eq!((code, &v["exists"]), (0, &Value::Bool(true)), "{v}");
+    assert_eq!(v["store"], elsewhere.display().to_string());
+    assert_eq!(v["repo"], repo.display().to_string());
+    // A missing INTERLOCK_DB store is reported as missing, and not created.
+    let missing = repo.join("nowhere/state.db");
+    let (code, v) = interlock(&repo, Some(&missing), &["where"]);
+    assert_eq!((code, &v["exists"]), (3, &Value::Bool(false)), "{v}");
+    assert!(!missing.exists() && !repo.join("nowhere").exists());
+}

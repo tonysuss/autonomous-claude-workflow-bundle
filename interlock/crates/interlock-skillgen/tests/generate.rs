@@ -254,9 +254,10 @@ fn the_entry_skills_trigger_on_ordinary_requests_and_work_without_interlock() {
     for s in [implement, investigate] {
         assert!(!s.meta.description.contains("an interlock task's"), "{}", s.meta.description);
         let (with, without) = s.body.split_once("\n## Without interlock\n").expect("a standalone section");
-        // The skill says when interlock applies: a task id, a headless attempt, or a store. Not a
-        // `.interlock/` directory: `skills generate` writes its record there, with no store.
-        for when in ["task id", "`INTERLOCK_ATTEMPT` is set", "(`.interlock/state.db`"] {
+        // The skill says when interlock applies: a task id, a headless attempt, or a store that
+        // `interlock where` finds the way every command does (INTERLOCK_DB first). Not a path test:
+        // a store can live elsewhere, and `skills generate` writes `.interlock/` with no store.
+        for when in ["task id", "`INTERLOCK_ATTEMPT` is set", "`interlock where` exits 0", "`INTERLOCK_DB`"] {
             assert!(with.contains(when), "{}: {when}", s.meta.name);
         }
         // Without it, nothing is recorded: no interlock command at all.
@@ -266,6 +267,7 @@ fn the_entry_skills_trigger_on_ordinary_requests_and_work_without_interlock() {
     // Skills whose job exists only with interlock's records stay tied to it.
     let route = catalog.skill("route").unwrap();
     assert!(!route.meta.standalone && route.meta.description.contains("set up for interlock"));
+    assert!(route.meta.description.contains("interlock where") && !route.meta.description.contains("state.db"));
     for name in ["verify", "review", "design"] {
         assert!(!catalog.skill(name).unwrap().meta.standalone, "{name}");
     }

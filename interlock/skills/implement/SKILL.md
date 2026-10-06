@@ -2,7 +2,7 @@
 
 Make a change: fix a bug, add or change a feature, or restructure code. Fix the cause wherever it occurs, change nothing the request does not need, and check the result on the real surface before you say it is done.
 
-**With interlock or without.** Work through interlock when this work is an interlock task: you were given a task id, `INTERLOCK_ATTEMPT` is set, or the repository has an interlock store (`.interlock/state.db`). In a repository with a store but no task for this work, invoke {{skill:route}} first. Otherwise there is no task to report to: follow "Without interlock" at the end.
+**With interlock or without.** Work through interlock when this work is an interlock task: you were given a task id, `INTERLOCK_ATTEMPT` is set, or `interlock where` exits 0. That command prints the store every interlock command would use from here, found the same way they find it (`INTERLOCK_DB` when set, then an attempt's worktree, then the repository root), and creates nothing; it exits 3 when there is no store, and the shell says the command is not found where interlock is not installed. Do not look for the store's file yourself: it need not be at `.interlock/state.db`. Where there is a store but no task for this work, invoke {{skill:route}} first. Otherwise there is no task to report to: follow "Without interlock" at the end.
 
 With interlock, you are the worker on the task, in the worktree interlock opens for you, inside the task's scope. You cannot mark anything done: interlock moves the task when the evidence holds. Read `references/interlock-basics.md` once per session.
 

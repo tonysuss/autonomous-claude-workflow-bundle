@@ -43,6 +43,10 @@ enum ProfileArg {
 enum Command {
     /// Create the store.
     Init,
+    /// Where this directory's store is, found exactly as every other command finds it (--db,
+    /// INTERLOCK_DB, an attempt's worktree, the repository root). Creates nothing. Exits 0 when the
+    /// store exists, 3 when it does not.
+    Where,
     /// Create, inspect and move tasks.
     #[command(subcommand)]
     Task(TaskCmd),
@@ -610,6 +614,16 @@ fn default_db() -> PathBuf {
 fn absolute_db(cli: &Cli) -> Result<PathBuf> {
     let db = cli.db.clone().unwrap_or_else(default_db);
     Ok(if db.is_absolute() { db } else { std::env::current_dir()?.join(db) })
+}
+
+/// `interlock where`: the store the other commands would open from here, and whether it exists.
+/// A skill asks this to decide whether the work is an interlock task; it must never create a store.
+fn where_store(cli: &Cli) -> Result<ExitCode> {
+    let store = absolute_db(cli)?;
+    let exists = store.is_file();
+    let repo = interlock_supervisor::guided::repo_of_store(&store).ok();
+    println!("{}", serde_json::to_string_pretty(&json!({"store": store, "exists": exists, "repo": repo}))?);
+    Ok(if exists { ExitCode::SUCCESS } else { ExitCode::from(3) })
 }
 
 fn open(cli: &Cli) -> Result<Store> {
@@ -1211,6 +1225,7 @@ fn run(cli: &Cli) -> Result<()> {
             }
         },
         Command::Run { .. }
+        | Command::Where
         | Command::Hook { .. }
         | Command::Skills(_)
         | Command::Setup { .. }
@@ -1470,6 +1485,7 @@ fn main() -> ExitCode {
     let cli = Cli::parse();
     let result = match &cli.command {
         Command::Hook { .. } => return hook(&cli),
+        Command::Where => where_store(&cli),
         Command::Integrate(IntegrateCmd::Run(args)) => {
             forge::integrate_run(&cli.db.clone().unwrap_or_else(default_db), args)
         }

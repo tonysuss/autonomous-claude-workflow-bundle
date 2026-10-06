@@ -59,12 +59,31 @@ sites and code paths with the same defect. Handle the inputs the goal implies, s
 already accepts. Change nothing the goal does not need. If you leave part of the goal undone, say which part and why.";
 
 /// What the verifier is asked to judge beyond the criteria's wording.
-const VERIFIER_GOAL: &str = "Judge the work against the task's goal, not only the criteria's wording. A criterion \
-that restates part of the goal holds only if the change achieves that part wherever it applies. Read the change, \
-search the code around it for other call sites and code paths with the same defect, and try inputs the goal implies, \
-such as the forms the existing code already accepts. A gap the worker's summary names is still a gap. A gap the \
-task's scope does not let the worker close is not a failure: mention it in your note. Do not fail work for what the \
-goal does not ask for, such as style or extra features.";
+pub const VERIFIER_GOAL: &str = "Judge the work against the task's goal, not only the criteria's wording. A \
+criterion that restates part of the goal holds only if the change achieves that part wherever it applies. Read the \
+change, search the code around it for other call sites and code paths with the same defect, and try inputs the goal \
+implies, such as the forms the existing code already accepts. A gap the worker's summary names is still a gap. Do not \
+fail work for what the goal does not ask for, such as style or extra features.";
+
+/// How the verifier records a gap: `failed` sends the work back to a worker who can close it;
+/// `blocked` keeps the task from done and puts it in front of the operator, for a gap no worker
+/// can close inside the task.
+pub const VERIFIER_GAPS: &str = "Record every gap; none is only a remark in a note. When a criterion's statement \
+covers the missing part and the worker can close it inside the task's scope, record `failed` on that criterion. When \
+no criterion covers it, or the task's scope does not let the worker close it, record `blocked` on the criterion \
+closest to it: only a person can settle that. Either way, the note says what is missing, where, and the input or \
+command that shows it; for `blocked`, it also says why the worker cannot close it.";
+
+/// What `interlock check run` does with the tree, so a verifier knows its own directory cannot
+/// sway a check.
+pub const VERIFIER_CHECKS: &str = "interlock runs the check itself, always in a clean checkout of the tree in your \
+working directory, so files the tree leaves out (ignored or generated ones) cannot affect it, and records the output; \
+read it.";
+
+/// Where the verifier may write: the files it judges are the evidence.
+pub const VERIFIER_SCRATCH: &str = "Never create, change or delete a file in your working directory, not even for \
+a moment: its files are what you are judging. To try inputs or run a probe of your own, copy the tree first \
+(`cp -r . /tmp/<name>`) and write only in the copy, or put scratch files under /tmp.";
 
 pub fn worker(brief: &str) -> String {
     format!(
@@ -86,12 +105,11 @@ the goal as well as the criteria. Your claims inform it but do not satisfy them.
 pub fn verifier(brief: &str) -> String {
     format!(
         "{brief}\n## How to verify\n\n\
-1. Do not modify, commit or push anything here. Put any scratch files under /tmp.\n\
-2. For each criterion with a check, have interlock run it here: `interlock check run --criterion <id>`. interlock \
-runs the check itself and records the output; read it. For a criterion without a check, examine the work yourself.\n\
+1. Do not commit or push anything. {VERIFIER_SCRATCH}\n\
+2. For each criterion with a check, have interlock run it here: `interlock check run --criterion <id>`. \
+{VERIFIER_CHECKS} For a criterion without a check, examine the work yourself.\n\
 3. {VERIFIER_GOAL}\n\
-4. When you find a gap, record `failed` on the criterion it bears on, or on the criterion closest to it if none \
-names it, with the gap in the note: what is missing, where, and the input or command that shows it.\n\
+4. {VERIFIER_GAPS}\n\
 5. Record exactly one assessment per criterion:\n\n\
    `interlock assess add --criterion <id> --strength <strength> --ref \"<command you ran>\" --note \"<what you saw>\"`\n\n\
    {STRENGTHS} Use `observed` or `tested` only for a pass you saw. Never record a pass you did not see.\n\
@@ -106,11 +124,31 @@ mod tests {
 
     const BRIEF: &str = "# Task t1 (Worker brief)\n\nGoal: make the thing work.\n";
 
+    /// The numbered steps, in order, each by its first words.
+    fn steps(prompt: &str) -> Vec<String> {
+        prompt
+            .lines()
+            .filter(|l| l.len() > 3 && l.as_bytes()[0].is_ascii_digit() && &l[1..3] == ". ")
+            .map(|l| l[3..].split_whitespace().take(4).collect::<Vec<_>>().join(" "))
+            .collect()
+    }
+
     #[test]
     fn the_worker_is_sent_to_the_cause_wherever_it_occurs_not_to_the_smallest_change() {
         let p = worker(BRIEF);
         assert!(p.starts_with(BRIEF), "the brief, with its goal, comes first");
         assert!(!p.contains("smallest change"), "{p}");
+        assert_eq!(
+            steps(&p),
+            [
+                "You are in a",
+                "Do not commit, push",
+                "For a bug fix,",
+                "After your last edit,",
+                "Criteria that need an",
+                "Finish with two or",
+            ]
+        );
         for want in [
             "not a narrower target",
             "Fix the cause, not the symptom",
@@ -125,22 +163,57 @@ mod tests {
     }
 
     #[test]
-    fn the_verifier_judges_the_goal_and_fails_a_gap_with_its_reason() {
+    fn the_verifier_judges_the_goal_and_records_every_gap_as_failed_or_blocked() {
         let p = verifier(BRIEF);
         assert!(p.starts_with(BRIEF), "the brief, with its goal, comes first");
         assert!(p.contains("## How to verify"), "the heading other code looks for");
+        // Scratch rule first, then checks, then the goal, then gaps, then the record.
+        assert_eq!(
+            steps(&p),
+            [
+                "Do not commit or",
+                "For each criterion with",
+                "Judge the work against",
+                "Record every gap; none",
+                "Record exactly one assessment",
+                "The worker's summary is",
+                "Finish with one line",
+            ]
+        );
         for want in [
             "Judge the work against the task's goal, not only the criteria's wording",
             "other call sites and code paths with the same defect",
             "inputs the goal implies",
             "A gap the worker's summary names is still a gap",
-            "is not a failure: mention it in your note",
-            "record `failed` on the criterion it bears on",
+            "Do not fail work for what the goal does not ask for",
+            "the worker can close it inside the task's scope, record `failed` on that criterion",
+            "or the task's scope does not let the worker close it, record `blocked` on the criterion closest to it",
             "what is missing, where, and the input or command that shows it",
+            "Never create, change or delete a file in your working directory, not even for a moment",
+            "copy the tree first (`cp -r . /tmp/<name>`) and write only in the copy",
+            "always in a clean checkout of the tree in your working directory",
         ] {
             assert!(p.contains(want), "verifier prompt lacks {want:?}: {p}");
         }
+        // A known gap is never only a remark: no wording lets a note stand in for a verdict.
+        assert!(!p.contains("is not a failure") && !p.contains("mention it in your note"), "{p}");
+        assert!(!p.contains("Do not modify, commit or push anything here"), "the old scratch rule allowed nothing");
         assert!(VERIFIER_SYSTEM.contains("achieve the task's goal"));
+    }
+
+    /// The guided verifier agent judges and records gaps with the same words as the headless
+    /// verifier, so the two cannot drift apart.
+    #[test]
+    fn the_guided_verifier_agent_uses_the_same_judging_text() {
+        let agent = include_str!("../../../agents/verifier/AGENT.md");
+        for (name, text) in [
+            ("VERIFIER_GOAL", VERIFIER_GOAL),
+            ("VERIFIER_GAPS", VERIFIER_GAPS),
+            ("VERIFIER_SCRATCH", VERIFIER_SCRATCH),
+            ("VERIFIER_CHECKS", VERIFIER_CHECKS),
+        ] {
+            assert!(agent.contains(text), "agents/verifier/AGENT.md lacks {name}'s text verbatim:\n{text}");
+        }
     }
 
     #[test]

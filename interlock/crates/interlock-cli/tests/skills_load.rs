@@ -238,7 +238,13 @@ fn a_standalone_skill_reaches_copilots_model_in_a_plain_session_with_no_interloc
         .as_str()
         .unwrap_or_default()
         .to_string();
-    for want in ["## Without interlock", "nothing is recorded", "Run each check yourself"] {
+    for want in [
+        "## Without interlock",
+        "nothing is recorded",
+        "Run each check yourself",
+        "`interlock where` exits 0",
+        "`INTERLOCK_DB`",
+    ] {
         assert!(seen.contains(want), "{want:?} never reached the model; it saw: {seen}");
     }
 }

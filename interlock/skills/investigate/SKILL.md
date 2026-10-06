@@ -4,7 +4,7 @@ Build a working model of the code from evidence you can point at: files and line
 
 Use this skill three ways:
 
-- **As the worker of an interlock investigation task**: you were given a task id, `INTERLOCK_ATTEMPT` is set, or the repository has an interlock store (`.interlock/state.db`; with no task for this question yet, invoke {{skill:route}} first). Read `references/interlock-basics.md` once per session and follow every step below. The answer is your result.
+- **As the worker of an interlock investigation task**: you were given a task id, `INTERLOCK_ATTEMPT` is set, or `interlock where` exits 0. That command prints the store every interlock command would use from here (`INTERLOCK_DB` when set, then an attempt's worktree, then the repository root) and creates nothing; it exits 3 when there is no store. Do not look for the store's file yourself. Where there is a store but no task for this question yet, invoke {{skill:route}} first. Read `references/interlock-basics.md` once per session and follow every step below. The answer is your result.
 - **To ground a change** inside {{skill:implement}}. Run steps 3 to 5 where you already work, then go back.
 - **On its own**, for any other question about code: follow "Without interlock" at the end.
 

@@ -327,6 +327,7 @@ mod tests {
         assert_eq!(classify_shell("interlock grant create --classes landing"), Irreversible);
         assert_eq!(classify_shell("interlock --db x task unblock t1"), Irreversible);
         assert_eq!(classify_shell("interlock status t1"), Read);
+        assert_eq!(classify_shell("interlock where"), Read);
         assert_eq!(classify_shell("interlock check run --criterion repro"), Read);
         assert_eq!(
             classify_shell("env -u INTERLOCK_ATTEMPT interlock check run --criterion repro --operator"),
