@@ -4,7 +4,8 @@ The four workstreams (forge, runtime, skills, evaluation) were merged into `inte
 
 | What | Command | Outcome | Raw output |
 | --- | --- | --- | --- |
-| Full workspace suite, after the conformance audit's fixes (`d9b226d`) | `INTERLOCK_REQUIRE_HOSTS=1 INTERLOCK_COPILOT_BIN=<copilot 1.0.91> cargo test --workspace` | 314 passed, 0 failed, 1 ignored (the opt-in live GitHub test). With hosts required, no test can pass by skipping | [cargo-test-workspace.txt](cargo-test-workspace.txt) |
+| Full workspace suite on the final merge (`1f0f104`): the audit's fixes, the check runner's fresh checkouts, the design-gap fixes and the evaluation follow-up | `INTERLOCK_REQUIRE_HOSTS=1 INTERLOCK_COPILOT_BIN=<copilot 1.0.91> cargo test --workspace` | 350 passed, 0 failed, 2 ignored (the opt-in live Claude Code walkthrough and the live GitHub delivery). With hosts required, no test can pass by skipping. Earlier runs: 314 after the audit fixes (`d9b226d`), 308 after the first merge (`858879e`) | [cargo-test-workspace.txt](cargo-test-workspace.txt) |
+| Evaluation harness tests | `python3 eval/test_harness.py` | 41 passed | |
 | Lint and format | `cargo clippy --workspace --all-targets`; `cargo fmt --all --check` | 0 warnings; clean | |
 | Guided gates, live Claude Code, on the merged build (`858879e`) | see [skills evidence](../skills/README.md), rows 23 and 24 | Bug fix and investigation both `done`; verifier bound as a subagent; every tool call through the hook; $0.52 | [../skills/integration/](../skills/integration/) |
 | Kill and re-attach, live Claude Code, on the merged build | see [runtime evidence](../runtime/README.md), section 7 | Supervisor killed 6 s into the worker session; the restarted one re-attached; `done` with `G1 G2 G3 G4 G7`; $0.13 | [../runtime/live-claude-reattach-integrated/](../runtime/live-claude-reattach-integrated/) |
