@@ -1,0 +1,81 @@
+[
+  {
+    "id": "att-8017943935334f7a",
+    "task_id": "fix-add",
+    "epoch": 1,
+    "role": "worker",
+    "host": {
+      "host": "claude-code",
+      "version": "2.1.289"
+    },
+    "agent": "interlock-worker",
+    "model": "haiku",
+    "worktree": "<scratch>/live-demo-3/.interlock/worktrees/fix-add-worker-1",
+    "effective_grant": {
+      "action_classes": [
+        "read",
+        "local_reversible"
+      ],
+      "tools": {
+        "allow": [
+          "read",
+          "edit",
+          "shell"
+        ],
+        "deny": [
+          "shell:git push",
+          "shell:git commit"
+        ]
+      },
+      "landing_authority": "none",
+      "grant_ids": []
+    },
+    "token_hash": "6a92703d0dfcff33f6e100ab1a5fccc38dab5c85fd4ac5db541d3d4174406948",
+    "status": "running",
+    "started_at": "2026-10-06T02:27:45.002113831Z",
+    "ended_at": null,
+    "handoff": {
+      "host": "claude-code",
+      "pid": 15030,
+      "pgid": 15030,
+      "process_start": 1121137,
+      "started_at": "2026-10-06T02:27:45.030919652Z",
+      "deadline": "2026-10-06T02:37:45.030919652Z",
+      "budget_deadline": false,
+      "transcript": "<scratch>/live-demo-3/.interlock/transcripts/att-8017943935334f7a.jsonl",
+      "host_session_id": "d366d9f6-7c57-493f-beb9-918544d635a6",
+      "supervisor_pid": 14975,
+      "supervisor_start": 1121069,
+      "start_commit": "ab37c3cc4bc674e965f99e8a7de59ac551ddec45",
+      "env": [
+        "ANTHROPIC_BASE_URL",
+        "CLAUDE_CODE_USE_CCR_V2",
+        "HOME",
+        "HTTPS_PROXY",
+        "INTERLOCK_ATTEMPT",
+        "INTERLOCK_DB",
+        "INTERLOCK_HOST",
+        "INTERLOCK_MODE",
+        "INTERLOCK_SESSION",
+        "INTERLOCK_TOKEN",
+        "NODE_EXTRA_CA_CERTS",
+        "NO_PROXY",
+        "PATH",
+        "REQUESTS_CA_BUNDLE",
+        "SHELL",
+        "SSL_CERT_FILE",
+        "TERM",
+        "https_proxy",
+        "no_proxy"
+      ],
+      "effort": null
+    },
+    "binding": {
+      "via": "interlock_launched",
+      "interactive": false,
+      "host_session": null,
+      "host_agent": null,
+      "agent_type": null
+    }
+  }
+]

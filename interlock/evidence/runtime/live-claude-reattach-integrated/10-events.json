@@ -1,0 +1,203 @@
+[
+  {
+    "id": "evt-0c34bc5bd7be4a24",
+    "task_id": "fix-add",
+    "attempt_id": "att-8017943935334f7a",
+    "epoch": 1,
+    "type": "claim.added",
+    "payload_ref": null,
+    "received_at": "2026-10-06T02:28:08.890255178Z",
+    "acknowledged": true,
+    "outcome": {
+      "current": null,
+      "evidence": {
+        "attempt_id": "att-8017943935334f7a",
+        "criterion_id": "fixed",
+        "currency": {
+          "check_version": "1",
+          "environment": "",
+          "policy_digest": "sha256:078ac21dc6a75ef7abaafd3efcd69eaa962227732a69c9cf42d0b8a11508a118",
+          "tree": "505e161bca68a8fed441c2a2c02ef5027cffd1f8"
+        },
+        "evidence_refs": [
+          "sh check.sh"
+        ],
+        "id": "clm-97427d77add54f34",
+        "note": "Check passed: add(2, 3) now returns 5 instead of -1",
+        "recorded_at": "2026-10-06T02:28:08.890255178Z",
+        "strength": "observed",
+        "task_id": "fix-add"
+      }
+    }
+  },
+  {
+    "id": "evt-efa28b71e9314f17",
+    "task_id": "fix-add",
+    "attempt_id": "att-8017943935334f7a",
+    "epoch": 1,
+    "type": "claim.added",
+    "payload_ref": null,
+    "received_at": "2026-10-06T02:28:10.792363626Z",
+    "acknowledged": true,
+    "outcome": {
+      "current": null,
+      "evidence": {
+        "attempt_id": "att-8017943935334f7a",
+        "criterion_id": "verified",
+        "currency": {
+          "check_version": "1",
+          "environment": "",
+          "policy_digest": "sha256:078ac21dc6a75ef7abaafd3efcd69eaa962227732a69c9cf42d0b8a11508a118",
+          "tree": "505e161bca68a8fed441c2a2c02ef5027cffd1f8"
+        },
+        "evidence_refs": [
+          "sh check.sh"
+        ],
+        "id": "clm-86e03ff1b6f44e0b",
+        "note": "Independent check passed: add(2, 3) returns 5",
+        "recorded_at": "2026-10-06T02:28:10.792363626Z",
+        "strength": "observed",
+        "task_id": "fix-add"
+      }
+    }
+  },
+  {
+    "id": "att-8017943935334f7a:result",
+    "task_id": "fix-add",
+    "attempt_id": "att-8017943935334f7a",
+    "epoch": 1,
+    "type": "result.submitted",
+    "payload_ref": null,
+    "received_at": "2026-10-06T02:28:14.457791668Z",
+    "acknowledged": true,
+    "outcome": {
+      "moved": {
+        "from": "running",
+        "reason": "result accepted from attempt att-8017943935334f7a at epoch 1",
+        "signal": "G3",
+        "to": "awaiting_verification"
+      },
+      "result": {
+        "attempt_id": "att-8017943935334f7a",
+        "changed_paths": [
+          "calc.py"
+        ],
+        "epoch": 1,
+        "id": "res-919b7b6070d44069",
+        "open_questions": [],
+        "output_tree": "505e161bca68a8fed441c2a2c02ef5027cffd1f8",
+        "received_at": "2026-10-06T02:28:14.457791668Z",
+        "status": "accepted",
+        "summary": "Done. I fixed the bug by changing the operator in `calc.py` from `-` to `+`. The `add()` function now correctly returns the sum: `add(2, 3)` returns 5. Both the \"fixed\" and \"verified\" checks passed and claims have been recorded with observed strength.",
+        "superseded_reason": null,
+        "task_id": "fix-add"
+      }
+    }
+  },
+  {
+    "id": "evt-fcfd4844c63644c6",
+    "task_id": "fix-add",
+    "attempt_id": "att-8017943935334f7a",
+    "epoch": 1,
+    "type": "attempt.completed",
+    "payload_ref": null,
+    "received_at": "2026-10-06T02:28:14.462168174Z",
+    "acknowledged": true,
+    "outcome": {
+      "detail": null,
+      "reason": "completed",
+      "spent": {
+        "cost_usd": 0.0715515,
+        "premium_requests": null,
+        "turns": 13,
+        "wall_ms": 29311
+      },
+      "synthetic": false
+    }
+  },
+  {
+    "id": "evt-6dbd608e965e4544",
+    "task_id": "fix-add",
+    "attempt_id": "att-9f25674733fa41b8",
+    "epoch": 1,
+    "type": "assessment.added",
+    "payload_ref": null,
+    "received_at": "2026-10-06T02:28:41.543612427Z",
+    "acknowledged": true,
+    "outcome": {
+      "current": true,
+      "evidence": {
+        "attempt_id": "att-9f25674733fa41b8",
+        "bound_via": "interlock_launched",
+        "criterion_id": "fixed",
+        "currency": {
+          "check_version": "1",
+          "environment": "",
+          "policy_digest": "sha256:078ac21dc6a75ef7abaafd3efcd69eaa962227732a69c9cf42d0b8a11508a118",
+          "tree": "505e161bca68a8fed441c2a2c02ef5027cffd1f8"
+        },
+        "evidence_refs": [
+          "interlock check run --criterion fixed"
+        ],
+        "id": "asm-9b418986b8e942dd",
+        "note": "check.sh executed successfully: calc.add(2, 3) returns 5, assertion passed",
+        "recorded_at": "2026-10-06T02:28:41.543612427Z",
+        "strength": "tested",
+        "task_id": "fix-add"
+      }
+    }
+  },
+  {
+    "id": "evt-3c6a42c8a394408e",
+    "task_id": "fix-add",
+    "attempt_id": "att-9f25674733fa41b8",
+    "epoch": 1,
+    "type": "assessment.added",
+    "payload_ref": null,
+    "received_at": "2026-10-06T02:28:44.337313278Z",
+    "acknowledged": true,
+    "outcome": {
+      "current": true,
+      "evidence": {
+        "attempt_id": "att-9f25674733fa41b8",
+        "bound_via": "interlock_launched",
+        "criterion_id": "verified",
+        "currency": {
+          "check_version": "1",
+          "environment": "",
+          "policy_digest": "sha256:078ac21dc6a75ef7abaafd3efcd69eaa962227732a69c9cf42d0b8a11508a118",
+          "tree": "505e161bca68a8fed441c2a2c02ef5027cffd1f8"
+        },
+        "evidence_refs": [
+          "interlock check run --criterion verified"
+        ],
+        "id": "asm-c11cc14e3efb4b33",
+        "note": "check.sh executed independently: calc.add(2, 3) correctly returns 5 via Python assertion, verifying the fix is working",
+        "recorded_at": "2026-10-06T02:28:44.337313278Z",
+        "strength": "observed",
+        "task_id": "fix-add"
+      }
+    }
+  },
+  {
+    "id": "evt-7068f992571a4e1a",
+    "task_id": "fix-add",
+    "attempt_id": "att-9f25674733fa41b8",
+    "epoch": 1,
+    "type": "attempt.completed",
+    "payload_ref": null,
+    "received_at": "2026-10-06T02:28:50.692061718Z",
+    "acknowledged": true,
+    "outcome": {
+      "detail": null,
+      "reason": "completed",
+      "spent": {
+        "cost_usd": 0.0609074,
+        "premium_requests": null,
+        "turns": 9,
+        "wall_ms": 35888
+      },
+      "synthetic": false
+    }
+  }
+]

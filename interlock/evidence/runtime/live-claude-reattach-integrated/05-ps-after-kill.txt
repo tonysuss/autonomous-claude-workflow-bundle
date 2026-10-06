@@ -1,0 +1,2 @@
+  PID  PGID  PPID STAT     ELAPSED COMMAND
+15030 15030     1 Sl         00:07 /opt/node22/bin/claude -p --output-format stream-json --verbose --permission-mode dontAsk --setting-sources  --no-session-persistence --allowedTools Read Grep Glob E
