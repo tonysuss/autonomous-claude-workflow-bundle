@@ -1,0 +1,5 @@
+name = "confidence-tiers"
+description = "How sure a claim about code or its history is, and how to say so: direct, supported, inferred, speculative, unknown."
+invocation = "routed"
+pack = "core"
+routers = ["investigate", "review"]

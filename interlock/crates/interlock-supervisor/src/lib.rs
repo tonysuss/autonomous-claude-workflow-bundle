@@ -3,6 +3,7 @@
 
 pub mod checks;
 pub mod git;
+pub mod guided;
 pub mod hook;
 pub mod prompts;
 mod run;

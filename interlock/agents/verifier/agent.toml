@@ -1,0 +1,4 @@
+name = "verifier"
+description = "interlock's independent verifier. Rechecks a submitted interlock task on exactly the submitted files, with read and test tools only, and records one assessment per criterion. Use only when handed a task id to verify."
+tools = ["read", "shell"]
+handoff-from = "verify"

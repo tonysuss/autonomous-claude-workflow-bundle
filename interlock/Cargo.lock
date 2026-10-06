@@ -518,6 +518,7 @@ dependencies = [
  "interlock-adapter",
  "interlock-core",
  "interlock-schema",
+ "interlock-skillgen",
  "interlock-store",
  "interlock-supervisor",
  "serde",
@@ -547,6 +548,18 @@ dependencies = [
  "jsonschema",
  "serde",
  "serde_json",
+]
+
+[[package]]
+name = "interlock-skillgen"
+version = "0.1.0"
+dependencies = [
+ "interlock-adapter",
+ "serde",
+ "serde_json",
+ "tempfile",
+ "thiserror",
+ "toml",
 ]
 
 [[package]]

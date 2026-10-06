@@ -1,0 +1,5 @@
+name = "prove-it-works"
+description = "Before saying work is done, check the real thing: run the behavior on the same surface it was reported on, not a proxy, a self-report, or it compiles."
+invocation = "routed"
+pack = "core"
+routers = ["implement", "verify"]

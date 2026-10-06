@@ -19,6 +19,7 @@ interlock-core.workspace = true
 interlock-schema = { workspace = true, features = ["validate"] }
 interlock-store.workspace = true
 interlock-supervisor.workspace = true
+interlock-skillgen.workspace = true
 serde.workspace = true
 serde_json.workspace = true
 toml.workspace = true
