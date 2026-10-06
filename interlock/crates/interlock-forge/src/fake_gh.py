@@ -14,6 +14,7 @@ Faults are set per subcommand ("create", "list", "view", "merge") as
   crash        merge: merge, then kill the caller before it hears back
   die          merge: merge, then fail without saying it merged
   vanish       merge: merge, then stop answering anything until faults are cleared
+  queue        merge: accept the request, and merge only a few calls later
 "checks" is "pass", "pending" or "fail". Every call is appended to "calls".
 When "db" names interlock's store, each call also records in "seen" the
 operation rows that were committed when the call arrived.
@@ -130,8 +131,16 @@ def checks_pass(st):
 
 
 def settle_auto_merges(st):
-    """Time passes: an armed auto-merge whose checks now pass merges, as GitHub would."""
+    """Time passes: an armed auto-merge whose checks now pass merges, as GitHub would,
+    and a queued merge completes once its countdown of calls runs out."""
     for pr in st["prs"]:
+        queued = pr.get("queued")
+        if pr["state"] == "OPEN" and queued:
+            queued["after"] -= 1
+            if queued["after"] <= 0:
+                pr["queued"] = None
+                do_merge(st, pr, queued["method"])
+            continue
         armed = pr.get("auto_merge")
         if pr["state"] != "OPEN" or not armed or not checks_pass(st):
             continue
@@ -293,6 +302,11 @@ def pr_merge(st, args):
         return
     if not checks_pass(st):
         fail(f"X Pull request #{n} is not mergeable: the base branch policy prohibits the merge.")
+    if mode == "queue":
+        # Accepted, not merged yet: it merges a few calls later, as a merge queue would.
+        pr["queued"] = {"method": method, "after": 3}
+        sys.stderr.write(f"✓ Pull request #{n} will be added to the merge queue for {pr['base']} when ready\n")
+        return
     err = do_merge(st, pr, method)
     if err:
         fail(err)

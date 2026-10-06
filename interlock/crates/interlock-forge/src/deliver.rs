@@ -272,9 +272,10 @@ impl Pass<'_> {
             self.d.moves.extend(moves);
             return Ok(Flow::Next);
         }
+        // Nothing here reaches the forge: without landing authority G5 blocks before any call.
         let head = git::verified_head(self.repo, task)?;
-        let base = self.cfg.base.clone().or_else(|| self.forge.default_branch().ok());
-        let intent = OperationIntent { expected_head_sha: Some(head.clone()), base, pull_request: None };
+        let intent =
+            OperationIntent { expected_head_sha: Some(head.clone()), base: self.cfg.base.clone(), pull_request: None };
         let (mv, op) = self.store.begin_integration(&task.id, self.landing_kind(), intent, Utc::now())?;
         self.d.moves.push(mv);
         if let Some(op) = op {
@@ -289,7 +290,7 @@ impl Pass<'_> {
         let ops = self.store.operations(&task.id)?;
         if let Some(op) = ops.iter().rev().find(|o| lands(o.kind) && o.state == OperationState::Started) {
             self.d.pull_request = op.intent.pull_request;
-            return self.watch(op.clone());
+            return self.watch(op.clone(), false);
         }
         let planned = ops.iter().rev().find(|o| lands(o.kind) && o.state == OperationState::Planned);
         let op = match planned {
@@ -321,6 +322,7 @@ impl Pass<'_> {
         let base_commit = task.input_snapshot.as_ref().map(|s| s.base_commit.clone()).unwrap_or_default();
 
         let since = Instant::now();
+        let mut arm = false;
         loop {
             if self.cancelled() {
                 return Ok(Flow::Stop("cancelled".into()));
@@ -339,8 +341,9 @@ impl Pass<'_> {
             let seen = json!({ "called": false, "readiness": ready, "pull_request": view });
             match ready {
                 Readiness::Ready => break,
-                Readiness::Waiting(why) if self.cfg.auto_merge => {
+                Readiness::Waiting(why) if op.kind == OperationKind::ArmAutoMerge => {
                     self.note(format!("{why}; arming auto-merge"));
+                    arm = true;
                     break;
                 }
                 Readiness::Waiting(why) => {
@@ -382,14 +385,14 @@ impl Pass<'_> {
                 return Ok(Flow::Next);
             }
         };
-        let auto = op.kind == OperationKind::ArmAutoMerge;
+        // An arm_auto_merge operation merges directly when the pull request is already ready.
         self.note(format!(
             "{} #{} pinned to {head} (operation {} started)",
-            if auto { "arming auto-merge for" } else { "merging" },
+            if arm { "arming auto-merge for" } else { "merging" },
             pr.number,
             op.id
         ));
-        let call = self.forge.merge(pr.number, &head, self.cfg.method, auto);
+        let call = self.forge.merge(pr.number, &head, self.cfg.method, arm);
         let seen = observe(self.forge, &op);
         let verdict = match (delivery::reconcile(&op, &seen), &call) {
             (Verdict::Failed { .. }, Err(e)) => Verdict::Block { reason: format!("the forge refused the merge: {e}") },
@@ -406,18 +409,25 @@ impl Pass<'_> {
             self.store.settle_operation(&op.id, &verdict, json!({ "call": call, "observation": seen }), Utc::now())?;
         let op = self.take(settled);
         if op.state == OperationState::Started {
-            return self.watch(op);
+            return self.watch(op, call == json!("ok"));
         }
         Ok(Flow::Next)
     }
 
     /// Watches a landing the forge holds (an armed auto-merge, a merge queue)
-    /// until it settles or the wait runs out.
-    fn watch(&mut self, op: Operation) -> Result<Flow> {
+    /// until it settles or the wait runs out. Right after the forge accepted
+    /// a merge request, a pull request still open at the verified head is
+    /// taken as not merged yet; left open, reconcile settles it later.
+    fn watch(&mut self, op: Operation, accepted: bool) -> Result<Flow> {
         let since = Instant::now();
         loop {
             let seen = observe(self.forge, &op);
-            let verdict = delivery::reconcile(&op, &seen);
+            let verdict = match delivery::reconcile(&op, &seen) {
+                Verdict::Failed { .. } if accepted => {
+                    Verdict::Pending { reason: "the forge took the merge request but has not merged yet".into() }
+                }
+                v => v,
+            };
             if let Verdict::Pending { reason } = &verdict {
                 if since.elapsed() >= self.cfg.wait || self.cancelled() {
                     return Ok(Flow::Stop(format!("waiting for the forge: {reason}")));

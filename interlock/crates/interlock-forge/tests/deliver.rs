@@ -497,6 +497,37 @@ fn auto_merge_is_armed_at_the_verified_head_and_confirmed_when_the_forge_merges(
 }
 
 #[test]
+fn with_auto_merge_configured_a_ready_pull_request_merges_directly() {
+    let Some(mut f) = Fixture::new() else { return };
+    f.verified();
+    f.grant_landing();
+    f.cfg.auto_merge = true;
+    let d = f.integrate();
+    assert_eq!(d.final_state, State::Done, "{d:#?}");
+    let call = &f.gh.calls_to(&["pr", "merge"])[0];
+    assert!(!call.contains(&"--auto".to_string()), "nothing to wait for, so no auto-merge: {call:?}");
+}
+
+#[test]
+fn a_merge_the_forge_accepted_but_has_not_done_stays_in_flight_until_reconciled() {
+    let Some(mut f) = Fixture::new() else { return };
+    f.verified();
+    f.grant_landing();
+    f.gh.fault("merge", "queue", 1);
+    let d = f.integrate();
+    assert_eq!(d.final_state, State::Integrating, "{d:#?}");
+    assert!(d.stopped_because.contains("has not merged yet"), "{}", d.stopped_because);
+    let merge = f.store.operations(TASK).unwrap().into_iter().find(|o| o.kind == OperationKind::Merge).unwrap();
+    assert_eq!(merge.state, OperationState::Started, "still in flight, not failed and not retried");
+    assert_eq!(f.gh.calls_to(&["pr", "merge"]).len(), 1);
+
+    let r = reconcile(&mut f.store, &f.forge, Some(TASK)).unwrap();
+    assert_eq!((r[0].before, r[0].after), (OperationState::Started, OperationState::Confirmed));
+    assert_eq!(f.state(), State::Done);
+    assert_eq!(f.gh.calls_to(&["pr", "merge"]).len(), 1, "merged once");
+}
+
+#[test]
 fn the_verified_head_is_the_same_commit_every_time_and_moves_no_branch() {
     let Some(mut f) = Fixture::new() else { return };
     let tree = f.verified();

@@ -206,6 +206,22 @@ impl Fixture {
         self.ok(&["status", "fix-add"])["task"]["state"].as_str().unwrap().to_string()
     }
 
+    /// With INTERLOCK_EVIDENCE_OUT set, keeps a command's JSON output as evidence.
+    fn record(&self, test: &str, name: &str, v: &Value) {
+        if let Some(out) = std::env::var_os("INTERLOCK_EVIDENCE_OUT").map(PathBuf::from) {
+            let dir = out.join(test);
+            std::fs::create_dir_all(&dir).unwrap();
+            std::fs::write(dir.join(format!("{name}.json")), serde_json::to_string_pretty(v).unwrap()).unwrap();
+        }
+    }
+
+    /// Keeps the task log, the operations and every gh call as evidence.
+    fn record_end(&self, test: &str) {
+        self.record(test, "transitions", &self.ok(&["task", "log", "fix-add"]));
+        self.record(test, "operations", &self.ok(&["integrate", "operations", "fix-add"]));
+        self.record(test, "gh-calls", &serde_json::json!(self.gh.calls()));
+    }
+
     fn signals(&self) -> Vec<String> {
         let log = self.ok(&["task", "log", "fix-add"]);
         log.as_array().unwrap().iter().map(|r| r["signal"].as_str().unwrap().to_string()).collect()
@@ -221,11 +237,19 @@ impl Fixture {
     }
 
     /// Integrates until the fake kills interlock right after the merge call.
-    fn crash_during_merge(&self) {
+    fn crash_during_merge(&self, test: &str) {
         self.verify();
         self.grant_landing();
         self.gh.fault("merge", "crash", 1);
         let out = self.run(&["integrate", "run", "fix-add"]);
+        let killed = serde_json::json!({
+            "signal": out.status.signal(),
+            "stdout": String::from_utf8_lossy(&out.stdout),
+            "stderr": String::from_utf8_lossy(&out.stderr),
+            "remote_main_after": self.remote.show("main"),
+            "operations_after": self.ok(&["integrate", "operations", "fix-add"]),
+        });
+        self.record(test, "1-integrate-run-killed", &killed);
         assert_eq!(out.status.signal(), Some(9), "interlock was killed mid-merge: {out:?}");
         // The forge merged; interlock never heard. Its row says started, nothing more.
         let main = self.remote.tip("main").unwrap();
@@ -241,8 +265,11 @@ impl Fixture {
 #[test]
 fn invariant_7_a_crash_right_after_the_merge_call_is_reconciled_to_done() {
     let Some(f) = Fixture::new() else { return };
-    f.crash_during_merge();
+    let test = "invariant-7-crash-then-reconcile";
+    f.crash_during_merge(test);
     let (code, out) = f.json(&["reconcile", "fix-add"]);
+    f.record(test, "2-reconcile", &out);
+    f.record_end(test);
     assert_eq!(code, Some(0), "{out:#}");
     let r = &out["reconciled"][0];
     assert_eq!(
@@ -260,9 +287,12 @@ fn invariant_7_a_crash_right_after_the_merge_call_is_reconciled_to_done() {
 #[test]
 fn invariant_7_a_restarted_run_reconciles_before_anything_else() {
     let Some(f) = Fixture::new() else { return };
-    f.crash_during_merge();
+    let test = "invariant-7-crash-then-restarted-run";
+    f.crash_during_merge(test);
     // A new controller starts. No host session is needed: reconcile settles the task first.
     let (code, report) = f.json(&["run", "fix-add", "--host", "copilot"]);
+    f.record(test, "2-interlock-run", &report);
+    f.record_end(test);
     assert_eq!(code, Some(0), "{report:#}");
     assert_eq!(report["final_state"], "done");
     assert_eq!(report["sessions"].as_array().unwrap().len(), 0);
@@ -277,6 +307,9 @@ fn integrate_run_delivers_and_exits_zero() {
     let tree = f.verify();
     f.grant_landing();
     let (code, d) = f.json(&["integrate", "run", "fix-add"]);
+    f.record("integrate-run-delivers", "integrate-run", &d);
+    f.record("integrate-run-delivers", "remote-main", &Value::String(f.remote.show("main")));
+    f.record_end("integrate-run-delivers");
     assert_eq!(code, Some(0), "{d:#}");
     assert_eq!(d["final_state"], "done");
     assert_eq!(d["pull_request"], 1);
@@ -290,9 +323,12 @@ fn p4_without_landing_authority_the_task_blocks_at_verified() {
     let Some(f) = Fixture::new() else { return };
     f.verify();
     let (code, d) = f.json(&["integrate", "run", "fix-add"]);
+    let status = f.ok(&["status", "fix-add"]);
+    f.record("p4-no-landing-authority", "integrate-run", &d);
+    f.record("p4-no-landing-authority", "status", &status);
+    f.record_end("p4-no-landing-authority");
     assert_eq!(code, Some(5), "{d:#}");
     assert_eq!(d["final_state"], "blocked");
-    let status = f.ok(&["status", "fix-add"]);
     assert_eq!(status["task"]["blocked_reason"], "no landing authority is granted for this task");
     assert_eq!(status["next_moves"][0]["to"], "verified", "unblocking returns it to verified");
     assert!(f.gh.calls().is_empty());
@@ -305,6 +341,16 @@ fn p4_a_moved_head_refuses_the_merge() {
     f.grant_landing();
     f.gh.fault("merge", "move_head", 1);
     let (code, d) = f.json(&["integrate", "run", "fix-add"]);
+    f.record("p4-moved-head", "integrate-run", &d);
+    f.record(
+        "p4-moved-head",
+        "remote",
+        &serde_json::json!({
+            "main": f.remote.show("main"),
+            "interlock/fix-add": f.remote.show("interlock/fix-add"),
+        }),
+    );
+    f.record_end("p4-moved-head");
     assert_eq!(code, Some(5), "{d:#}");
     assert_eq!(d["final_state"], "awaiting_verification");
     let why = d["stopped_because"].as_str().unwrap();
@@ -320,9 +366,13 @@ fn p4_a_changed_base_invalidates_the_evidence() {
     f.grant_landing();
     f.remote.commit_file("main", "NOTES.md", "someone else's change\n");
     let (code, d) = f.json(&["integrate", "run", "fix-add"]);
+    let status = f.ok(&["status", "fix-add"]);
+    f.record("p4-changed-base", "integrate-run", &d);
+    f.record("p4-changed-base", "status-after", &status);
+    f.record("p4-changed-base", "verified-tree-before", &Value::String(tree.clone()));
+    f.record_end("p4-changed-base");
     assert_eq!(code, Some(5), "{d:#}");
     assert_eq!(d["final_state"], "awaiting_verification");
-    let status = f.ok(&["status", "fix-add"]);
     assert_ne!(status["task"]["current_tree"], tree.as_str());
     assert_eq!(status["evidence"]["all_pass"], false);
     assert!(status["evidence"]["criteria"].as_array().unwrap().iter().all(|c| c["stale"].as_u64() > Some(0)));
