@@ -1,0 +1,38 @@
+{
+ "anon_id": "fec15d91c6a9",
+ "task": "go-quoted-hash",
+ "cases": [
+  {
+   "id": "existing_tests",
+   "pass": true,
+   "detail": "10 passed\n"
+  },
+  {
+   "id": "TestHiddenHashInsideQuotes",
+   "pass": true,
+   "detail": ""
+  },
+  {
+   "id": "TestHiddenUnquotedValueEndsAtHash",
+   "pass": true,
+   "detail": ""
+  },
+  {
+   "id": "TestHiddenCommentAfterClosingQuote",
+   "pass": true,
+   "detail": ""
+  },
+  {
+   "id": "TestHiddenEscapes",
+   "pass": true,
+   "detail": ""
+  },
+  {
+   "id": "cli_get_reported_value",
+   "pass": true,
+   "detail": "title: exit 0 'Issue #42: retry\\n'; port: exit 0 '8080\\n'"
+  }
+ ],
+ "pass": true,
+ "condition_words": []
+}

@@ -1,0 +1,57 @@
+test_allowlist_drops_session_bindings_and_secrets (__main__.Environment.test_allowlist_drops_session_bindings_and_secrets) ... ok
+test_interlock_condition_gets_its_binary_and_the_effort_fallback (__main__.Environment.test_interlock_condition_gets_its_binary_and_the_effort_fallback) ... ok
+test_plain_command_uses_the_worker_tools_and_effort (__main__.Environment.test_plain_command_uses_the_worker_tools_and_effort) ... ok
+test_a_test_finished_after_the_edit_makes_the_landing_invalid (__main__.Interruption.test_a_test_finished_after_the_edit_makes_the_landing_invalid) ... ok
+test_a_test_issued_with_the_edit_fires_at_the_edit (__main__.Interruption.test_a_test_issued_with_the_edit_fires_at_the_edit) ... ok
+test_fires_after_the_delay_with_inotify (__main__.Interruption.test_fires_after_the_delay_with_inotify) ... ok
+test_fires_after_the_delay_with_polling (__main__.Interruption.test_fires_after_the_delay_with_polling) ... ok
+test_fires_when_a_test_is_issued_after_the_edit (__main__.Interruption.test_fires_when_a_test_is_issued_after_the_edit) ... ok
+test_no_edit_means_not_interrupted (__main__.Interruption.test_no_edit_means_not_interrupted) ... ok
+test_porcelain_keeps_the_first_status_column (__main__.Interruption.test_porcelain_keeps_the_first_status_column) ... ok
+test_a_run_that_did_not_land_is_kept_and_rerun (__main__.InterruptionRetries.test_a_run_that_did_not_land_is_kept_and_rerun) ... [2026-10-06T01:32:50+00:00] t plain r1 (spent $0.00, estimate $0.15)
+    accepted=True claimed=True hidden=True scope=[] cost=0.1 wall=1s interruption=NOT VALID: no edit
+[2026-10-06T01:32:50+00:00] t plain r1 (spent $0.10, estimate $0.10)
+    accepted=True claimed=True hidden=True scope=[] cost=0.1 wall=1s interruption=valid
+ok
+test_budget_stops_before_a_run (__main__.InterruptionRetries.test_budget_stops_before_a_run) ... budget: spent $0.00; the next run (t, plain) is estimated at $0.15, which would pass the $0.05 cap
+ok
+test_gives_up_after_the_retries_and_keeps_every_record (__main__.InterruptionRetries.test_gives_up_after_the_retries_and_keeps_every_record) ... [2026-10-06T01:32:50+00:00] t plain r1 (spent $0.00, estimate $0.15)
+    accepted=True claimed=True hidden=True scope=[] cost=0.1 wall=1s interruption=NOT VALID: no edit
+[2026-10-06T01:32:50+00:00] t plain r1 (spent $0.10, estimate $0.10)
+    accepted=True claimed=True hidden=True scope=[] cost=0.1 wall=1s interruption=NOT VALID: no edit
+[2026-10-06T01:32:50+00:00] t plain r1 (spent $0.20, estimate $0.10)
+    accepted=True claimed=True hidden=True scope=[] cost=0.1 wall=1s interruption=NOT VALID: no edit
+    giving up on t plain r1: the interruption never landed as designed
+ok
+test_report_counts_not_landed_runs_separately (__main__.InterruptionRetries.test_report_counts_not_landed_runs_separately) ... [2026-10-06T01:32:50+00:00] t plain r1 (spent $0.00, estimate $0.15)
+    accepted=True claimed=True hidden=True scope=[] cost=0.1 wall=1s interruption=NOT VALID: no edit
+[2026-10-06T01:32:50+00:00] t plain r1 (spent $0.10, estimate $0.10)
+    accepted=True claimed=True hidden=True scope=[] cost=0.1 wall=1s interruption=valid
+ok
+test_cd_then_relative_read_across_calls (__main__.LeakScanNewLayout.test_cd_then_relative_read_across_calls) ... ok
+test_claude_stream_json_and_init_cwd (__main__.LeakScanNewLayout.test_claude_stream_json_and_init_cwd) ... ok
+test_copilot_events (__main__.LeakScanNewLayout.test_copilot_events) ... ok
+test_glob_into_the_run_base (__main__.LeakScanNewLayout.test_glob_into_the_run_base) ... ok
+test_needle_and_path_pattern (__main__.LeakScanNewLayout.test_needle_and_path_pattern) ... ok
+test_own_working_copy_and_tmp_scratch_are_fine (__main__.LeakScanNewLayout.test_own_working_copy_and_tmp_scratch_are_fine) ... ok
+test_parent_traversal_into_state (__main__.LeakScanNewLayout.test_parent_traversal_into_state) ... ok
+test_python_string_paths (__main__.LeakScanNewLayout.test_python_string_paths) ... ok
+test_relative_globs_and_redirections_are_not_absolute (__main__.LeakScanNewLayout.test_relative_globs_and_redirections_are_not_absolute) ... ok
+test_search_of_an_ancestor_is_weak (__main__.LeakScanNewLayout.test_search_of_an_ancestor_is_weak) ... ok
+test_upstream_needles (__main__.LeakScanNewLayout.test_upstream_needles) ... ok
+test_control_absolute_taskset_path (__main__.LeakScanReviewerExamples.test_control_absolute_taskset_path) ... ok
+test_earlier_runs_judged_output_and_verdict (__main__.LeakScanReviewerExamples.test_earlier_runs_judged_output_and_verdict) ... ok
+test_earlier_runs_working_copy (__main__.LeakScanReviewerExamples.test_earlier_runs_working_copy) ... ok
+test_reference_solution_by_relative_path_in_another_checkout (__main__.LeakScanReviewerExamples.test_reference_solution_by_relative_path_in_another_checkout) ... ok
+test_sibling_frozen_repo_of_another_task (__main__.LeakScanReviewerExamples.test_sibling_frozen_repo_of_another_task) ... ok
+test_abba (__main__.Ordering.test_abba) ... ok
+test_bounds (__main__.Small.test_bounds) ... ok
+test_globs_and_scope (__main__.Small.test_globs_and_scope) ... ok
+test_layout_must_not_overlap (__main__.Small.test_layout_must_not_overlap) ... ok
+test_scope_in_the_plain_prompt (__main__.Small.test_scope_in_the_plain_prompt) ... ok
+test_status_claim (__main__.Small.test_status_claim) ... ok
+
+----------------------------------------------------------------------
+Ran 36 tests in 3.884s
+
+OK

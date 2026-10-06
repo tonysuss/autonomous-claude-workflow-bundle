@@ -1,0 +1,50 @@
+id = "go-quoted-hash"
+repository = "."
+workflow = "bug-fix"
+environment = "linux-go"
+intent = '''
+`kvconf get` fails on a value that has a `#` inside double quotes. With this file:
+
+```
+[app]
+title = "Issue #42: retry"
+```
+
+`go run ./cmd/kvconf get app.conf app.title` prints `kvconf: line 2: unterminated quoted value` instead of `Issue #42: retry`.
+
+A `#` inside a double-quoted value is part of the value. The other quoting rules in the README must keep working:
+
+- an unquoted value still ends at the first `#`: `port = 8080 # http` gives `8080`;
+- after the closing quote, `# ...` is a comment: `title = "x" # note` gives `x`;
+- inside quotes, `\"` is a double quote and `\\` is a single backslash: `path = "C:\\temp"` gives `C:\temp`.
+
+`checks/quoted-hash.sh` reproduces the problem. The tests run with `go test ./...`.
+'''
+
+[budget]
+max_attempts = 3
+
+[scope]
+paths = ["parser.go", "*_test.go", "testdata/**"]
+
+[[criterion]]
+id = "repro"
+statement = "`kvconf get` prints `Issue #42: retry` for the reported file"
+check = "sh checks/quoted-hash.sh"
+min_strength = "observed"
+producer = "independent"
+baseline = "fails"
+
+[[criterion]]
+id = "spec"
+statement = '''Every quoting rule in the task holds: a # inside quotes is kept, an unquoted value ends at #, a comment may follow the closing quote, and \" and \\ are escapes inside quotes'''
+min_strength = "tested"
+producer = "independent"
+
+[[criterion]]
+id = "regression"
+statement = "The existing Go tests pass"
+check = "go test ./..."
+min_strength = "tested"
+producer = "self"
+baseline = "passes"

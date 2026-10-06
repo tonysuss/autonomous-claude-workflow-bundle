@@ -1,0 +1,8 @@
+Values in unquoted and double-quoted strings now expand `${NAME}`, `${NAME:-fallback}` and `$$`, and `get` and `dump` take `--no-expand`. `checks/expand.sh` and `go test ./...` both pass when run through interlock, and I recorded claims for all three criteria. The independent verifier still has to confirm `expand` and `spec`.
+
+- **Library:** `ParseOptions{NoExpand}` and `ParseWithOptions` are added, and `Parse` and `Load` expand by default. I also added `LoadWithOptions`, which you didn't ask for, because the CLI needs it. An unset variable without a fallback fails with `kvconf: line N: undefined variable "NAME"`.
+- **Unclosed `${`:** the brief didn't cover this case, so I made it an error ("unterminated ${ in value"). Tell me if you'd rather it stay literal.
+- **CLI:** `--no-expand` goes before the file name. I ran `get --no-expand` by hand and it printed `${DATA_ROOT}/data`. A plain `dump` with `DATA_ROOT` unset printed the undefined-variable error with its line number.
+- **Tests and docs:** a new `expand_test.go` covers the rules, including the error text with its line number. I added a README section on environment variables.
+
+The edits are in `parser.go`, `config.go`, `cmd/kvconf/main.go`, `expand_test.go` and `README.md`.

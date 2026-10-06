@@ -1,0 +1,7 @@
+# Harness metadata. Hidden: never copied into an agent's working copy.
+id = "go-quoted-hash"
+kind = "bug-fix"
+language = "go"
+repo = "kvconf"
+scope = ["parser.go", "*_test.go", "testdata/**"]
+judge = "hidden/judge.py"

@@ -1,0 +1,17 @@
+# Plausible partial fixes. selftest requires each to fail at least one hidden case.
+
+[[near_miss]]
+name = "GetBool's missing-key message unified with the others"
+from = "solution"
+[[near_miss.edit]]
+path = "getters.go"
+old = "\tvar missing *missingKey\n\tif errors.As(err, &missing) {"
+new = "\tvar missing *missingKey\n\tif false && errors.As(err, &missing) {"
+
+[[near_miss]]
+name = "a lookup method added, but the getters keep their own lookup code"
+from = "start"
+[[near_miss.edit]]
+path = "getters.go"
+old = "// Get returns the value of key in section.\nfunc (c *Config) Get(section, key string) (string, error) {\n"
+new = "func (c *Config) lookup(section, key string) (string, error) { return c.Get(section, key) }\n\n// Get returns the value of key in section.\nfunc (c *Config) Get(section, key string) (string, error) {\n"

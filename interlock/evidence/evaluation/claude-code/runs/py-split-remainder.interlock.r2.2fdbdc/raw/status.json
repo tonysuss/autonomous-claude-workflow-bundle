@@ -1,0 +1,74 @@
+{
+ "attempts": [
+  {
+   "epoch": 1,
+   "host": "claude-code",
+   "id": "att-48601a47881b4938",
+   "role": "worker",
+   "status": "submitted"
+  },
+  {
+   "epoch": 1,
+   "host": "claude-code",
+   "id": "att-be0e8f4a331e474e",
+   "role": "verifier",
+   "status": "completed"
+  }
+ ],
+ "evidence": {
+  "all_pass": true,
+  "any_fail": false,
+  "criteria": [
+   {
+    "criterion_id": "repro",
+    "current_assessments": 1,
+    "current_claims": 1,
+    "current_runs": 2,
+    "evidence_id": "asm-dd6315404a1c463a",
+    "source": "assessment",
+    "stale": 0,
+    "strength": "observed",
+    "verdict": "pass"
+   },
+   {
+    "criterion_id": "spec",
+    "current_assessments": 1,
+    "current_claims": 1,
+    "current_runs": 0,
+    "evidence_id": "asm-a4a77a149c104a5c",
+    "source": "assessment",
+    "stale": 0,
+    "strength": "tested",
+    "verdict": "pass"
+   },
+   {
+    "criterion_id": "regression",
+    "current_assessments": 1,
+    "current_claims": 1,
+    "current_runs": 2,
+    "evidence_id": "asm-0af66025404d4d36",
+    "source": "assessment",
+    "stale": 0,
+    "strength": "tested",
+    "verdict": "pass"
+   }
+  ]
+ },
+ "next_moves": [],
+ "task": {
+  "attempts_used": 1,
+  "blocked_reason": null,
+  "current_attempt": "att-48601a47881b4938",
+  "current_tree": "422da1e19f6809c242c1d90986c943d35939a61d",
+  "id": "py-split-remainder",
+  "integration_required": false,
+  "intent": "Splitting an expense loses cents. `split_evenly(100, 3)` in `tally/money.py` returns `[33, 33, 33]`, which adds up to 99, so the balances for a ledger with such an expense no longer sum to zero.\n\nExpected behaviour of `split_evenly(total, n)`:\n\n- The shares always add up to `total`, and no two shares differ by more than one cent.\n- The earlier shares (participants are in the order given) take the extra cents: `split_evenly(100, 3) == [34, 33, 33]`.\n- A negative total (a refund) mirrors the positive case: `split_evenly(-100, 3) == [-34, -33, -33]`.\n- `n` must be positive; otherwise `split_evenly` raises `ValueError`.\n\n`checks/split-repro.sh` reproduces the problem. The tests run with `python3 -m unittest discover -s tests -q`.\n",
+  "lease_epoch": 1,
+  "max_attempts": 3,
+  "state": "done",
+  "workflow": {
+   "name": "bug-fix",
+   "version": 1
+  }
+ }
+}

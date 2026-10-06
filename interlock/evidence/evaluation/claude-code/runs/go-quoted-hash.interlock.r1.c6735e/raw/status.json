@@ -1,0 +1,74 @@
+{
+ "attempts": [
+  {
+   "epoch": 1,
+   "host": "claude-code",
+   "id": "att-05ee2155fcf84cff",
+   "role": "worker",
+   "status": "submitted"
+  },
+  {
+   "epoch": 1,
+   "host": "claude-code",
+   "id": "att-5eb7676a3ff84e29",
+   "role": "verifier",
+   "status": "completed"
+  }
+ ],
+ "evidence": {
+  "all_pass": true,
+  "any_fail": false,
+  "criteria": [
+   {
+    "criterion_id": "repro",
+    "current_assessments": 1,
+    "current_claims": 1,
+    "current_runs": 2,
+    "evidence_id": "asm-43dbcd6ced714b88",
+    "source": "assessment",
+    "stale": 0,
+    "strength": "observed",
+    "verdict": "pass"
+   },
+   {
+    "criterion_id": "spec",
+    "current_assessments": 1,
+    "current_claims": 1,
+    "current_runs": 0,
+    "evidence_id": "asm-abfeda7f0d504e9b",
+    "source": "assessment",
+    "stale": 0,
+    "strength": "observed",
+    "verdict": "pass"
+   },
+   {
+    "criterion_id": "regression",
+    "current_assessments": 1,
+    "current_claims": 1,
+    "current_runs": 2,
+    "evidence_id": "asm-df04b9c32ed84b92",
+    "source": "assessment",
+    "stale": 0,
+    "strength": "tested",
+    "verdict": "pass"
+   }
+  ]
+ },
+ "next_moves": [],
+ "task": {
+  "attempts_used": 1,
+  "blocked_reason": null,
+  "current_attempt": "att-05ee2155fcf84cff",
+  "current_tree": "a89f555c31ee2d751f644837d7057242bf40cdd7",
+  "id": "go-quoted-hash",
+  "integration_required": false,
+  "intent": "`kvconf get` fails on a value that has a `#` inside double quotes. With this file:\n\n```\n[app]\ntitle = \"Issue #42: retry\"\n```\n\n`go run ./cmd/kvconf get app.conf app.title` prints `kvconf: line 2: unterminated quoted value` instead of `Issue #42: retry`.\n\nA `#` inside a double-quoted value is part of the value. The other quoting rules in the README must keep working:\n\n- an unquoted value still ends at the first `#`: `port = 8080 # http` gives `8080`;\n- after the closing quote, `# ...` is a comment: `title = \"x\" # note` gives `x`;\n- inside quotes, `\\\"` is a double quote and `\\\\` is a single backslash: `path = \"C:\\\\temp\"` gives `C:\\temp`.\n\n`checks/quoted-hash.sh` reproduces the problem. The tests run with `go test ./...`.\n",
+  "lease_epoch": 1,
+  "max_attempts": 3,
+  "state": "done",
+  "workflow": {
+   "name": "bug-fix",
+   "version": 1
+  }
+ }
+}

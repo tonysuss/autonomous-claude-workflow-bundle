@@ -1,0 +1,9 @@
+Environment-variable expansion now works in `Parse` and `Load`, and `kvconf get` and `kvconf dump` accept `--no-expand` before the file name. `go test ./...` and `checks/expand.sh` both pass. I also ran the CLI by hand on an unset variable. Without the flag it fails with `kvconf: line 2: undefined variable "NOPE"`. With `--no-expand`, `get` and `dump` print `${NOPE}` literally.
+
+The previous session had written most of this already. The one bug left was in the `get` argument check in `cmd/kvconf/main.go`: it required one argument after the flag instead of two (file and key), so every `get` call printed the usage message. I fixed that.
+
+- **API:** the `ParseOptions` type and `ParseWithOptions` are added as specified. `Parse` behaves like `ParseWithOptions` with default options. I also added `LoadWithOptions`, which you didn't ask for; the CLI needs it to pass the flag through.
+- **Comments in fallbacks:** an unquoted `#` inside `${...}` is treated as part of the fallback, not as the start of a comment. I added this so something like `${X:-a#b}` works.
+- **Tests:** I didn't add new unit tests for expansion, `$$`, fallbacks or `--no-expand`. The existing tests pass, and I checked those cases by hand.
+
+STATUS: DONE

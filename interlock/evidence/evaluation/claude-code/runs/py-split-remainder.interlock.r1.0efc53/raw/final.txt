@@ -1,0 +1,3 @@
+I fixed `split_evenly` in `tally/money.py` so the shares always add up to the total. It now gives the extra cents to the earlier shares, so `split_evenly(100, 3)` returns `[34, 33, 33]`. Negative totals mirror that (`-100` gives `[-34, -33, -33]`), and `n <= 0` raises `ValueError`.
+
+I added tests for these cases in `tests/test_money.py`. Both `sh checks/split-repro.sh` and the unit tests (23, all passing) were run through `interlock check run`. I recorded claims for `repro` (observed), `regression` (tested) and `spec` (tested). `repro` and `spec` still need an independent verifier.

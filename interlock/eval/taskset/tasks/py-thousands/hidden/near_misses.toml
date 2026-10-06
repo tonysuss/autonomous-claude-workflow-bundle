@@ -1,0 +1,17 @@
+# Plausible partial fixes. selftest requires each to fail at least one hidden case.
+
+[[near_miss]]
+name = "group digits in the shared format_cents: export changes too"
+from = "start"
+[[near_miss.edit]]
+path = "tally/money.py"
+old = "    return f\"{sign}{whole}.{frac:02d}\"\n"
+new = "    return f\"{sign}{whole:,}.{frac:02d}\"\n"
+
+[[near_miss]]
+name = "separators in balances only; settle unchanged"
+from = "solution"
+[[near_miss.edit]]
+path = "tally/report.py"
+old = "    return \"\".join(f\"{debtor} -> {creditor}  {_readable(cents)}\\n\" for debtor, creditor, cents in transfers)\n"
+new = "    return \"\".join(f\"{debtor} -> {creditor}  {format_cents(cents)}\\n\" for debtor, creditor, cents in transfers)\n"

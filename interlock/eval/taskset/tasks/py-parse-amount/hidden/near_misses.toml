@@ -1,0 +1,17 @@
+# Plausible partial fixes. selftest requires each to fail at least one hidden case.
+
+[[near_miss]]
+name = "pad the fraction only: sign and length rules missed"
+from = "start"
+[[near_miss.edit]]
+path = "tally/money.py"
+old = "        return int(whole) * 100 + int(frac)\n"
+new = "        return int(whole) * 100 + int(frac.ljust(2, '0'))\n"
+
+[[near_miss]]
+name = "sign handled, more than two decimals still accepted"
+from = "start"
+[[near_miss.edit]]
+path = "tally/money.py"
+old = "        return int(whole) * 100 + int(frac)\n"
+new = "        sign = -1 if whole.strip().startswith('-') else 1\n        return sign * (abs(int(whole)) * 100 + int(frac[:2].ljust(2, '0')))\n"

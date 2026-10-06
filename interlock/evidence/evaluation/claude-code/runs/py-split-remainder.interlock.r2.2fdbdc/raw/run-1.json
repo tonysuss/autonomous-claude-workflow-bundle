@@ -1,0 +1,71 @@
+{
+  "task_id": "py-split-remainder",
+  "host": "claude-code",
+  "final_state": "done",
+  "stopped_because": "done",
+  "reconciled": [],
+  "baseline": [
+    {
+      "criterion_id": "repro",
+      "run_id": "run-a02c22aeac5f45b7",
+      "exit_code": 1,
+      "vacuous": null,
+      "problem": null
+    },
+    {
+      "criterion_id": "regression",
+      "run_id": "run-56cbe6ec65624e70",
+      "exit_code": 0,
+      "vacuous": null,
+      "problem": null
+    }
+  ],
+  "sessions": [
+    {
+      "role": "worker",
+      "attempt_id": "att-48601a47881b4938",
+      "epoch": 1,
+      "exit": {
+        "exit": "completed"
+      },
+      "duration_ms": 17136,
+      "summary": "I fixed `split_evenly` in `tally/money.py`, so `split_evenly(100, 3)` now returns `[34, 33, 33]`.\n\n- **The fix:** it divides the absolute total, gives the extra cents to the earliest shares, and restores the sign for refunds. It raises `ValueError` when `n <= 0`.\n- **Tests:** I added three tests to `tests/test_money.py`, covering the remainder order, negative totals and `n <= 0`.\n- **Checks:** `checks/split-repro.sh` now passes. The full suite passes with 22 tests.\n- **Claims:** I recorded claims for `repro` (observed), `regression` (tested) and `spec` (tested). `repro` and `spec` need an independent producer, so a separate verifier still has to check them.",
+      "denials": 0,
+      "transcript": "/tmp/claude-0/-home-user-autonomous-claude-workflow-bundle/<redacted>/scratchpad/work/ws/355c94ff01/tally/.interlock/transcripts/att-48601a47881b4938.jsonl",
+      "moves": [
+        {
+          "signal": "G3",
+          "from": "running",
+          "to": "awaiting_verification",
+          "reason": "result accepted from attempt att-48601a47881b4938 at epoch 1"
+        }
+      ]
+    },
+    {
+      "role": "verifier",
+      "attempt_id": "att-be0e8f4a331e474e",
+      "epoch": 1,
+      "exit": {
+        "exit": "completed"
+      },
+      "duration_ms": 15131,
+      "summary": "- **repro**: pass, observed. `sh checks/split-repro.sh`, run through interlock on tree 422da1e, printed \"ok: 1.00 split three ways keeps every cent\".\n- **spec**: pass, tested. I ran my own script over totals -60 to 60 and n from 1 to 8. It checked the sum, length, spread of at most one cent, extras going to earlier shares, and negative totals mirroring positive ones. It also confirmed `[34, 33, 33]` and `[-34, -33, -33]`, and that n = 0 and n = -1 raise `ValueError`.\n- **regression**: pass, tested. The unittest suite ran 22 tests, all OK, on the same tree.\n\nThe changes from the base commit are limited to `tally/money.py` and `tests/test_money.py`, so scope holds. I did not change anything in the worktree.",
+      "denials": 0,
+      "transcript": "/tmp/claude-0/-home-user-autonomous-claude-workflow-bundle/<redacted>/scratchpad/work/ws/355c94ff01/tally/.interlock/transcripts/att-be0e8f4a331e474e.jsonl",
+      "moves": [
+        {
+          "signal": "G4",
+          "from": "awaiting_verification",
+          "to": "verified",
+          "reason": "every required criterion has current passing evidence"
+        },
+        {
+          "signal": "G7",
+          "from": "verified",
+          "to": "done",
+          "reason": "verified; the workflow needs no delivery"
+        }
+      ]
+    }
+  ]
+}

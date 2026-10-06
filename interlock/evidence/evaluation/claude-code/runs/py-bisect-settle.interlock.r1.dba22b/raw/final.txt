@@ -1,0 +1,7 @@
+The regression was introduced by `6fb44a0` ("ledger: tidy settle loop"). I didn't change any files.
+
+I exported every commit from `bfaaa8d` to `fa8265e` into a copy outside the tree. I ran `sh checks/settle-repro.sh` on each copy. It passes at `bfaaa8d`, `a1f4611`, `d4d6223`, `4c0c5ec` and `2efc4f9`. It fails at `6fb44a0` and at every later commit.
+
+`interlock check run --criterion answer` returned "criterion answer has no check to run", so interlock ran no check of its own. I recorded an `observed` claim with `interlock claim add`. The output I saw from that command was truncated, so I can't confirm it was accepted.
+
+ANSWER: 6fb44a053405cf209422a5ba505fa0bb929b18d4

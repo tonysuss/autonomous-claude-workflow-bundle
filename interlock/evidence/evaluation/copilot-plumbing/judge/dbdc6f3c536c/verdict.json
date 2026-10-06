@@ -1,0 +1,38 @@
+{
+ "anon_id": "dbdc6f3c536c",
+ "task": "py-split-remainder",
+ "cases": [
+  {
+   "id": "existing_tests",
+   "pass": true,
+   "detail": "19 passed"
+  },
+  {
+   "id": "test_ledger_balances_sum_to_zero",
+   "pass": true,
+   "detail": ""
+  },
+  {
+   "id": "test_negative_total_mirrors",
+   "pass": true,
+   "detail": ""
+  },
+  {
+   "id": "test_rejects_non_positive_n",
+   "pass": true,
+   "detail": ""
+  },
+  {
+   "id": "test_reported_case",
+   "pass": true,
+   "detail": ""
+  },
+  {
+   "id": "test_sum_spread_and_order",
+   "pass": true,
+   "detail": ""
+  }
+ ],
+ "pass": true,
+ "condition_words": []
+}

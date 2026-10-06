@@ -1,0 +1,81 @@
+{
+ "attempts": [
+  {
+   "epoch": 1,
+   "host": "copilot",
+   "id": "att-b1f6d0acc6844aec",
+   "role": "worker",
+   "status": "failed"
+  },
+  {
+   "epoch": 2,
+   "host": "copilot",
+   "id": "att-968ec8b456f14e31",
+   "role": "worker",
+   "status": "submitted"
+  },
+  {
+   "epoch": 2,
+   "host": "copilot",
+   "id": "att-0d82624aa4584906",
+   "role": "verifier",
+   "status": "completed"
+  }
+ ],
+ "evidence": {
+  "all_pass": true,
+  "any_fail": false,
+  "criteria": [
+   {
+    "criterion_id": "since",
+    "current_assessments": 1,
+    "current_claims": 0,
+    "current_runs": 1,
+    "evidence_id": "asm-bbbd55d92f5d47fb",
+    "source": "assessment",
+    "stale": 0,
+    "strength": "observed",
+    "verdict": "pass"
+   },
+   {
+    "criterion_id": "spec",
+    "current_assessments": 1,
+    "current_claims": 0,
+    "current_runs": 0,
+    "evidence_id": "asm-7847e035fac848ed",
+    "source": "assessment",
+    "stale": 0,
+    "strength": "observed",
+    "verdict": "pass"
+   },
+   {
+    "criterion_id": "regression",
+    "current_assessments": 1,
+    "current_claims": 1,
+    "current_runs": 2,
+    "evidence_id": "asm-5ac89dbb079c48c8",
+    "source": "assessment",
+    "stale": 0,
+    "strength": "tested",
+    "verdict": "pass"
+   }
+  ]
+ },
+ "next_moves": [],
+ "task": {
+  "attempts_used": 2,
+  "blocked_reason": null,
+  "current_attempt": "att-968ec8b456f14e31",
+  "current_tree": "8a3146749c4b99e3a2762cc7f5e8771a49c48236",
+  "id": "py-date-filter",
+  "integration_required": false,
+  "intent": "Add `--since DATE` and `--until DATE` options to `python3 -m tally balances` and `python3 -m tally settle`, so that part of a trip can be looked at on its own. DATE is written `YYYY-MM-DD`.\n\n- Only entries dated on or after `--since` and on or before `--until` count. Either option may be given alone.\n- A DATE that is not a valid `YYYY-MM-DD` date is rejected by the argument parser, which exits with status 2.\n- When `--since` or `--until` is given, every entry's date must be a valid `YYYY-MM-DD` date. Otherwise the command fails with status 1 and an error that names the file and the line, like `tally: trip.csv:3: invalid date '2026-13-01'`.\n- Without these options, nothing changes.\n\n`checks/date-filter.sh` checks `balances --since 2026-06-02` for `examples/trip.csv`. The tests run with `python3 -m unittest discover -s tests -q`.\n",
+  "lease_epoch": 2,
+  "max_attempts": 3,
+  "state": "done",
+  "workflow": {
+   "name": "feature",
+   "version": 1
+  }
+ }
+}

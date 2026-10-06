@@ -1,0 +1,18 @@
+{
+ "anon_id": "fbfc9a91cdc2",
+ "task": "py-bisect-settle",
+ "cases": [
+  {
+   "id": "answer_given",
+   "pass": true,
+   "detail": "ANSWER: 91a6a159d5c7e295504c4280c17ca9f883bdcaa9"
+  },
+  {
+   "id": "answer_names_culprit",
+   "pass": true,
+   "detail": "named ['91a6a159d5c7e295504c4280c17ca9f883bdcaa9']; resolves to ['91a6a159d5c7e295504c4280c17ca9f883bdcaa9']"
+  }
+ ],
+ "pass": true,
+ "condition_words": []
+}

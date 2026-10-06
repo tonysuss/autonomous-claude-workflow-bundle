@@ -1,0 +1,22 @@
+# Wrong or ambiguous answers. selftest requires each to fail at least one
+# hidden case. {culprit}, {parent} and {child} are replaced by commit ids.
+
+[[near_miss]]
+name = "the culprit's parent"
+answers = ["ANSWER: {parent}"]
+
+[[near_miss]]
+name = "the culprit's child"
+answers = ["ANSWER: {child}"]
+
+[[near_miss]]
+name = "two ids on the ANSWER line"
+answers = ["ANSWER: {culprit} (or {parent})"]
+
+[[near_miss]]
+name = "the right answer, then a wrong one on a later ANSWER line"
+answers = ["ANSWER: {culprit}", "ANSWER: {parent}"]
+
+[[near_miss]]
+name = "no ANSWER line"
+answers = []

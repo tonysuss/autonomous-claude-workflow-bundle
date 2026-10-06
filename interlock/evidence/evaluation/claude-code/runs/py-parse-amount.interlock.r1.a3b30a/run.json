@@ -1,0 +1,155 @@
+{
+ "run_id": "py-parse-amount.interlock.r1.a3b30a",
+ "label": "main",
+ "task": "py-parse-amount",
+ "kind": "bug-fix",
+ "language": "python",
+ "condition": "interlock",
+ "repeat": 1,
+ "host": "claude-code",
+ "host_version": "2.1.289",
+ "model": "claude-sonnet-5-5",
+ "effort": "medium",
+ "fake_model": false,
+ "started_at": "2026-10-06T00:15:28+00:00",
+ "workdir": "/tmp/claude-0/-home-user-autonomous-claude-workflow-bundle/<redacted>/scratchpad/work/ws/98fb5c71ba/tally",
+ "base_commit": "b38a841619c174c4f4cb031875ff808cadbff88e",
+ "sessions": [
+  {
+   "complete": true,
+   "final_text": "I fixed `parse_amount` in `tally/money.py`. One decimal digit now means tenths, so `\"12.5\"` gives 1250. The sign covers the whole amount, so `\"-0.50\"` gives -50. More than two decimal places, or any non-digit text, raises `ValueError`.\n\nI added three tests to `tests/test_money.py` for tenths, the sign cases and `\"1.234\"`. Both interlock checks passed on my files: `sh checks/parse-repro.sh` prints \"ok: 12.5 is 1250 cents\", and the full unit suite passes (22 tests). I recorded claims for `repro` (observed), `regression` (tested) and `spec` (tested). The independent verifier still has to confirm `repro` and `spec`.\n\nThe parser also accepts a leading `+` now, which I didn't verify against the old behaviour. Existing tests cover thousands separators, whole numbers, surrounding spaces and non-amount text, and they still pass.",
+   "is_error": false,
+   "cost_usd": 0.10564939999999999,
+   "tokens": {
+    "input": 1862,
+    "output": 1916,
+    "cache_read": 198457,
+    "cache_write": 11251
+   },
+   "turns": 7,
+   "models": [
+    "claude-haiku-4-5-20251001",
+    "claude-sonnet-5-5"
+   ],
+   "model_requested": "claude-sonnet-5-5",
+   "denials": 0,
+   "events": 39,
+   "subtype": "success",
+   "role": "worker",
+   "attempt": "att-9374436cd95e46f9",
+   "attempt_status": "submitted",
+   "transcript": "raw/transcripts/att-9374436cd95e46f9.jsonl"
+  },
+  {
+   "complete": true,
+   "final_text": "- **repro**: passes (observed). `interlock check run --criterion repro` exited 0 on this tree and printed \"ok: 12.5 is 1250 cents\".\n- **spec**: passes (tested). I compared the old and new `parse_amount` on 24 inputs. Tenths, the sign covering the fraction and `ValueError` for `\"1.234\"` all hold. Thousands separators, whole numbers, surrounding spaces and non-amount text behave as before. The base parser also accepted a leading `+` (`\"+5\"` gives 500), so that is not a change.\n- **regression**: passes (tested). `interlock check run --criterion regression` ran 22 unit tests, all OK.",
+   "is_error": false,
+   "cost_usd": 0.08286299999999999,
+   "tokens": {
+    "input": 2169,
+    "output": 1168,
+    "cache_read": 127570,
+    "cache_write": 10893
+   },
+   "turns": 4,
+   "models": [
+    "claude-haiku-4-5-20251001",
+    "claude-sonnet-5-5"
+   ],
+   "model_requested": "claude-sonnet-5-5",
+   "denials": 0,
+   "events": 27,
+   "subtype": "success",
+   "role": "verifier",
+   "attempt": "att-b7cd52446ec642d3",
+   "attempt_status": "completed",
+   "transcript": "raw/transcripts/att-b7cd52446ec642d3.jsonl"
+  }
+ ],
+ "notes": [],
+ "interlock": {
+  "final_state": "done",
+  "stopped_because": "done",
+  "blocked_reason": null,
+  "attempts_used": 1,
+  "signals": [
+   "G1",
+   "G2",
+   "G3",
+   "G4",
+   "G7"
+  ],
+  "invocations": [
+   {
+    "exit_code": 0,
+    "killed": null,
+    "killed_pids": 0,
+    "wall_s": 39.3
+   }
+  ],
+  "baseline": [
+   {
+    "criterion_id": "repro",
+    "run_id": "run-1220c67717f847aa",
+    "exit_code": 1,
+    "vacuous": null,
+    "problem": null
+   },
+   {
+    "criterion_id": "regression",
+    "run_id": "run-a0296461d5b04fdf",
+    "exit_code": 0,
+    "vacuous": null,
+    "problem": null
+   }
+  ]
+ },
+ "claim": {
+  "claimed_done": true,
+  "source": "interlock-state",
+  "detail": "done"
+ },
+ "wall_s": 39.6,
+ "output": {
+  "tree": "842d958eca71ba671c68143034ce37b335259eb9",
+  "delivered": true,
+  "changed_paths": [
+   "tally/money.py",
+   "tests/test_money.py"
+  ],
+  "scope_violations": []
+ },
+ "judge": {
+  "anon_id": "c51dd41f7248",
+  "hidden_pass": true,
+  "cases": 6,
+  "failed": [],
+  "condition_words_in_judged_files": []
+ },
+ "metrics": {
+  "accepted": true,
+  "hidden_pass": true,
+  "claimed_done": true,
+  "unsupported_claim": false,
+  "missed_defects": 0,
+  "scope_violation": false,
+  "correct_but_not_claimed": false,
+  "recovery": null,
+  "human_interventions": 0,
+  "operator_needed": false,
+  "restarts": 0,
+  "sessions": 2,
+  "wall_s": 39.6,
+  "cost_usd": 0.1885,
+  "cost_complete": true,
+  "tokens": {
+   "input": 4031,
+   "output": 3084,
+   "cache_read": 326027,
+   "cache_write": 22144
+  },
+  "tokens_complete": true,
+  "hidden_material_seen": false
+ },
+ "budget_charge_usd": 0.1885
+}

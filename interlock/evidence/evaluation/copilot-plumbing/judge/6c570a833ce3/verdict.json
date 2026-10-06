@@ -1,0 +1,63 @@
+{
+ "anon_id": "6c570a833ce3",
+ "task": "go-env-expand",
+ "cases": [
+  {
+   "id": "existing_tests",
+   "pass": true,
+   "detail": "10 passed\n"
+  },
+  {
+   "id": "TestHiddenBraceReferences",
+   "pass": true,
+   "detail": ""
+  },
+  {
+   "id": "TestHiddenFallbacks",
+   "pass": true,
+   "detail": ""
+  },
+  {
+   "id": "TestHiddenDollarRules",
+   "pass": true,
+   "detail": ""
+  },
+  {
+   "id": "TestHiddenUndefinedVariableError",
+   "pass": true,
+   "detail": ""
+  },
+  {
+   "id": "TestHiddenNoExpandOption",
+   "pass": true,
+   "detail": ""
+  },
+  {
+   "id": "TestHiddenLoadExpands",
+   "pass": true,
+   "detail": ""
+  },
+  {
+   "id": "cli_get_expands",
+   "pass": true,
+   "detail": "exit 0; stdout '/srv/data\\n'; stderr ''"
+  },
+  {
+   "id": "cli_get_no_expand",
+   "pass": true,
+   "detail": "exit 0; stdout '${DATA_ROOT}/data\\n'; stderr ''"
+  },
+  {
+   "id": "cli_dump_no_expand",
+   "pass": true,
+   "detail": "exit 0; stdout 'paths.data=${DATA_ROOT}/data\\npaths.raw=$$HOME\\n'; stderr ''"
+  },
+  {
+   "id": "cli_undefined_variable_fails",
+   "pass": true,
+   "detail": "exit 1; stdout ''; stderr 'kvconf: line 2: undefined variable \"DATA_ROOT\"\\n'"
+  }
+ ],
+ "pass": true,
+ "condition_words": []
+}

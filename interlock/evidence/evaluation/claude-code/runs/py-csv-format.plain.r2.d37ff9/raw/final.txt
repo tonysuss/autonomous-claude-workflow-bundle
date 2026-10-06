@@ -1,0 +1,11 @@
+I added `--format {text,csv}` to both `balances` and `settle`. The default is `text`, which prints what it did before.
+
+`checks/csv-format.sh` passes and the 19 unit tests pass. I ran `settle --format csv` on `examples/trip.csv`, and it printed `from,to,amount` followed by `Bea,Cal,40.00` and `Dan,Ann,36.00`. An unknown format such as `--format x` exits with status 2.
+
+- **Line endings:** Python's `csv` writer ends lines with `\r\n` by default, so I set the line terminator to `\n` to match the spec.
+- **Empty output:** I didn't run a case with nothing to list. The code writes the header and then no rows, so that case prints only the header line.
+- **Tests:** I didn't add unit tests for the new option. The only CSV coverage is the existing `balances` check script.
+
+The changes are in `tally/report.py` (two new CSV render functions) and `tally/cli.py` (the option and the choice of renderer).
+
+STATUS: DONE

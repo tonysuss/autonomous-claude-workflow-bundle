@@ -1,0 +1,5 @@
+I changed `parseValue` in `parser.go` so a `#` inside double quotes stays part of the value. Quoted values are now scanned character by character. `\"` and `\\` are unescaped, and the closing quote may be followed only by whitespace or a `# ...` comment. Unquoted values still end at the first `#`.
+
+One behaviour change you didn't ask for: text after a closing quote that isn't a comment, such as `"x" y`, now gives an "unexpected text after quoted value" error. Before, that input gave "unterminated quoted value".
+
+I added `TestQuotedValues` to `parser_test.go`, covering all four rules from the brief plus a mixed case. `sh checks/quoted-hash.sh` now prints `Issue #42: retry`, and `go test ./...` passes. I recorded claims for repro (observed), regression (tested) and spec (tested). The spec criterion still needs an independent verifier.

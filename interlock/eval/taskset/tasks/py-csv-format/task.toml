@@ -1,0 +1,43 @@
+id = "py-csv-format"
+repository = "."
+workflow = "feature"
+environment = "linux-python3"
+intent = '''
+Add a `--format` option to `python3 -m tally balances` and `python3 -m tally settle`. It takes `text` (the default: today's output, unchanged) or `csv`.
+
+- `balances --format csv` prints the header `person,balance`, then one row per person in the same order as the text output, with the balance written the way the text output writes it (`36.00`, `-40.00`).
+- `settle --format csv` prints the header `from,to,amount`, then one row per transfer in the same order as the text output.
+- Fields are quoted the way Python's `csv` module quotes them by default (a name that contains a comma is wrapped in double quotes), and every line ends with `\n`.
+- When there is nothing to list, the CSV output is the header line alone.
+- An unknown format is rejected by the argument parser, which exits with status 2.
+
+`checks/csv-format.sh` checks the `balances` case for `examples/trip.csv`. The tests run with `python3 -m unittest discover -s tests -q`.
+'''
+
+[budget]
+max_attempts = 3
+
+[scope]
+paths = ["tally/**", "tests/**", "README.md"]
+
+[[criterion]]
+id = "balances-csv"
+statement = "`balances --format csv` prints the trip example as CSV, byte for byte"
+check = "sh checks/csv-format.sh"
+min_strength = "observed"
+producer = "independent"
+baseline = "fails"
+
+[[criterion]]
+id = "spec"
+statement = "Every rule in the task holds on the command line: settle CSV, quoting of names with commas, header-only output when there is nothing to list, text unchanged as the default, and exit status 2 for an unknown format"
+min_strength = "observed"
+producer = "independent"
+
+[[criterion]]
+id = "regression"
+statement = "The existing unit tests pass"
+check = "python3 -m unittest discover -s tests -q"
+min_strength = "tested"
+producer = "self"
+baseline = "passes"

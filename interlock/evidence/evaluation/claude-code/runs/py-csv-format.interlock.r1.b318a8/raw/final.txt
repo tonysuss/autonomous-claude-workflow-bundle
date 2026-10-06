@@ -1,0 +1,7 @@
+I added `--format {text,csv}` (default `text`) to both `balances` and `settle`. The changes are in `tally/cli.py` and `tally/report.py`, plus new tests in `tests/test_cli.py`. I did not touch `README.md`.
+
+The CSV is written with Python's `csv` module using `\n` line endings. It prints only the header when there is nothing to list. The argument parser rejects an unknown format with status 2.
+
+- **`balances-csv`:** `interlock check run --criterion balances-csv` passes.
+- **`regression`:** the full suite passes, 23 tests including the new ones.
+- **`spec`:** I recorded this one as `tested`, since the new tests cover the settle CSV, quoting, header-only output and the exit status 2. I also ran `settle --format csv` on the trip example by hand. It needs an independent verifier to observe it.

@@ -1,0 +1,25 @@
+# Plausible partial fixes. selftest requires each to fail at least one hidden case.
+
+[[near_miss]]
+name = "--until excludes its own day"
+from = "solution"
+[[near_miss.edit]]
+path = "tally/ledger.py"
+old = "(until is None or day <= until)"
+new = "(until is None or day < until)"
+
+[[near_miss]]
+name = "invalid entry date reported without the file and line"
+from = "solution"
+[[near_miss.edit]]
+path = "tally/ledger.py"
+old = "                raise ValueError(f\"{e.source}: {err}\" if e.source else str(err)) from None\n"
+new = "                raise ValueError(str(err)) from None\n"
+
+[[near_miss]]
+name = "dates checked even without --since or --until"
+from = "solution"
+[[near_miss.edit]]
+path = "tally/cli.py"
+old = "        if getattr(args, \"since\", None) or getattr(args, \"until\", None):\n            ledger = ledger.between(args.since, args.until)\n"
+new = "        if args.command != \"export\":\n            ledger = ledger.between(args.since, args.until)\n"
