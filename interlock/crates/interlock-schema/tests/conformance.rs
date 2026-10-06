@@ -357,3 +357,39 @@ fn budgets_may_limit_time_and_cost() {
     let parsed: Budget = serde_json::from_value(json!({"max_attempts": 2})).unwrap();
     assert_eq!(parsed, Budget::attempts(2));
 }
+
+fn refs_in(value: &serde_json::Value, out: &mut Vec<String>) {
+    match value {
+        serde_json::Value::Object(map) => {
+            for (k, v) in map {
+                match (k.as_str(), v.as_str()) {
+                    ("$ref", Some(r)) => out.push(r.to_string()),
+                    _ => refs_in(v, out),
+                }
+            }
+        }
+        serde_json::Value::Array(items) => items.iter().for_each(|v| refs_in(v, out)),
+        _ => {}
+    }
+}
+
+/// The schemas are v1: each file names itself at the address the validators
+/// register it under, every reference resolves against that address, and the
+/// changelog says what this version is.
+#[test]
+fn every_schema_names_itself_under_v1() {
+    assert_eq!(SCHEMA_BASE, "https://schemas.interlock.dev/v1/");
+    let mut files: Vec<(String, &str)> = RecordKind::ALL.iter().map(|k| (k.schema_uri(), k.schema_source())).collect();
+    files.push((format!("{SCHEMA_BASE}common.schema.json"), COMMON_SCHEMA));
+    for (uri, source) in files {
+        let schema: serde_json::Value = serde_json::from_str(source).unwrap();
+        assert_eq!(schema["$id"], json!(uri));
+        let mut refs = Vec::new();
+        refs_in(&schema, &mut refs);
+        for r in refs {
+            assert!(!r.contains("://"), "{uri} refers to {r} by absolute address; refer relative to its own $id");
+        }
+    }
+    let changelog = include_str!("../../../schemas/CHANGELOG.md");
+    assert!(changelog.contains("\n## v1\n"), "schemas/CHANGELOG.md has no entry for v1");
+}

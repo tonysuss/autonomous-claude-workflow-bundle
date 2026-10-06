@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://schemas.interlock.dev/v0/criterion.schema.json",
+  "$id": "https://schemas.interlock.dev/v1/criterion.schema.json",
   "title": "Criterion",
   "description": "One acceptance criterion. Lives on its task; changing it changes the task's policy digest, which invalidates existing evidence.",
   "type": "object",

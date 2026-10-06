@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://schemas.interlock.dev/v0/claim.schema.json",
+  "$id": "https://schemas.interlock.dev/v1/claim.schema.json",
   "title": "Claim",
   "description": "A worker's self-report against one criterion. Append-only.",
   "$ref": "common.schema.json#/$defs/evidence"

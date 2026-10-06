@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://schemas.interlock.dev/v0/operation.schema.json",
+  "$id": "https://schemas.interlock.dev/v1/operation.schema.json",
   "title": "Operation",
   "description": "An external effect. Written before the call is made and reconciled on start; never assumed.",
   "type": "object",

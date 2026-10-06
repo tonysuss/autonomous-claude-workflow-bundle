@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://schemas.interlock.dev/v0/task.schema.json",
+  "$id": "https://schemas.interlock.dev/v1/task.schema.json",
   "title": "Task",
   "description": "A unit of work. Its state changes only through a guard.",
   "type": "object",

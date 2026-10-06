@@ -81,5 +81,5 @@ impl RecordKind {
     }
 }
 
-pub const SCHEMA_BASE: &str = "https://schemas.interlock.dev/v0/";
+pub const SCHEMA_BASE: &str = "https://schemas.interlock.dev/v1/";
 pub const COMMON_SCHEMA: &str = include_str!("../../../schemas/common.schema.json");
