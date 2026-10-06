@@ -1,0 +1,109 @@
+{
+  "task_id": "go-duration-days",
+  "host": "claude-code",
+  "final_state": "done",
+  "stopped_because": "done",
+  "reconciled": [],
+  "reattached": [],
+  "interrupted": false,
+  "baseline": [
+    {
+      "criterion_id": "repro",
+      "run_id": "run-23f817a6fe184473",
+      "exit_code": 1,
+      "vacuous": null,
+      "problem": null
+    },
+    {
+      "criterion_id": "regression",
+      "run_id": "run-7c9291c71fbb4130",
+      "exit_code": 0,
+      "vacuous": null,
+      "problem": null
+    }
+  ],
+  "sessions": [
+    {
+      "role": "worker",
+      "attempt_id": "att-5544395e778940e6",
+      "epoch": 1,
+      "exit": {
+        "exit": "completed"
+      },
+      "duration_ms": 22060,
+      "summary": "`GetDuration` now accepts `d` as 24-hour days, so `30d` reads as 720h. It also accepts a day count followed by normal Go duration syntax, such as `1d12h`.\n\nThe days parsing runs only after the existing seconds and `time.ParseDuration` paths fail. Anything accepted before behaves as it did, because Go's own syntax never contains `d`. Day counts must be whole numbers, so `1.5d` is rejected. I added `TestGetDurationDays` in `getters_test.go`, updated the doc comment in `getters.go`, and added a note to `README.md`.\n\ninterlock ran `checks/days.sh`, which reports `ok: 30d is 720h0m0s`, and `go test ./...`, which passes. I recorded claims for `repro`, `regression` and `spec` against that tree. The independent verifier hasn't looked at `repro` or `spec` yet.",
+      "denials": 0,
+      "transcript": "/tmp/agent-ws/45058bf062/kvconf/.interlock/transcripts/att-5544395e778940e6.jsonl",
+      "moves": [
+        {
+          "signal": "G3",
+          "from": "running",
+          "to": "awaiting_verification",
+          "reason": "result accepted from attempt att-5544395e778940e6 at epoch 1"
+        }
+      ],
+      "ended_because": "completed",
+      "end_detail": null,
+      "spent": {
+        "wall_ms": 22060,
+        "cost_usd": 0.0991746,
+        "premium_requests": null,
+        "turns": 7
+      },
+      "cost_usd": 0.0991746,
+      "premium_requests": null,
+      "host_session_id": "b05ddb3c-77ac-405d-a71b-a6eef754db06",
+      "reattached": false,
+      "stopped_strays": [],
+      "export": null
+    },
+    {
+      "role": "verifier",
+      "attempt_id": "att-d1d03ae903b348e4",
+      "epoch": 1,
+      "exit": {
+        "exit": "completed"
+      },
+      "duration_ms": 16337,
+      "summary": "- **repro**: holds (observed). interlock ran `sh checks/days.sh` on tree 9ca3e84 and it passed with `ok: 30d is 720h0m0s`.\n- **spec**: holds (tested). `TestGetDurationDays` passes. My scratch probe showed `30d` is 720h and `1d12h` is 36h. `90`, `1m30s`, `-5m` and `0` give the same results as before. The new days path only runs after the old paths fail. One flaw: a huge day count such as `99999999999d` silently overflows and returns a wrong duration instead of an error. That input failed before, so it isn't a regression.\n- **regression**: holds (tested). interlock ran `go test ./...` on this tree and it passed.\n\nI removed my scratch test file afterwards; the worktree is clean.",
+      "denials": 0,
+      "transcript": "/tmp/agent-ws/45058bf062/kvconf/.interlock/transcripts/att-d1d03ae903b348e4.jsonl",
+      "moves": [
+        {
+          "signal": "G4",
+          "from": "awaiting_verification",
+          "to": "verified",
+          "reason": "every required criterion has current passing evidence"
+        },
+        {
+          "signal": "G7",
+          "from": "verified",
+          "to": "done",
+          "reason": "verified; the workflow needs no delivery"
+        }
+      ],
+      "ended_because": "completed",
+      "end_detail": null,
+      "spent": {
+        "wall_ms": 16337,
+        "cost_usd": 0.085955,
+        "premium_requests": null,
+        "turns": 5
+      },
+      "cost_usd": 0.085955,
+      "premium_requests": null,
+      "host_session_id": "7cb426dd-921d-499d-a9a8-58f2a0eb8d24",
+      "reattached": false,
+      "stopped_strays": [],
+      "export": null
+    }
+  ],
+  "pin": null,
+  "spent": {
+    "wall_ms": 38397,
+    "cost_usd": 0.1851296,
+    "premium_requests": null,
+    "turns": 12
+  },
+  "exports": []
+}

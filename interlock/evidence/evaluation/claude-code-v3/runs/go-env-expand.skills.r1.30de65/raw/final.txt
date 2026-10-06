@@ -1,0 +1,11 @@
+`Parse` and `Load` now expand environment variables in unquoted and double-quoted values, and `kvconf get` and `kvconf dump` take `--no-expand` before the file name. `go test ./...` passes and `checks/expand.sh` prints `ok`. `kvconf get --no-expand checks/expand.conf paths.data` prints `${DATA_ROOT}/data`.
+
+- **Expansion rules:** `${NAME}` and `${NAME:-fallback}` work as specified, and `$$` becomes `$`. A `$` followed by anything else is kept. An unset variable with no fallback fails with `kvconf: line N: undefined variable "NAME"`.
+- **API:** I added `ParseOptions`, `ParseWithOptions` and `LoadWithOptions`. `Parse(r)` behaves like `ParseWithOptions(r, ParseOptions{})`.
+- **Variable set but empty:** `${NAME}` gives an empty string, since the variable is set. The undefined-variable error only fires when the variable is unset.
+- **Inline comments:** The existing `#` comment stripping runs before expansion. A fallback containing `#`, such as `${X:-#}`, would be cut off at the `#`.
+- **Beyond the spec:** A `${` with no closing `}` is also an error (`unterminated ${ in value`), which the task didn't specify.
+
+The previous session had already written the parser, API and CLI changes. I added three tests in `parser_test.go` (expansion, the undefined-variable error and `NoExpand`) and an environment-variables section in `README.md`. I did not add a CLI test for `--no-expand` in `cmd/kvconf/main_test.go`; I only ran it by hand.
+
+STATUS: DONE

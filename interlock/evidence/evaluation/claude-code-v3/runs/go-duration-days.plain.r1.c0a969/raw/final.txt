@@ -1,0 +1,9 @@
+`GetDuration` now accepts `d` for 24-hour days, so `30d` gives 720h. `go test ./...` passes, and `checks/days.sh` reports `ok: 30d is 720h0m0s`.
+
+- **Existing inputs:** Anything that parsed before still does. Go durations contain no `d` unit, and plain seconds like `90` are handled first, as before.
+- **Day syntax:** A whole-number day count may be followed by ordinary duration syntax, so `1d12h` is 36h. A leading `-` works (`-2d` is -48h). Fractional days (`1.5d`), a sign after the `d` (`1d-2h`) and day counts too large to fit are rejected with the usual "is not a duration" error.
+- **Files:** I put the parsing in a new `parseDuration` helper in `getters.go`, with tests in `getters_test.go` and a one-line mention in `README.md`.
+
+The unsigned `parseDuration("90")` case is skipped in my new test, because that helper doesn't handle bare seconds (`GetDuration` does).
+
+STATUS: DONE

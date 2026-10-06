@@ -1,0 +1,5 @@
+The fix is in and I've recorded my claims; the spec and repro criteria still need the independent verifier.
+
+I rewrote `parseValue` in `parser.go`. A value that starts with a double quote is now scanned up to its closing unescaped quote, so a `#` inside the quotes stays in the value. After the closing quote, only a `# ...` comment or nothing is allowed; any other trailing text now returns an error. Unquoted values still end at the first `#`. I added `TestQuotedHash` in `parser_test.go`, covering all four README cases.
+
+interlock's runs of `checks/quoted-hash.sh` (it prints `Issue #42: retry`) and `go test ./...` both passed on the final tree. I recorded claims for repro (observed), regression (tested) and spec (tested). I did not commit.

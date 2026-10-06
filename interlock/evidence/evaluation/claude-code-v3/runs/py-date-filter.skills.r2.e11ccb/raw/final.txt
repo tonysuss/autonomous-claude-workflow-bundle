@@ -1,0 +1,14 @@
+`balances` and `settle` now accept `--since DATE` and `--until DATE`. The unit tests pass (22 tests), and `checks/date-filter.sh` prints `ok: balances --since 2026-06-02`.
+
+The interrupted session had already written most of the change in `tally/cli.py`, `tally/csvio.py` and `tally/ledger.py`. I checked it and left that code as it was.
+
+- **Filtering:** only entries dated on or after `--since` and on or before `--until` count, and either option works alone.
+- **Bad option date:** a DATE that isn't a valid `YYYY-MM-DD` is rejected by the argument parser, which exits with status 2.
+- **Bad entry date:** when either option is given, an invalid date in the file fails with status 1 and an error like `tally: trip.csv:3: invalid date '2026-13-01'`.
+- **No options:** behaviour is unchanged. `export` doesn't get the options.
+
+I made two changes of my own:
+- **README:** moved the new paragraph so it no longer splits the `balances`/`settle` description from the `export` line.
+- **Tests:** added three to `tests/test_cli.py`. They cover the date range and `--until` alone, an invalid option date (exit 2), and an invalid entry date (exit 1, with the file and line named). The invalid-entry test also checks that the same file works without the options.
+
+STATUS: DONE

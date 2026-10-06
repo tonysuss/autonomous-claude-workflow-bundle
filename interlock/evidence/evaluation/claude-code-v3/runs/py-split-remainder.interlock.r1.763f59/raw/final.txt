@@ -1,0 +1,5 @@
+I fixed `split_evenly` in `tally/money.py`, and the repro check and the unit tests both pass on my files. It now gives the earlier shares the extra cents, mirrors negative totals, and raises `ValueError` when `n <= 0`. So `split_evenly(100, 3)` returns `[34, 33, 33]` and `split_evenly(-100, 3)` returns `[-34, -33, -33]`.
+
+I added tests in `tests/test_money.py` for the remainder order, the negative mirror and the `ValueError` case. They also check that shares sum to the total and differ by at most one cent for totals from -50 to 50 and `n` from 1 to 7.
+
+I ran `sh checks/split-repro.sh` and the full suite (23 tests) through `interlock check run`, and both passed. I recorded claims for all three criteria: repro as observed, regression as tested, and spec as tested. The independent verifier still has to confirm repro and spec.

@@ -1,0 +1,3 @@
+I rewrote the fraction handling in `parse_amount` (`tally/money.py`), so `12.5` now gives 1250. A leading `-` now applies to the whole amount, so `-0.50` gives -50 and `-3.25` gives -325. A fraction of more than two digits, or one that isn't all digits, raises `ValueError`. Separators, whole numbers and surrounding spaces are handled as before.
+
+I added a test in `tests/test_money.py` covering `12.5`, `-0.50`, `-3.25`, `1,234.56` and the `1.234` error. interlock ran both its checks on my files and both passed: the repro check, and the existing unit tests (20 pass, including the new one). I recorded a claim for each of `repro`, `regression` and `spec`. `repro` and `regression` are `observed`; `spec` is only `tested`, so the independent verifier still has to assess it.

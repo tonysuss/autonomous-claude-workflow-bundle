@@ -1,0 +1,9 @@
+`GetDuration` now accepts the `d` unit, so `30d` gives 720h. `go test ./...` passes and `checks/days.sh` prints `ok: 30d is 720h0m0s`.
+
+- **Existing inputs:** `d` isn't a unit in Go's duration syntax, so any string containing it failed before. Plain seconds like `90` and strings like `1m30s` still go through the same code as before.
+- **What `d` accepts:** `d` is read only as a leading component, optionally followed by a normal duration. That covers `30d`, `1.5d` and `1d12h`.
+- **Rejected input:** a lone `d` and a sign after the days part, such as `1d-1h`, both fail with the usual "is not a duration" error. I also added overflow checks.
+- **Negative values:** a leading sign applies to the whole value, so `-1d12h` is minus 36 hours.
+- **Files:** the change is in `getters.go`. I added tests in `getters_test.go` and a short note in `README.md`.
+
+STATUS: DONE

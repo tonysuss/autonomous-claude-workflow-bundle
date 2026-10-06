@@ -1,0 +1,76 @@
+{
+ "base_commit": "5ce47f1e462831e3b89facb176be0829d0461fde",
+ "criteria": [
+  {
+   "baseline": null,
+   "check": null,
+   "id": "structure",
+   "needs": "static from independent",
+   "statement": "Get, GetInt, GetBool and GetDuration all call one unexported method lookup(section, key string) (string, error), and none of them reads c.sections directly",
+   "status": "passes (Static)"
+  },
+  {
+   "baseline": null,
+   "check": null,
+   "id": "behaviour",
+   "needs": "tested from independent",
+   "statement": "The exported API, every returned value and every error message of the four getters are exactly as before the refactor",
+   "status": "passes (Tested)"
+  },
+  {
+   "baseline": "it must pass on the input snapshot, as a regression guard; interlock saw it pass there (run run-3dafdc2a9bc44f02)",
+   "check": "go test ./...",
+   "id": "regression",
+   "needs": "tested from self",
+   "statement": "The existing Go tests pass",
+   "status": "passes (Tested)"
+  }
+ ],
+ "current_tree": "83479ba15cb69eab3da534df16483727d599c6e7",
+ "failures_to_fix": [],
+ "goal": "`getters.go` repeats the same section-and-key lookup in `Get`, `GetInt`, `GetBool` and `GetDuration`. Move it into one unexported method,\n\n```go\nfunc (c *Config) lookup(section, key string) (string, error)\n```\n\nand make all four getters use it, so that none of them reads `c.sections` directly any more.\n\nThis is a pure refactor. The exported API, every returned value and every error message must stay exactly as they are now. The tests run with `go test ./...`.\n",
+ "grant": {
+  "action_classes": [
+   "read",
+   "local_reversible"
+  ],
+  "grant_ids": [],
+  "landing_authority": "none",
+  "tools": {
+   "allow": [
+    "read",
+    "shell"
+   ],
+   "deny": [
+    "edit",
+    "shell:git push",
+    "shell:git commit"
+   ]
+  }
+ },
+ "next_moves": [],
+ "previous_result": {
+  "attempt_id": "att-bb6afd28da624629",
+  "changed_paths": [
+   "getters.go"
+  ],
+  "open_questions": [],
+  "output_tree": "83479ba15cb69eab3da534df16483727d599c6e7",
+  "summary": "I added `lookup(section, key string) (string, error)` to `getters.go`, and `Get`, `GetInt`, `GetBool` and `GetDuration` now all call it. Only `lookup` reads `c.sections` now.\n\n`GetBool` reports a missing key as `key %q not set`, while the other three say `no key %q`. To keep both wordings exact, `lookup` returns an unexported `noKeyError`, and `GetBool` detects it and rewrites the message.\n\n`go vet ./...` is clean and `go test ./...` passes (interlock run run-3e58ac7147e349d6). I recorded the `behaviour` claim as static only, so interlock warned it needs a tested claim. I did not add a test for the `GetBool` missing-key message, so that wording is checked by reading the code only."
+ },
+ "protected": [],
+ "role": "verifier",
+ "scope": [
+  "getters.go",
+  "*_test.go"
+ ],
+ "state": "done",
+ "task_id": "go-lookup-refactor",
+ "verifier_bindings": [
+  {
+   "attempt": "att-a791e2e3aabd4be1 (verifier, completed)",
+   "bound": "launched by interlock"
+  }
+ ],
+ "workflow": "refactor v1"
+}

@@ -1,0 +1,14 @@
+`balances` and `settle` now accept `--since DATE` and `--until DATE`, inclusive, and either can be given alone. The earlier session had already written most of this; I checked it and added tests.
+
+`checks/date-filter.sh` passes, and so do the 21 tests, including two new ones I added in `tests/test_cli.py`.
+
+I also tried it by hand on a small CSV:
+- **Bad entry date:** with `--since` given, a line dated `2026-13-01` fails with status 1 and `tally: /tmp/t.csv:3: invalid date '2026-13-01'`.
+- **Bad option value:** `--until 2026-02-30` is rejected by the argument parser with status 2.
+- **No options:** the same file, with that bad date, still prints balances normally.
+
+The new tests are weaker than they could be. One only checks that the filtered output differs from the unfiltered output, rather than asserting exact balances. The other covers a bad `--since` value (status 2). Neither tests the entry-date error with its file and line, which I only checked by hand.
+
+The changes are in `tally/cli.py`, `tally/csvio.py`, the new `tally/dates.py`, `README.md` and `tests/test_cli.py`.
+
+STATUS: DONE

@@ -1,0 +1,10 @@
+`balances` and `settle` now accept `--since DATE` and `--until DATE`, and `checks/date-filter.sh` passes. The full test suite passes too.
+
+- **Filtering:** only entries dated on or after `--since` and on or before `--until` count. Either option can be given alone.
+- **Bad option date:** `--since 2026-6-1` is rejected by the argument parser with exit status 2.
+- **Bad entry date:** when either option is given, every entry's date must be a valid `YYYY-MM-DD` date. Otherwise the command exits with status 1 and an error like `tally: path.csv:2: invalid date '2026-13-01'`.
+- **Without the options:** nothing changes. `export` doesn't take them.
+
+The earlier session had already written the code in `tally/cli.py`, `tally/csvio.py` and the README. I only added three tests to `tests/test_cli.py`: a combined range, a bad option date, and a bad entry date. The bad-entry-date test also checks that the same file still loads without the options.
+
+STATUS: DONE

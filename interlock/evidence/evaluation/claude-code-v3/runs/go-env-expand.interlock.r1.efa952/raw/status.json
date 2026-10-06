@@ -1,0 +1,105 @@
+{
+ "attempts": [
+  {
+   "binding": {
+    "agent_type": null,
+    "host_agent": null,
+    "host_session": null,
+    "interactive": false,
+    "via": "interlock_launched"
+   },
+   "bound": "launched by interlock",
+   "epoch": 1,
+   "host": "claude-code",
+   "id": "att-195ba6b5b8bd490c",
+   "role": "worker",
+   "status": "failed"
+  },
+  {
+   "binding": {
+    "agent_type": null,
+    "host_agent": null,
+    "host_session": null,
+    "interactive": false,
+    "via": "interlock_launched"
+   },
+   "bound": "launched by interlock",
+   "epoch": 2,
+   "host": "claude-code",
+   "id": "att-bc106525300945d5",
+   "role": "worker",
+   "status": "completed"
+  },
+  {
+   "binding": {
+    "agent_type": null,
+    "host_agent": null,
+    "host_session": null,
+    "interactive": false,
+    "via": "interlock_launched"
+   },
+   "bound": "launched by interlock",
+   "epoch": 2,
+   "host": "claude-code",
+   "id": "att-eb05aee5e2f94bae",
+   "role": "verifier",
+   "status": "completed"
+  }
+ ],
+ "evidence": {
+  "all_pass": true,
+  "any_fail": false,
+  "criteria": [
+   {
+    "criterion_id": "expand",
+    "current_assessments": 1,
+    "current_claims": 1,
+    "current_runs": 2,
+    "evidence_id": "asm-af4e6ed5b6d2412e",
+    "source": "assessment",
+    "stale": 0,
+    "strength": "observed",
+    "verdict": "pass"
+   },
+   {
+    "criterion_id": "spec",
+    "current_assessments": 1,
+    "current_claims": 1,
+    "current_runs": 0,
+    "evidence_id": "asm-e7bb5b60ed084124",
+    "source": "assessment",
+    "stale": 0,
+    "strength": "tested",
+    "verdict": "pass"
+   },
+   {
+    "criterion_id": "regression",
+    "current_assessments": 1,
+    "current_claims": 1,
+    "current_runs": 2,
+    "evidence_id": "asm-77843ba80db2449f",
+    "source": "assessment",
+    "stale": 0,
+    "strength": "tested",
+    "verdict": "pass"
+   }
+  ]
+ },
+ "next_moves": [],
+ "task": {
+  "attempts_used": 2,
+  "blocked_reason": null,
+  "current_attempt": "att-bc106525300945d5",
+  "current_tree": "3a8e3dc7c34e49194ae4bd60a4fbf367351bb912",
+  "id": "go-env-expand",
+  "integration_required": false,
+  "intent": "Configuration values should be able to use environment variables.\n\n- In unquoted and double-quoted values, `${NAME}` is replaced by the value of the environment variable `NAME`, and `${NAME:-fallback}` by its value, or by `fallback` when `NAME` is unset or empty.\n- `$$` stands for a literal `$`. A `$` followed by anything other than `{` or `$` is kept as it is.\n- Referring to an unset variable without a fallback is an error: parsing fails with `kvconf: line N: undefined variable \"NAME\"`, where N is the line number.\n- `Parse` and `Load` expand values. Add this API so callers can keep values literally:\n\n  ```go\n  type ParseOptions struct{ NoExpand bool }\n\n  func ParseWithOptions(r io.Reader, opts ParseOptions) (*Config, error)\n  ```\n\n  `Parse(r)` behaves like `ParseWithOptions(r, ParseOptions{})`.\n- `kvconf get` and `kvconf dump` accept a `--no-expand` flag, given before the file name, that keeps values literally: `kvconf get --no-expand app.conf paths.data`.\n\n`checks/expand.sh` checks the basic case. The tests run with `go test ./...`.\n",
+  "lease_epoch": 2,
+  "max_attempts": 3,
+  "state": "done",
+  "workflow": {
+   "name": "feature",
+   "version": 1
+  }
+ }
+}

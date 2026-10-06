@@ -1,0 +1,109 @@
+{
+  "task_id": "py-parse-amount",
+  "host": "claude-code",
+  "final_state": "done",
+  "stopped_because": "done",
+  "reconciled": [],
+  "reattached": [],
+  "interrupted": false,
+  "baseline": [
+    {
+      "criterion_id": "repro",
+      "run_id": "run-34cf98cbd17f424c",
+      "exit_code": 1,
+      "vacuous": null,
+      "problem": null
+    },
+    {
+      "criterion_id": "regression",
+      "run_id": "run-1afed58bc4ab47b6",
+      "exit_code": 0,
+      "vacuous": null,
+      "problem": null
+    }
+  ],
+  "sessions": [
+    {
+      "role": "worker",
+      "attempt_id": "att-90a3c2ccda0b4d1f",
+      "epoch": 1,
+      "exit": {
+        "exit": "completed"
+      },
+      "duration_ms": 16355,
+      "summary": "I rewrote the fraction handling in `parse_amount` (`tally/money.py`), so `12.5` now gives 1250. A leading `-` now applies to the whole amount, so `-0.50` gives -50 and `-3.25` gives -325. A fraction of more than two digits, or one that isn't all digits, raises `ValueError`. Separators, whole numbers and surrounding spaces are handled as before.\n\nI added a test in `tests/test_money.py` covering `12.5`, `-0.50`, `-3.25`, `1,234.56` and the `1.234` error. interlock ran both its checks on my files and both passed: the repro check, and the existing unit tests (20 pass, including the new one). I recorded a claim for each of `repro`, `regression` and `spec`. `repro` and `regression` are `observed`; `spec` is only `tested`, so the independent verifier still has to assess it.",
+      "denials": 0,
+      "transcript": "/tmp/agent-ws/2fb9b04836/tally/.interlock/transcripts/att-90a3c2ccda0b4d1f.jsonl",
+      "moves": [
+        {
+          "signal": "G3",
+          "from": "running",
+          "to": "awaiting_verification",
+          "reason": "result accepted from attempt att-90a3c2ccda0b4d1f at epoch 1"
+        }
+      ],
+      "ended_because": "completed",
+      "end_detail": null,
+      "spent": {
+        "wall_ms": 16355,
+        "cost_usd": 0.08051160000000002,
+        "premium_requests": null,
+        "turns": 6
+      },
+      "cost_usd": 0.08051160000000002,
+      "premium_requests": null,
+      "host_session_id": "f7bddb74-ea38-410a-a918-99219b8820f1",
+      "reattached": false,
+      "stopped_strays": [],
+      "export": null
+    },
+    {
+      "role": "verifier",
+      "attempt_id": "att-62ca4ece3f97456a",
+      "epoch": 1,
+      "exit": {
+        "exit": "completed"
+      },
+      "duration_ms": 15136,
+      "summary": "- **repro**: observed. interlock ran `checks/parse-repro.sh` on tree 9053404 and it passed with \"12.5 is 1250 cents\".\n- **spec**: tested. I called `parse_amount` directly on the cases in the brief.\n  - Results: `12.5` gives 1250, `-0.50` gives -50, `-3.25` gives -325, `1,234.56` gives 123456, `7` gives 700, and surrounding spaces are accepted.\n  - `1.234`, `abc`, an empty string, `1.2.3` and `12.` all raise `ValueError`.\n- **regression**: tested. interlock ran the unit tests on this tree and all 20 passed.",
+      "denials": 0,
+      "transcript": "/tmp/agent-ws/2fb9b04836/tally/.interlock/transcripts/att-62ca4ece3f97456a.jsonl",
+      "moves": [
+        {
+          "signal": "G4",
+          "from": "awaiting_verification",
+          "to": "verified",
+          "reason": "every required criterion has current passing evidence"
+        },
+        {
+          "signal": "G7",
+          "from": "verified",
+          "to": "done",
+          "reason": "verified; the workflow needs no delivery"
+        }
+      ],
+      "ended_because": "completed",
+      "end_detail": null,
+      "spent": {
+        "wall_ms": 15136,
+        "cost_usd": 0.0746968,
+        "premium_requests": null,
+        "turns": 4
+      },
+      "cost_usd": 0.0746968,
+      "premium_requests": null,
+      "host_session_id": "8f3728eb-d8d7-428f-9159-be7932df35a7",
+      "reattached": false,
+      "stopped_strays": [],
+      "export": null
+    }
+  ],
+  "pin": null,
+  "spent": {
+    "wall_ms": 31491,
+    "cost_usd": 0.15520840000000002,
+    "premium_requests": null,
+    "turns": 10
+  },
+  "exports": []
+}

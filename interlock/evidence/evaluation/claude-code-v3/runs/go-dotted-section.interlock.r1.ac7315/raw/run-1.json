@@ -1,0 +1,109 @@
+{
+  "task_id": "go-dotted-section",
+  "host": "claude-code",
+  "final_state": "done",
+  "stopped_because": "done",
+  "reconciled": [],
+  "reattached": [],
+  "interrupted": false,
+  "baseline": [
+    {
+      "criterion_id": "repro",
+      "run_id": "run-4341300925ab4885",
+      "exit_code": 1,
+      "vacuous": null,
+      "problem": null
+    },
+    {
+      "criterion_id": "regression",
+      "run_id": "run-cc6c0fce96d442f9",
+      "exit_code": 0,
+      "vacuous": null,
+      "problem": null
+    }
+  ],
+  "sessions": [
+    {
+      "role": "worker",
+      "attempt_id": "att-254efad3271c44da",
+      "epoch": 1,
+      "exit": {
+        "exit": "completed"
+      },
+      "duration_ms": 17940,
+      "summary": "`kvconf get app.conf db.eu.host` now reads `host` in the section `db.eu`. The name is split at the last dot, and a name with no dot is still a key in the unnamed section.\n\nI made the change in two places, `Config.Lookup` in `config.go` and `splitName` in `cmd/kvconf/main.go`, both of which used the first dot. I also added `TestSplitNameDottedSection` in `cmd/kvconf/main_test.go`. I did not add a test for `Config.Lookup` itself.\n\n`interlock check run` passes for `repro` (`checks/dotted.sh` prints `db1.example.org`) and for `regression` (`go test ./...`). I recorded claims for `repro` and `regression` as observed and for `spec` as tested. `repro` and `spec` still need independent verification.",
+      "denials": 0,
+      "transcript": "/tmp/agent-ws/c906b543b5/kvconf/.interlock/transcripts/att-254efad3271c44da.jsonl",
+      "moves": [
+        {
+          "signal": "G3",
+          "from": "running",
+          "to": "awaiting_verification",
+          "reason": "result accepted from attempt att-254efad3271c44da at epoch 1"
+        }
+      ],
+      "ended_because": "completed",
+      "end_detail": null,
+      "spent": {
+        "wall_ms": 17940,
+        "cost_usd": 0.0933112,
+        "premium_requests": null,
+        "turns": 8
+      },
+      "cost_usd": 0.0933112,
+      "premium_requests": null,
+      "host_session_id": "caaeee44-14a4-4d05-bed6-5e965a57c3a9",
+      "reattached": false,
+      "stopped_strays": [],
+      "export": null
+    },
+    {
+      "role": "verifier",
+      "attempt_id": "att-703c0fac67c84012",
+      "epoch": 1,
+      "exit": {
+        "exit": "completed"
+      },
+      "duration_ms": 11427,
+      "summary": "- **repro**: holds (observed). `interlock check run --criterion repro` passed on tree b4076fc and `checks/dotted.sh` printed `db1.example.org`.\n- **spec**: holds (tested). `TestSplitNameDottedSection` passes, covering `db.eu.host`, `server.port` and a dotless name. `Config.Lookup` uses the same last-dot split, but it has no test of its own, so only the end-to-end check covers it.\n- **regression**: holds (tested). `go test ./...` passes on this tree.",
+      "denials": 0,
+      "transcript": "/tmp/agent-ws/c906b543b5/kvconf/.interlock/transcripts/att-703c0fac67c84012.jsonl",
+      "moves": [
+        {
+          "signal": "G4",
+          "from": "awaiting_verification",
+          "to": "verified",
+          "reason": "every required criterion has current passing evidence"
+        },
+        {
+          "signal": "G7",
+          "from": "verified",
+          "to": "done",
+          "reason": "verified; the workflow needs no delivery"
+        }
+      ],
+      "ended_because": "completed",
+      "end_detail": null,
+      "spent": {
+        "wall_ms": 11427,
+        "cost_usd": 0.071044,
+        "premium_requests": null,
+        "turns": 4
+      },
+      "cost_usd": 0.071044,
+      "premium_requests": null,
+      "host_session_id": "c7ff9e70-7b4c-4502-93d6-03604790e00d",
+      "reattached": false,
+      "stopped_strays": [],
+      "export": null
+    }
+  ],
+  "pin": null,
+  "spent": {
+    "wall_ms": 29367,
+    "cost_usd": 0.16435519999999998,
+    "premium_requests": null,
+    "turns": 12
+  },
+  "exports": []
+}
