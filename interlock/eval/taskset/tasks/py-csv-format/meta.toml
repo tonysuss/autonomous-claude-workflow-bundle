@@ -1,0 +1,7 @@
+# Harness metadata. Hidden: never copied into an agent's working copy.
+id = "py-csv-format"
+kind = "feature"
+language = "python"
+repo = "tally"
+scope = ["tally/**", "tests/**", "README.md"]
+judge = "hidden/judge.py"

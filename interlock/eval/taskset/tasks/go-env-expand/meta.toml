@@ -1,0 +1,15 @@
+# Harness metadata. Hidden: never copied into an agent's working copy.
+id = "go-env-expand"
+kind = "interruption"
+language = "go"
+repo = "kvconf"
+scope = ["*.go", "cmd/kvconf/*.go", "README.md", "testdata/**"]
+judge = "hidden/judge.py"
+
+# The forced interruption: the harness kills the whole process tree (host,
+# its tools, and interlock if present) at the first change to the agent's
+# working files, or after deadline_s seconds, whichever comes first. Then it
+# restarts the condition's normal recovery path once.
+[interrupt]
+when = "first-edit"
+deadline_s = 300

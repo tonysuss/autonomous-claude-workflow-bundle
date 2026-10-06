@@ -1,0 +1,44 @@
+id = "py-parse-amount"
+repository = "."
+workflow = "bug-fix"
+environment = "linux-python3"
+intent = '''
+`parse_amount` in `tally/money.py` misreads some amounts. A ledger row with the amount `12.5` is recorded as 12.05 instead of 12.50.
+
+Expected behaviour of `parse_amount(text)`, which returns cents:
+
+- One decimal digit means tenths: `parse_amount("12.5") == 1250`.
+- The sign applies to the whole amount, fraction included: `parse_amount("-0.50") == -50` and `parse_amount("-3.25") == -325`.
+- More than two decimal places is an error: `parse_amount("1.234")` raises `ValueError`.
+- Everything that works today keeps working: thousands separators (`"1,234.56"` is 123456), whole numbers (`"7"` is 700), surrounding spaces, and `ValueError` for text that is not an amount.
+
+`checks/parse-repro.sh` reproduces the problem. The tests run with `python3 -m unittest discover -s tests -q`.
+'''
+
+[budget]
+max_attempts = 3
+
+[scope]
+paths = ["tally/money.py", "tests/**"]
+
+[[criterion]]
+id = "repro"
+statement = "parse_amount('12.5') returns 1250"
+check = "sh checks/parse-repro.sh"
+min_strength = "observed"
+producer = "independent"
+baseline = "fails"
+
+[[criterion]]
+id = "spec"
+statement = "parse_amount meets every rule in the task: tenths, the sign covering the fraction, ValueError beyond two decimal places, and today's behaviour kept"
+min_strength = "tested"
+producer = "independent"
+
+[[criterion]]
+id = "regression"
+statement = "The existing unit tests pass"
+check = "python3 -m unittest discover -s tests -q"
+min_strength = "tested"
+producer = "self"
+baseline = "passes"

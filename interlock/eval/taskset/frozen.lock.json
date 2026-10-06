@@ -1,0 +1,9 @@
+{
+ "go-env-expand": "fe60b8503a1e92804dc7b1be782b7218c2e3d38d",
+ "go-lookup-refactor": "189ec434d47f205ff1af8be88e183dca8f6bc297",
+ "go-quoted-hash": "a1f2289cc43c69d966338ebf30a7d70e3479f09e",
+ "py-bisect-settle": "fa8265ef7f533725d5021aa48437933a03d16638",
+ "py-csv-format": "7e5fdf199b18717ddc7a12e46c0b5b439ac6e61c",
+ "py-parse-amount": "b38a841619c174c4f4cb031875ff808cadbff88e",
+ "py-split-remainder": "3c69e6e826c8acd8e019c2082464a0d170d90b90"
+}

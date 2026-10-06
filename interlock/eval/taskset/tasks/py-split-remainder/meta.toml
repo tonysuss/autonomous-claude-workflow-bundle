@@ -1,0 +1,7 @@
+# Harness metadata. Hidden: never copied into an agent's working copy.
+id = "py-split-remainder"
+kind = "bug-fix"
+language = "python"
+repo = "tally"
+scope = ["tally/money.py", "tests/**"]
+judge = "hidden/judge.py"

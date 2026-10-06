@@ -1,0 +1,5 @@
+date,payer,amount,participants,memo
+2026-06-01,Ann,90.00,Ann;Bea;Cal,groceries
+2026-06-02,Bea,40.00,Bea;Cal,taxi
+2026-06-02,Cal,120.00,Ann;Bea;Cal;Dan,dinner
+2026-06-03,Dan,-12.00,Ann;Dan,refund for tickets

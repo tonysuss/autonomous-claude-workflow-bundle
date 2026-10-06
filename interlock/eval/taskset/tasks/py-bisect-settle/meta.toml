@@ -1,0 +1,10 @@
+# Harness metadata. Hidden: never copied into an agent's working copy.
+id = "py-bisect-settle"
+kind = "investigation"
+language = "python"
+repo = "tally"
+# No file may change.
+scope = []
+judge = "hidden/judge.py"
+# The final message must carry `ANSWER: <sha>`.
+answer = true

@@ -1,0 +1,7 @@
+# Harness metadata. Hidden: never copied into an agent's working copy.
+id = "go-lookup-refactor"
+kind = "refactor"
+language = "go"
+repo = "kvconf"
+scope = ["getters.go", "*_test.go"]
+judge = "hidden/judge.py"
