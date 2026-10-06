@@ -32,6 +32,17 @@ fn a_tree_recorded_while_integrating_is_r2_never_a_merge() {
     assert!(f.gh.calls_to(&["pr", "merge"]).is_empty(), "nothing was merged");
     assert_eq!(f.remote.tip("main").as_deref(), Some(f.base.as_str()));
     assert!(!f.store.evaluate(TASK).unwrap().1.all_pass);
+
+    // Once the new tree is verified, it lands under a fresh G5; the old landing is not left planned.
+    f.reverify(&unverified);
+    assert_eq!(f.integrate().final_state, State::Done);
+    assert!(f.ops().iter().all(|(_, s)| *s != OperationState::Planned), "{:?}", f.ops());
+    let ops = f.store.operations(TASK).unwrap();
+    let superseded = ops
+        .iter()
+        .filter(|o| o.state == OperationState::Failed)
+        .find(|o| o.outcome.as_ref().is_some_and(|v| v.to_string().contains("superseded before any call")));
+    assert!(superseded.is_some(), "the landing planned before R2 is failed as superseded: {ops:#?}");
 }
 
 /// r1: auto-merge is armed, then the base moves; the forge merges anyway.

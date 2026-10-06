@@ -413,6 +413,17 @@ impl Pass<'_> {
         if let Some(op) = op {
             git::keep_head(self.repo, &task.id, &head)?;
             self.note(format!("G5: operation {} will land only {head}", op.id));
+            // Landings planned before an R2 never ran; this G5 replaces them.
+            let stale: Vec<Operation> = self
+                .store
+                .operations(&task.id)?
+                .into_iter()
+                .filter(|o| o.id != op.id && lands(o.kind) && o.state == OperationState::Planned)
+                .collect();
+            for old in stale {
+                let replaced = Verdict::Failed { reason: format!("superseded before any call by {}", op.id) };
+                self.settle(&old, &replaced, json!({ "called": false }))?;
+            }
         }
         Ok(Flow::Next)
     }
