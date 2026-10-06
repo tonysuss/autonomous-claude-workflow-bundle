@@ -1,0 +1,82 @@
+{
+ "base_commit": "3e6d67d9640d38b817342e51c6fc7daf96c3d31c",
+ "criteria": [
+  {
+   "baseline": "it must fail on the input snapshot, reproducing the problem; interlock saw it fail there (run run-2bf19683765a449c)",
+   "check": "sh checks/days.sh",
+   "id": "repro",
+   "needs": "observed from independent",
+   "statement": "GetDuration reads `30d` as 720 hours",
+   "status": "passes (Observed)"
+  },
+  {
+   "baseline": null,
+   "check": null,
+   "id": "spec",
+   "needs": "tested from independent",
+   "statement": "GetDuration accepts the unit d for days of 24 hours, and everything it accepted before still works as it did",
+   "status": "passes (Tested)"
+  },
+  {
+   "baseline": "it must pass on the input snapshot, as a regression guard; interlock saw it pass there (run run-19e025de557f4cec)",
+   "check": "go test ./...",
+   "id": "regression",
+   "needs": "tested from self",
+   "statement": "The existing Go tests pass",
+   "status": "passes (Tested)"
+  }
+ ],
+ "current_tree": "ac9c7b49e10f01542dc1539f3b1a53b883cc231b",
+ "failures_to_fix": [],
+ "goal": "Retention periods in our configuration files are written in days, but `GetDuration` does not understand them: `retention = 30d` fails with `kvconf: store.retention: \"30d\" is not a duration`.\n\nMake `GetDuration` accept the unit `d`, for days of 24 hours, so that `30d` is 720 hours. Everything `GetDuration` accepts today must keep working as it does now.\n\n`checks/days.sh` checks the reported value. The tests run with `go test ./...`.\n",
+ "grant": {
+  "action_classes": [
+   "read",
+   "local_reversible"
+  ],
+  "grant_ids": [],
+  "landing_authority": "none",
+  "tools": {
+   "allow": [
+    "read",
+    "shell"
+   ],
+   "deny": [
+    "edit",
+    "shell:git push",
+    "shell:git commit"
+   ]
+  }
+ },
+ "next_moves": [],
+ "previous_result": {
+  "attempt_id": "att-b3e31cf88ffe4ae5",
+  "changed_paths": [
+   "README.md",
+   "getters.go",
+   "getters_test.go"
+  ],
+  "open_questions": [],
+  "output_tree": "ac9c7b49e10f01542dc1539f3b1a53b883cc231b",
+  "summary": "`GetDuration` now accepts the unit `d` for days of 24 hours. `30d` reads as 720 hours, and compound or fractional values such as `1d12h`, `1.5d` and `-2d` work too.\n\nThe cause was that `GetDuration` only tried whole seconds and Go's `time.ParseDuration`, which has no day unit. I added a fallback in `getters.go` that runs only when those two fail, so everything accepted before behaves as it did. The fallback rewrites each `Nd` as hours and parses again. I added `TestGetDurationDays` to `getters_test.go` and a README note.\n\ninterlock ran the `repro` check (`checks/days.sh` now reports `30d` as `720h0m0s`) and the `regression` check (`go test ./...`), and both passed. I recorded claims for `repro`, `regression` and `spec`. The `spec` claim rests on the new test, which includes malformed inputs that must still fail.\n\nFractional days are converted through floating point, so a value like `0.1d` may be off by a nanosecond."
+ },
+ "protected": [
+  "checks/days.sh"
+ ],
+ "role": "verifier",
+ "scope": [
+  "getters.go",
+  "*_test.go",
+  "README.md"
+ ],
+ "state": "done",
+ "task_id": "go-duration-days",
+ "upstream": [],
+ "verifier_bindings": [
+  {
+   "attempt": "att-4c5e744c12b54265 (verifier, completed)",
+   "bound": "launched by interlock"
+  }
+ ],
+ "workflow": "feature v1"
+}

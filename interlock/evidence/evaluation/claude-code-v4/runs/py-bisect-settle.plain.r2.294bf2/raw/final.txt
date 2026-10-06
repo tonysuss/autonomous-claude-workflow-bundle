@@ -1,0 +1,7 @@
+The regression came in with commit 91a6a15, "ledger: tidy settle loop".
+
+I ran `checks/settle-repro.sh` against each commit's exported tree, using `git archive` into temp directories so no files in the repo changed. It passes at a16f8ab and every commit before it. It fails at 91a6a15 and every commit after it, with `zero-amount transfers: [('Dan', 'Cal', 0)]`. 91a6a15 is the first failing commit, and the commit just before it is good. I did not read the diff itself.
+
+ANSWER: 91a6a159d5c7e295504c4280c17ca9f883bdcaa9
+
+STATUS: DONE

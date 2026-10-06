@@ -1,0 +1,7 @@
+`GetDuration` now accepts the unit `d` for days of 24 hours. `30d` reads as 720 hours, and compound or fractional values such as `1d12h`, `1.5d` and `-2d` work too.
+
+The cause was that `GetDuration` only tried whole seconds and Go's `time.ParseDuration`, which has no day unit. I added a fallback in `getters.go` that runs only when those two fail, so everything accepted before behaves as it did. The fallback rewrites each `Nd` as hours and parses again. I added `TestGetDurationDays` to `getters_test.go` and a README note.
+
+interlock ran the `repro` check (`checks/days.sh` now reports `30d` as `720h0m0s`) and the `regression` check (`go test ./...`), and both passed. I recorded claims for `repro`, `regression` and `spec`. The `spec` claim rests on the new test, which includes malformed inputs that must still fail.
+
+Fractional days are converted through floating point, so a value like `0.1d` may be off by a nanosecond.

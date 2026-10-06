@@ -93,24 +93,28 @@ A verified task that needs integration lands through `interlock-forge`, which dr
 
 [docs/evaluation.md](docs/evaluation.md) is the harness for the design's §13 evaluation, run on a stand-in for the S3 frozen task set: eleven tasks with hidden executable checks, including two forced interruptions and three tasks whose prompts leave out a requirement a careful engineer should find. The "harder tasks" below are those three plus the second interruption task, `py-date-filter`. Conditions: the host's plain workflow, skills alone, and skills with interlock, with host, model and effort pinned, tools at parity, and each run isolated from the answers.
 
-The run on the integrated build (Claude Code 2.1.289, `claude-sonnet-5-5`, medium effort, 15 counted runs per condition, ABBA order):
+Two runs on the integrated build, with Claude Code, `claude-sonnet-5-5`, medium effort and ABBA order. v3 had 15 counted runs per condition. v4 came after the two fixes below; it reran `skills` and interlock on the harder tasks and added a second repeat of all three conditions on six of the seven original tasks, where the budget stopped it. `plain` was not rerun on the harder tasks: nothing that changed reaches it, and its tools are identical.
 
-| | plain | skills | interlock with skills |
+| Accepted | plain | skills | interlock with skills |
 | --- | --- | --- | --- |
-| Accepted | 14/15 | 15/15 | 12/15 |
-| On the harder tasks (two repeats each) | 7/8 | 8/8 | 5/8 |
-| False completion claims | 1 | 0 | 3 |
-| Scope violations | 0 | 0 | 0 |
-| Recovery after a forced interruption | 3/3 | 3/3 | 3/3 |
-| Cost and wall time against plain, paired | | 1.1x, 1.1x | 2.5x, 2.3x |
+| Harder tasks, v3 (two repeats each) | 7/8 | 8/8 | 5/8 |
+| Harder tasks, v4 | not rerun | 8/8 | 8/8 |
+| Original tasks, v3 (one run each) | 7/7 | 7/7 | 7/7 |
+| Original tasks, v4 (a second run, six tasks) | 6/6 | 6/6 | 6/6 |
+| False completion claims, v3 / v4 | 1 / 0 | 0 / 0 | 3 / 0 |
+| Scope violations, recovery after a forced interruption | 0, all | 0, all | 0, all |
+| Cost and wall time, paired, v4 | | 1.1x, 1.1x plain | 2.4x, 2.4x skills; 2.8x, 2.8x plain |
 
-What it shows, and does not:
-- **No difference is significant at this size** (Fisher two-sided p = 0.60 for interlock against plain, 0.22 against skills). Seven of the eleven tasks ran once per condition.
-- **interlock did not make outcomes better here.** All three of its failures were on the harder tasks, whose prompts leave out a requirement, and in each one the independent verifier passed the work. The verifier checks the criteria, and the criteria only restated the prompt, so it did not catch what the worker missed. One suspect is the worker prompt's "make the smallest change that meets the criteria"; three failures cannot confirm it.
-- **No session invoked a skill in any condition**, though every session had them loaded: the skills describe themselves as steps of an interlock task. So the skills condition measured their descriptions sitting in context, not skills in use.
+What changed between v3 and v4, and what it shows:
+
+- **The fix for interlock's v3 failures.** All three v3 failures were on requirements the goal implies but the criteria leave out, and in each one the verifier passed the work. The worker prompt said "make the smallest change that meets the criteria", and the verifier judged only the criteria. Now the worker is sent to the goal and the root cause wherever it occurs, and the verifier judges the work against the goal and fails a gap with its reason ([docs/evaluation.md](docs/evaluation.md) has the prompts before and after).
+- **interlock then went from 5 of 8 to 8 of 8 on the harder tasks. That is not significant** (Fisher two-sided p = 0.20), and no difference in either run is: the smallest p, 0.20, is this one and v3's interlock against skills on the same tasks.
+- **The improvement came from the workers, not the verifier.** No v4 run was sent back: the workers fixed the second call site and handled the implied inputs. The verifiers did look for both, and found nothing. So the verifier's new failure path is still untested on a live gap.
+- **Skills are still not used.** No session invoked a skill in v3, because the skills described themselves as steps of an interlock task and could not work without one. `implement` and `investigate` now trigger on ordinary requests and work without interlock. A scripted Copilot session shows they load and reach the model. But Claude Code's model invoked none in 28 v4 runs or 2 probes. So the skills condition still measures their descriptions in context, not skills in use.
 - **The verifier is about three quarters of interlock's extra cost.**
+- **Claude Code updated itself** from 2.1.289 to 2.1.291 between the runs.
 
-The earlier run, before the harness review, accepted 14 of 14 in both conditions it ran. Spend for both runs, the harness's isolation and the task set: [docs/evaluation.md](docs/evaluation.md) and [evidence/evaluation/README.md](evidence/evaluation/README.md).
+The earlier run, before the harness review, accepted 14 of 14 in both conditions it ran. Spend for every run, the harness's isolation and the task set: [docs/evaluation.md](docs/evaluation.md) and [evidence/evaluation/README.md](evidence/evaluation/README.md).
 
 ## What is built
 
@@ -182,7 +186,8 @@ Of the draft's risks: S1 settled skill loading on both hosts; S2 (the Rust SDK) 
 
 - **Live GitHub.** The container's GitHub token is invalid, so delivery ran against a fake `gh` and a local bare repository. GitHub's real messages, timing and branch protection are untested; [docs/forge.md](docs/forge.md) lists what a live run would add. Under auto-merge, a base that moves while the merge waits is detected after the merge, not prevented, unless the branch requires up-to-date branches.
 - **Copilot CLI with a real model.** Copilot runs exercise the real CLI, hooks, permissions, skills and custom agents with a scripted model. Model behaviour under the skills is evidenced on Claude Code only.
-- **That interlock improves outcomes.** On the stand-in tasks it did not: it accepted fewer runs than plain or skills alone (not a significant difference), at about 2.5 times the cost. Its verifier checks the stated criteria, so it cannot catch a requirement nobody wrote down.
+- **That interlock improves outcomes.** On the stand-in tasks it first accepted fewer runs than plain or skills alone (v3), then, with prompts that send the worker and the verifier to the goal, as many (v4). Neither difference is significant, and it costs about 2.5 times as much. Whether its verifier now catches a requirement nobody wrote down is untested: no v4 worker left one.
+- **Skills in use.** The skills condition never saw a skill invoked by a live model, in v3 or v4.
 - **The real S3 task set and its baseline.** The evaluation runs on stand-in tasks.
 - **Spike S2 and the P0 adapter decision.** See "Copilot through its CLI" above. The P0 gate's choice between a Rust SDK adapter and a Node sidecar was not made; a third option was taken without S2.
 - **Schemas are still v0.** P1 asked for v1 schemas; the records grew fields (check runs, bindings, handoffs, operations) but their `$id`s still say `v0`.

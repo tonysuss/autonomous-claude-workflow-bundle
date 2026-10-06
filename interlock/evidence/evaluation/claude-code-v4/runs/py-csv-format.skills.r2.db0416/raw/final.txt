@@ -1,0 +1,14 @@
+`balances` and `settle` now take `--format text|csv`, and `text` is the default with today's output unchanged. The unit tests pass (23), and `checks/csv-format.sh` prints `ok`. I also ran `settle --format csv` on `examples/trip.csv`, which gave this:
+
+```
+from,to,amount
+Bea,Cal,40.00
+Dan,Ann,36.00
+```
+
+- **CSV output:** the CSV renderers are in `tally/report.py` and are chosen in `tally/cli.py`. They use Python's `csv` module with `\n` line endings. An empty ledger gives just the header line.
+- **Bad format:** an unknown format is rejected by the argument parser, which exits with status 2. `export` does not get the option.
+- **Tests and README:** I added tests in `tests/test_cli.py` for both CSV commands, empty output, a name containing a comma, and a bad format. I also added a short note on the option to `README.md`.
+- **Not tested:** the `settle` CSV test only checks the header, not the rows. `balances --format csv` row order matches the text output only on the example file.
+
+STATUS: DONE

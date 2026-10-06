@@ -1,0 +1,5 @@
+`balances` and `settle` now take `--format text|csv`, with `text` as the default and its output unchanged. `balances-csv` and `regression` both passed when interlock ran them on my tree, and all 23 unit tests pass.
+
+- **What changed:** `tally/report.py` has the new CSV renderers, which use Python's `csv` module with `\n` line endings. `tally/cli.py` adds the option to `balances` and `settle`, not `export`. An unknown format is rejected by the argument parser. I also added tests to `tests/test_cli.py` and a line to `README.md`.
+- **Checks:** I ran `settle --format csv` on the trip example by hand and it printed `from,to,amount`, then `Bea,Cal,40.00` and `Dan,Ann,36.00`, in the same order as the text output. Quoting of names with commas, header-only output when there is nothing to list, and exit status 2 for an unknown format are covered by unit tests, not run on the command line.
+- **Open item:** the `spec` criterion needs `observed` evidence and I could only record `tested` for it, so the independent verifier has to cover it.

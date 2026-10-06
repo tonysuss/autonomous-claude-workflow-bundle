@@ -8,11 +8,11 @@ The task set here is a **stand-in**. The design's S3 asks for 10 to 15 closed is
 
 | Condition | What runs | Status |
 | --- | --- | --- |
-| `plain` | The host's ordinary headless workflow: `claude -p` (or `copilot -p`) with the task's prompt. No interlock. | Run on Claude Code, October 6 (twice) |
-| `skills` | The same, with interlock's generated skills loaded as a plugin and **no interlock runtime**: no `interlock` on `PATH`, no task store, no hooks, no supervisor, no verifier session. The skills are instructions the agent may invoke through the `Skill` tool; nothing enforces them. `--skills-generate` runs `interlock skills generate --target <host>`; `--skills-dir DIR` uses a directory that already exists | Run on Claude Code, October 6 (after integration) |
-| `interlock` | `interlock run <task> --host <host>`. With `--interlock-skills`, the same plugin is passed to `interlock run --skills`, making this "the skills plus the interlock runtime" | Run on Claude Code, October 6: without skills before integration, with them after |
+| `plain` | The host's ordinary headless workflow: `claude -p` (or `copilot -p`) with the task's prompt. No interlock. | Run on Claude Code, October 6: v1, v3, and the original tasks in v4 |
+| `skills` | The same, with interlock's generated skills loaded as a plugin and **no interlock runtime**: no `interlock` on `PATH`, no task store, no hooks, no supervisor, no verifier session. The skills are instructions the agent may invoke through the `Skill` tool; nothing enforces them. `--skills-generate` runs `interlock skills generate --target <host>`; `--skills-dir DIR` uses a directory that already exists | Run on Claude Code, October 6: v3, and with standalone skills in v4 |
+| `interlock` | `interlock run <task> --host <host>`. With `--interlock-skills`, the same plugin is passed to `interlock run --skills`, making this "the skills plus the interlock runtime" | Run on Claude Code, October 6: without skills in v1, with them in v3, with the new prompts in v4 |
 
-The generated plugin (`interlock skills generate --target claude-code`) holds six skills, `design`, `implement`, `investigate`, `review`, `route` and `verify`, and an agent, `verifier`. In the `skills` condition the agent has no tool to start a subagent, so the `verifier` agent is listed but cannot run; the skills that tell the agent to call `interlock` find no such command. That is the point of the condition: it separates what the instructions do from what the runtime enforces.
+The generated plugin (`interlock skills generate --target claude-code`) holds six skills, `design`, `implement`, `investigate`, `review`, `route` and `verify`, and an agent, `verifier`. In the `skills` condition the agent has no tool to start a subagent, so the `verifier` agent is listed but cannot run. Since v4, `implement` and `investigate` work without interlock (docs/skills.md, "Without interlock"): with no task id, no `INTERLOCK_ATTEMPT` and no store, they follow their playbooks and record nothing. In v3 every step of every skill called `interlock`, which the skills condition does not have. The condition separates what the instructions do from what the runtime enforces.
 
 What is held equal across conditions:
 
@@ -22,7 +22,7 @@ What is held equal across conditions:
 - **Environment.** Every run's environment is built from an allowlist (system basics, proxy and CA settings, Go paths, and names added with `--pass-env`), never inherited wholesale, so the many `CLAUDE_CODE_*` variables that bind a child to the session that launched the harness, and any tokens, do not reach the agents. Only the `interlock` condition gets `INTERLOCK_CLAUDE_BIN` (or `INTERLOCK_COPILOT_BIN`). Each run records the names, not the values, of what it got. Before a live Claude Code run, the harness checks `claude auth status` with that environment.
 - **Order.** Conditions run in ABBA order: a seeded order per task for odd repeats, reversed for even ones.
 
-What differs is the intervention itself: interlock gets the task's criteria and checks, runs baselines, starts an independent verifier, and decides when the task is done. Its worker and verifier also get interlock's own instructions; the worker, for one, is told to "make the smallest change that meets the criteria".
+What differs is the intervention itself: interlock gets the task's criteria and checks, runs baselines, starts an independent verifier, and decides when the task is done. Its worker and verifier also get interlock's own instructions (`crates/interlock-supervisor/src/prompts.rs`), which changed between v3 and v4: see "Results v4".
 
 ## Isolation
 
@@ -149,7 +149,18 @@ $RUN --repeats 1 --tasks go-lookup-refactor go-quoted-hash go-env-expand py-bise
 python3 $H report --results $RESULTS                         # report.json and report.md
 python3 $H export --results $RESULTS --dest evidence/evaluation/claude-code-v3   # sanitized, no output trees
 python3 evidence/evaluation/checks/paired_ratios.py evidence/evaluation/claude-code-v3
+
+# v4, into a fresh results directory: the conditions the changes touch on the
+# harder tasks, then a second repeat of everything on the original tasks.
+RUN4="python3 $H run --host claude-code --model claude-sonnet-5-5 --effort medium --skills-generate \
+  --interlock-skills --budget-usd 6.91 --state-dir $STATE --results $RESULTS4 --run-base $RUNS --label main"
+$RUN4 --conditions skills,interlock --repeats 2 --tasks go-dotted-section go-duration-days py-thousands py-date-filter
+$RUN4 --conditions plain,skills,interlock --repeats 1 --first-repeat 2 --tasks go-lookup-refactor go-quoted-hash \
+  go-env-expand py-bisect-settle py-csv-format py-parse-amount py-split-remainder
+python3 evidence/evaluation/checks/compare_v3_v4.py evidence/evaluation/claude-code-v3 evidence/evaluation/claude-code-v4
 ```
+
+`--first-repeat N` numbers an invocation's repeats from N, so a later invocation continues the ABBA order; a (task, condition, repeat) is skipped only when a counted run of that repeat is already in the results directory.
 
 A pilot (`--tasks py-split-remainder --repeats 1 --label pilot`) estimates cost before a larger run; its runs do not count toward the main run's repeats, and the report gives every figure with and without them.
 
@@ -173,7 +184,7 @@ A pilot (`--tasks py-split-remainder --repeats 1 --label pilot`) estimates cost 
 
 ### Copilot CLI
 
-`--host copilot` runs `copilot -p ... --output-format json --no-ask-user`, with the worker's tools as `--allow-tool` and `--deny-tool`, for `plain` and `skills`, and `interlock run --host copilot` for `interlock`. With `--fake-model`, Copilot runs offline against `eval/fake_model.py`, a scripted model that applies the reference solution, runs the visible check, and (for interlock) records claims and assessments. That exercises the real CLI, permissions, hooks, the skills plugin, output parsing, the interruption path and the judge. **It is plumbing, not evaluation evidence**: the scripted model always does the same thing.
+`--host copilot` runs `copilot -p ... --output-format json --no-ask-user`, with the worker's tools as `--allow-tool` and `--deny-tool`, for `plain` and `skills`, and `interlock run --host copilot` for `interlock`. With `--fake-model`, Copilot runs offline against `eval/fake_model.py`, a scripted model that applies the reference solution, runs the visible check, and (for interlock) records claims and assessments. When Copilot lists the generated skills (the `skills` condition), it first invokes the one an ordinary request of the task's kind would reach: `interlock-implement`, or `interlock-investigate` for the investigation. That exercises the real CLI, permissions, hooks, the skills plugin, output parsing, the interruption path and the judge. **It is plumbing, not evaluation evidence**: the scripted model always does the same thing.
 
 Copilot CLI 1.0.91 reports premium requests and durations in its `result` event, not dollars or tokens, so cost and tokens are unavailable for it. It has no effort setting the harness knows of.
 
@@ -206,7 +217,118 @@ For each closed issue with a known fix:
 
 Then run the conditions as above, in a sandbox (see Isolation), with `--host copilot` and a pinned `--model` once Copilot CLI can sign in.
 
-## Results: all three conditions, after integration (October 6, 2026)
+## Results v4: after fixing what v3 exposed (October 6, 2026)
+
+v3 exposed two problems (see "Results v3" below). interlock failed three of eight runs on the harder tasks, each one on a requirement the goal implies but the criteria do not spell out, and in all three the independent verifier passed the work. And no session invoked a skill, in any condition. Both were fixed in general terms (commit `882f3cb`), with nothing that names a task, and then the conditions they touch were run again.
+
+### What changed
+
+**The worker and verifier prompts** (`prompts.rs`). The worker was sent to the smallest change that meets the criteria; it is now sent to the goal, the cause, and every place the cause reaches. The verifier judged the criteria only; it now judges the work against the goal too, and fails a gap with its reason. The guided verifier agent (`agents/verifier/AGENT.md`) got the same step, and two skill texts that said to build the least that meets the criteria (the feature playbook and subtract-before-you-add) now say "the whole goal".
+
+| | Before (v3) | After (v4) |
+| --- | --- | --- |
+| Worker, step 1 | "You are in a fresh git worktree at the task's starting point. Make the smallest change that meets the criteria, inside the task's scope." | "You are in a fresh git worktree at the task's starting point. Work inside the task's scope. The goal is the target; the criteria are how its evidence is recorded, not a narrower target. Fix the cause, not the symptom, and fix it wherever it occurs inside the task's scope: search for other call sites and code paths with the same defect. Handle the inputs the goal implies, such as the forms the existing code already accepts. Change nothing the goal does not need. If you leave part of the goal undone, say which part and why." |
+| Worker, step 5 | "Criteria that need an independent producer are checked by a separate verifier. Your claims inform it but do not satisfy them." | "... checked by a separate verifier, which judges the work against the goal as well as the criteria. ..." |
+| Worker, step 6 | "Finish with two or three sentences: what you changed and how you checked it." | "... what you changed, where the cause was, and how you checked it." |
+| Verifier, system prompt | "You decide, with evidence you observed yourself, whether each criterion holds for the exact files in your working directory." | "You decide, with evidence you observed yourself, whether the exact files in your working directory achieve the task's goal and whether each criterion holds." |
+| Verifier, new step 3 | (none) | "Judge the work against the task's goal, not only the criteria's wording. A criterion that restates part of the goal holds only if the change achieves that part wherever it applies. Read the change, search the code around it for other call sites and code paths with the same defect, and try inputs the goal implies, such as the forms the existing code already accepts. A gap the worker's summary names is still a gap. A gap the task's scope does not let the worker close is not a failure: mention it in your note. Do not fail work for what the goal does not ask for, such as style or extra features." |
+| Verifier, new step 4 | (none) | "When you find a gap, record `failed` on the criterion it bears on, or on the criterion closest to it if none names it, with the gap in the note: what is missing, where, and the input or command that shows it." |
+
+The steps that run checks and record claims and assessments are unchanged. Unit tests pin the new wording and check that neither prompt names a task, a language or a domain word.
+
+**The skills** (`skills/`, the generator). Why none was invoked in v3: the transcripts show the six skills listed in every `skills` and interlock session's init event, and no `Skill` call in any of them. The descriptions the model saw said "Make the smallest change that meets an interlock task's criteria ..." and "Start here for any request ... in a repository that uses interlock". The task prompts never mention interlock (selftest checks the word is absent from every repository), so no description matched. Even an invoked skill could not have worked: every step called `interlock`, which the `skills` condition does not have. In v4:
+
+- `implement` and `investigate` are standalone. Their descriptions trigger on ordinary requests ("Use this skill whenever you are asked to fix a bug, add or change a feature, or refactor code, however small the change looks: load it before your first edit"; "... whenever you are asked how something works, why it was built that way, or which change caused a behavior").
+- Each body says when interlock applies: the agent was given a task id, `INTERLOCK_ATTEMPT` is set, or the repository has a store at `.interlock/state.db`. Otherwise the agent follows a `## Without interlock` section: the same playbooks, checks run by the agent itself, and nothing recorded.
+- The generator checks the promise when it loads the catalog: `standalone = true` in `skill.toml` requires that section.
+- `route` says it is for repositories set up for interlock. `verify`, `review` and `design` are unchanged.
+- The guided tests (`guided_cli`, `guided_copilot`, `skills_load`) pass with `INTERLOCK_REQUIRE_HOSTS=1`, as does the whole workspace: 320 passed, 1 ignored (`evidence/evaluation/checks/cargo_test_hosts_v4.out.txt`).
+
+**Is a skill now invoked in a plain session?**
+
+| Check | Result |
+| --- | --- |
+| Copilot CLI 1.0.91, scripted model, a test in `skills_load.rs` | In a plain session with no store and no attempt, Copilot lists `interlock-implement` with the new description, the skill tool loads it, and its "Without interlock" steps reach the model |
+| The harness on Copilot, scripted model (`copilot-skills-v4/`) | The `skills` runs invoked `interlock-implement` (a bug fix) and `interlock-investigate` (the investigation), and the `plain` runs invoked none, all four accepted. That required a harness fix: `--skills-generate` on Copilot had wrapped the generated `.github/skills` one level too deep, so no Copilot session had loaded the skills before |
+| Two live Claude Code probes on a one-line bug, $0.084 together (`checks/skills_invoked_probe_{1,2}.out.json`) | Not invoked. The model listed all six skills and fixed the bug directly (Grep, Edit, Bash). The probes used the first two wordings of the description; the final, more directive one was tested only by the v4 run |
+| The v4 run: 28 `skills` and interlock runs on real tasks, 48 sessions | Not invoked, once |
+
+The scripted checks show that the plumbing and the text work. They do not show that a model chooses to use them, because the script chooses for it. The live runs show that `claude-sonnet-5-5` at medium effort, in `claude -p`, did not choose to use them, even with a description that says to load the skill before the first edit. So **the v4 `skills` condition still measured the skills' descriptions in context, not skills in use**, and the fix is unverified where it matters. What would test it: a host or model that follows skill descriptions more readily, or a prompt that names the skill. The second changes the problem statement, which the harness holds equal across conditions.
+
+### What was run
+
+Claude Code updated itself between v3 and v4, from 2.1.289 to **2.1.291**. Every v4 run used 2.1.291, `claude-sonnet-5-5` at medium effort, the same harness settings as v3, and ABBA order. Records, transcripts and verdicts are in `evidence/evaluation/claude-code-v4/`.
+
+1. `skills` and `interlock` on the three harder tasks and `py-date-filter`, two repeats each: 16 runs. `plain` was not rerun. Nothing that changed reaches it: no plugin, and an unchanged prompt and harness path. Its tools came out identical on all 11 tasks (`interlock host tools` on the new binary against v3's records). So these runs are compared with v3's `plain` runs, which ran on 2.1.289.
+2. Then a second repeat of all three conditions on the seven original tasks, run as repeat 2 (`--first-repeat 2`), so each task's conditions ran in the reverse of v3's order. The budget stopped this before its last task: the next run, `py-split-remainder` under interlock, was estimated at $0.66 (the costliest interlock run so far, an interruption with its reserve), which would have passed the cap. So six of the seven original tasks now have two runs per condition; `py-split-remainder` still has one.
+
+| Accepted | plain | skills | interlock (with skills) |
+| --- | --- | --- | --- |
+| Harder tasks, v3 (two repeats) | 7/8 | 8/8 | 5/8 |
+| **Harder tasks, v4** (two repeats) | not rerun | **8/8** | **8/8** |
+| Original tasks, v3 (repeat 1) | 7/7 | 7/7 | 7/7 |
+| **Original tasks, v4** (repeat 2, six tasks) | **6/6** | **6/6** | **6/6** |
+
+| v4, all 34 counted runs | plain (6) | skills (14) | interlock (14) |
+| --- | --- | --- | --- |
+| False completion claims | 0 | 0 | 0 |
+| Claims without evidence | 0 | 0 | 0 |
+| Missed defects | 0 | 0 | 0 |
+| Runs with scope violations | 0 | 0 | 0 |
+| Recovery after a forced interruption | 1/1 | 3/3 | 3/3 |
+| Runs that invoked a skill | 0 | 0 | 0 |
+| Sessions per run, mean | 1.17 | 1.21 | 2.21 |
+| Wall time per run, mean | 19 s | 21 s | 50 s |
+| Cost per run, mean over runs with complete cost | $0.064 (5) | $0.075 (11) | $0.177 (11) |
+
+Paired by task and repeat within v4 (`checks/compare_v3_v4.out.json`): interlock cost a median 2.43 times as much as skills (11 pairs, range 1.77 to 3.08) and took 2.44 times as long (14 pairs). Against plain, on the original tasks only, the medians are 2.79 times the cost (5 pairs) and 2.81 times the time (6 pairs). skills cost 1.08 times plain. Over the 11 uninterrupted interlock runs, the worker sessions cost $1.11 and the verifier sessions $0.84.
+
+**How interlock got to 8 of 8.** It was not through the verifier. No v4 run was sent back for rework (no R1); every uninterrupted run passed verification on its first attempt. The workers got it right. On `go-dotted-section`, both workers fixed `Config.Lookup` as well as the command line. On `go-duration-days`, both workers accepted `1d12h` and `1.5d`. The verifiers did follow the new instructions, which shows in their transcripts:
+
+- On `go-dotted-section`, they searched for every other place that splits a name ("I found no other splitting sites").
+- On `go-duration-days`, they ran their own probes of `1d12h`, `1.5d`, `-2d` and malformed values.
+
+They found nothing to fail. So this run shows the worker change working, or chance. It does not exercise the verifier's new failure path.
+
+One verifier, on `go-duration-days` repeat 2, wrote a probe test file into the worktree it was verifying and deleted it again. Its transcript says nothing was left behind, and the judged output does not contain it. The prompt says to change nothing there and to put scratch files under /tmp, and no hook stopped it.
+
+**Leak scan.** One run was flagged, `go-dotted-section` under `skills`, repeat 2. It is the same false positive as v3's two: a Go test the agent wrote opens `../../checks/dotted.conf`, relative to its own package, and the scanner resolved that against the shell's working directory.
+
+**Spend for v4.** Claude Code reported $4.204 for the 34 runs and $0.084 for the two probes: **$4.29 reported**. Seven sessions were killed by forced interruptions and reported no cost. At $0.30 each, $2.10 more was charged against the budget, for **$6.39 charged against the $7.00 cap**.
+
+## What the data supports
+
+The design's first goal is falsifiable: better reliability, with an overhead we understand.
+
+**Did the v4 changes help? On these tasks interlock went from 5 of 8 to 8 of 8 on the harder tasks, and that is not significant** (Fisher's exact test, two-sided, p = 0.20). The direction is the one the change aimed at, and the mechanism is visible in the transcripts: the workers fixed the second call site and handled the implied inputs. But 8 runs per arm cannot tell a fix from luck. A failure rate near v3's 3 in 8 would give 8 of 8 about 2% of the time; one near the other conditions' 1 in 16 would give it about 60% of the time. Nothing else changed significantly either:
+
+| Comparison, accepted | | p (two-sided) |
+| --- | --- | --- |
+| interlock, harder tasks: v4 against v3 | 8/8 against 5/8 | 0.20 |
+| interlock v4 against plain v3, harder tasks | 8/8 against 7/8 | 1.0 |
+| interlock v4 against skills v4, harder tasks | 8/8 against 8/8 | 1.0 |
+| skills v4 against skills v3, harder tasks | 8/8 against 8/8 | 1.0 |
+| interlock against plain, original tasks, v4 | 6/6 against 6/6 | 1.0 |
+
+**Reliability: no condition is shown to be better than another.** Across v3 and v4 the harder tasks produced four failures, three of them interlock's in v3, and none since the change. With samples this small, and runs that share tasks, the honest statement is that interlock with these prompts did not do worse here, and that this data cannot show it does better. What v3 falsified still stands for v3's prompts: a verifier that checks only the criteria passes work that misses what the goal implies. Whether v4's verifier would catch such a gap is untested, because no v4 worker left one.
+
+**Overhead: about 2.4 to 2.8 times, and the verifier is most of it.** In v4, interlock cost a median 2.43 times as much as skills and took 2.44 times as long; against plain, on six original tasks, 2.79 and 2.81 times. Its mean cost per run rose a little, from $0.166 in v3 to $0.177. The verifier sessions are 72% of the extra cost over plain (5 pairs) and 75% of the extra over skills (11 pairs): about three quarters, as in v3.
+
+**Recovery: every forced interruption recovered**, in both runs and every condition: 3 of 3 per condition in v3, and 7 of 7 in v4.
+
+**Claims without evidence, scope: no difference.** None in any condition in either run.
+
+**Skills: still not in use.** The skills now trigger, on paper, on ordinary requests and work without interlock. The scripted checks show the plumbing and the text reach the model. But no live session chose to invoke one: 0 of the 28 v4 runs that loaded them, and 0 of 2 probes. So neither run measured skills in use. The `skills` condition is plain Claude Code with the skills' descriptions in context, which cost about 8 to 11% more than plain and did no worse.
+
+**What this does not show:**
+
+- Anything about skills in use (above).
+- Whether v4's verifier catches gaps. No v4 run had one.
+- Anything about Copilot CLI with a real model. Its runs used a scripted model.
+- Code quality or speed of delivery.
+- Generality. These are eleven small tasks of our own making, one host (whose version moved between runs), one model, one effort level, and one or two repeats.
+
+## Results v3: all three conditions, after integration (October 6, 2026)
 
 interlock at `858879e` (the integrated `interlock-foundation`), harness at `fe4597d`. Claude Code 2.1.289, `claude-sonnet-5-5`, effort `medium`, through Claude Code's `--effort` for `plain` and `skills` and `interlock run --effort` for `interlock`. `skills` loaded the plugin that `interlock skills generate --target claude-code` wrote; `interlock` ran with `--interlock-skills`, so its worker and verifier sessions loaded the same plugin. Conditions ran in ABBA order.
 
@@ -258,7 +380,7 @@ In all three interlock failures, the independent verifier ran the checks, examin
 
 **Spend for this step.** Claude Code reported $4.81 for the 46 runs, and $0.08 for three probe sessions (`checks/effort_probe_low.out.json`, `checks/skills_probe_generated.out.json`): **$4.89 reported**. Ten sessions were killed by the forced interruptions and reported no cost. At the $0.30 reserve each, another $3.00 was charged against the budget, for **$7.89 charged against the $8.50 cap**. The plan had estimated about $7.7, so the budget never had to stop a run.
 
-## What the data supports
+### What v3 showed, at the time
 
 The design's first goal is falsifiable: better reliability, with an overhead we understand. This run could have falsified the reliability half, and on these tasks it points the wrong way.
 
@@ -313,11 +435,13 @@ The interruptions in these runs killed each session at its first edit, after thr
 ## Limitations
 
 - **Stand-in tasks.** Written for this harness and small. They are not the S3 set.
-- **Small n.** One or two repeats per task and condition: 15 runs per condition, on 11 tasks.
+- **Small n.** One or two repeats per task and condition: v3 had 15 runs per condition, and v4 rereran the conditions it changed. `py-split-remainder` still has one run per condition.
 - **The plain condition is told how to report.** It is asked for a closing `STATUS:` line, so that its completion claim can be read without a model's judgement.
 - **interlock's criteria spell the task out.** Each task file breaks the prompt into criteria, some with checks. That is the intervention being measured, but it also means interlock gets the task stated twice. The criteria add no requirement or hint the prompt lacks.
 - **No sandbox.** See Isolation: the layout and the scanner keep agents away from the answers and report attempts, but the agents could read them.
 - **Killed sessions have no cost.** The host reports cost only at the end of a session.
 - **Wall times are noisy.** The machine's 4 CPUs were shared with other work.
 - **The host loads its own plugins.** Every session, in every condition, also listed three plugins installed in this Claude Code environment (`cc-plugin-agents-md`, `cc-plugin-plugin-authoring`, `cc-plugin-telemetry`), despite `--setting-sources ""`. They are the same in every condition.
-- **The harder tasks' hidden checks embed judgements.** See Results: the `go-duration-days` cases are defensible, not inevitable.
+- **The harder tasks' hidden checks embed judgements.** See Results v3: the `go-duration-days` cases are defensible, not inevitable.
+- **The host moved.** Claude Code updated itself from 2.1.289 (v3) to 2.1.291 (v4), so v4's interlock and skills runs on the harder tasks are compared with plain runs on an older host.
+- **The verifier's new failure path is untested live.** No v4 worker left a gap for it to find.

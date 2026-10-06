@@ -1,0 +1,11 @@
+`balances` and `settle` now take `--since DATE` and `--until DATE`. All 22 tests pass, and `checks/date-filter.sh` passes.
+
+The previous session had already written most of the code, in `tally/cli.py` and `tally/csvio.py`. I checked it, then made these changes:
+
+- **Bug fix:** An entry with an impossible date such as `2026-13-01` produced the error `month must be in 1..12`. It now reads `tally: trip.csv:3: invalid date '2026-13-01'`, as the task asks.
+- **Tests:** I added tests in `tests/test_cli.py` for filtering with both options, for an invalid `--since` value exiting with status 2, and for a bad entry date failing with status 1. The bad-entry-date test also checks that the same file still loads without the options.
+- **README:** `README.md` now describes the two options.
+
+I did not touch `export`, which doesn't accept the new options.
+
+STATUS: DONE

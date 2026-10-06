@@ -1,0 +1,7 @@
+`balances` and `settle` now print amounts with thousands separators, so the large balance reads `-121,810.78`. The 20 tests pass and `checks/thousands.sh` passes. I ran `settle` on `examples/big.csv` and it printed `Bea -> Ann  121,810.78`.
+
+`format_cents` in `tally/money.py` takes a new `grouping` option, off by default. `tally/report.py` turns it on for both commands. The CSV export uses the same function and is untouched, so it still writes plain amounts like `121810.78`.
+
+I added a test for the grouped output in `tests/test_money.py`. The `balances` column is still right-aligned to 10 characters, so an amount like `-121,810.78` (11 characters) is one wider than the column. I left that width alone to keep other behaviour unchanged.
+
+STATUS: DONE

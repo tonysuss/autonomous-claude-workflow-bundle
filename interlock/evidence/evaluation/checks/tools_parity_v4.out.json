@@ -1,0 +1,16 @@
+{
+ "same": [
+  "go-dotted-section",
+  "go-duration-days",
+  "go-env-expand",
+  "go-lookup-refactor",
+  "go-quoted-hash",
+  "py-bisect-settle",
+  "py-csv-format",
+  "py-date-filter",
+  "py-parse-amount",
+  "py-split-remainder",
+  "py-thousands"
+ ],
+ "different": []
+}

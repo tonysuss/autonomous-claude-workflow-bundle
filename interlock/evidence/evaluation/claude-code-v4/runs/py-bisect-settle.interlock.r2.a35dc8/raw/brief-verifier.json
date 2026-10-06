@@ -1,0 +1,56 @@
+{
+ "base_commit": "7e2bd5330c09b7b41ba3a3a24635453a47c4af48",
+ "criteria": [
+  {
+   "baseline": null,
+   "check": null,
+   "id": "answer",
+   "needs": "observed from independent",
+   "statement": "The worker's ANSWER line names the first commit at which the reproduction in `checks/settle-repro.sh` fails, and the reproduction passes at that commit's parent",
+   "status": "passes (Observed)"
+  }
+ ],
+ "current_tree": "7ccfdf848915c4f11ef1ff5865d44fa7f40ed64c",
+ "failures_to_fix": [],
+ "goal": "Since a recent change, `python3 -m tally settle` sometimes prints a transfer of 0.00. For `examples/trip.csv` it now prints `Dan -> Cal  0.00` between the two real transfers; it did not do that before. `checks/settle-repro.sh` reproduces it: the script fails on the current code.\n\nFind the commit that introduced this regression. This is an investigation: do not fix the bug and leave every file as it is. In your final message, say briefly how you confirmed the answer, and give the full SHA of that commit on a line of its own as `ANSWER: <sha>`.\n",
+ "grant": {
+  "action_classes": [
+   "read",
+   "local_reversible"
+  ],
+  "grant_ids": [],
+  "landing_authority": "none",
+  "tools": {
+   "allow": [
+    "read",
+    "shell"
+   ],
+   "deny": [
+    "edit",
+    "shell:git push",
+    "shell:git commit"
+   ]
+  }
+ },
+ "next_moves": [],
+ "previous_result": {
+  "attempt_id": "att-a9e631ec44f24b00",
+  "changed_paths": [],
+  "open_questions": [],
+  "output_tree": "7ccfdf848915c4f11ef1ff5865d44fa7f40ed64c",
+  "summary": "I ran `checks/settle-repro.sh` against an extracted copy of each of the 10 commits, using `git archive`. The script passes at `a16f8ab` and every earlier commit, and fails at `91a6a15` and every later one. `91a6a15` is \"ledger: tidy settle loop\", and it changes only `tally/ledger.py`. I didn't open the diff to pinpoint the exact line.\n\nI changed no files in the worktree. `interlock check run --criterion answer` reported that the criterion has no check to run, so I recorded an `observed` claim from the per-commit runs instead.\n\nANSWER: 91a6a159d5c7e295504c4280c17ca9f883bdcaa9"
+ },
+ "protected": [],
+ "role": "verifier",
+ "scope": [],
+ "state": "done",
+ "task_id": "py-bisect-settle",
+ "upstream": [],
+ "verifier_bindings": [
+  {
+   "attempt": "att-add328218cc64788 (verifier, completed)",
+   "bound": "launched by interlock"
+  }
+ ],
+ "workflow": "investigation v1"
+}

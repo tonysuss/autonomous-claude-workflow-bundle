@@ -1,0 +1,8 @@
+The repro passes at a16f8ab and fails at 91a6a15, so 91a6a15 introduced the regression.
+
+I ran `checks/settle-repro.sh`, taken from the latest commit, against a `git archive` export of each candidate commit in a temp directory, so no files in the repo changed. The script passed at 2a854cc, bcd34a9 and a16f8ab. It failed with `zero-amount transfers: [('Dan', 'Cal', 0)]` at 91a6a15 ("ledger: tidy settle loop") and at every later commit I tried (821f6b6, a908b26, 583d975).
+
+I did not read the diff of 91a6a15. The conclusion rests only on the pass/fail change between those two adjacent commits.
+
+ANSWER: 91a6a159d5c7e295504c4280c17ca9f883bdcaa9
+STATUS: DONE

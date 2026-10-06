@@ -1,0 +1,9 @@
+`balances` and `settle` now take `--format text|csv`. The default is `text` and leaves today's output unchanged. The unit tests (22) and `checks/csv-format.sh` pass.
+
+- **Errors:** an unknown format is rejected by argparse with exit status 2, and a new test covers that.
+- **Empty output:** I didn't run an empty ledger. The empty case is header-only because there are no rows to write. It has no test.
+- **Settle output:** on `examples/trip.csv`, `settle --format csv` prints `from,to,amount`, then `Bea,Cal,40.00` and `Dan,Ann,36.00`.
+- **Code:** the new CSV renderers are in `tally/report.py`, and the option is wired up in `tally/cli.py`. I added CLI tests and a short README note.
+- **`export`:** it doesn't get the option, since it already prints CSV.
+
+STATUS: DONE

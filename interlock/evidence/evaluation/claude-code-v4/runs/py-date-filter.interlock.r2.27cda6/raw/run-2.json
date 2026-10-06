@@ -1,0 +1,124 @@
+{
+  "task_id": "py-date-filter",
+  "host": "claude-code",
+  "final_state": "done",
+  "stopped_because": "done",
+  "reconciled": [
+    "att-58e0d954e57c45e7"
+  ],
+  "reattached": [],
+  "interrupted": false,
+  "baseline": [
+    {
+      "criterion_id": "since",
+      "run_id": "run-668d506fd62541c8",
+      "exit_code": 1,
+      "vacuous": null,
+      "problem": null
+    },
+    {
+      "criterion_id": "regression",
+      "run_id": "run-9e9d093d26374f98",
+      "exit_code": 0,
+      "vacuous": null,
+      "problem": null
+    }
+  ],
+  "sessions": [
+    {
+      "role": "worker",
+      "attempt_id": "att-7ae2bcdcac80424f",
+      "epoch": 2,
+      "exit": {
+        "exit": "completed"
+      },
+      "duration_ms": 39787,
+      "summary": "`balances` and `settle` now take `--since DATE` and `--until DATE`, and the unit tests and the date-filter check both pass.\n\n- **What changed:** `tally/csvio.py` now drops entries outside the range as it reads the file. It also checks that each entry date is a real `YYYY-MM-DD` date, but only when a filter is given. A bad entry date fails with status 1 and an error like `tally: trip.csv:3: invalid date '2026-13-01'`. In `tally/cli.py`, the two options reject an invalid DATE at argument parsing, which exits with status 2. `export` is unchanged. I also added four tests to `tests/test_cli.py` and a short README note.\n- **How I checked:** `python3 -m unittest discover -s tests -q` passes, 23 tests. `interlock check run` passed for `since` and `regression`, and I recorded claims for both. I also ran `balances --since 2026-06-02 --until 2026-06-02` on `examples/trip.csv` by hand.\n- **Spec criterion:** I could only record `spec` as `tested`, and interlock warned that it needs `observed` or stronger. The independent verifier has to cover that one.",
+      "denials": 0,
+      "transcript": "/tmp/agent-ws/57e2782a06/tally/.interlock/transcripts/att-7ae2bcdcac80424f.jsonl",
+      "moves": [
+        {
+          "signal": "G3",
+          "from": "running",
+          "to": "awaiting_verification",
+          "reason": "result accepted from attempt att-7ae2bcdcac80424f at epoch 2"
+        }
+      ],
+      "ended_because": "completed",
+      "end_detail": null,
+      "spent": {
+        "wall_ms": 39787,
+        "cost_usd": 0.14351160000000002,
+        "premium_requests": null,
+        "turns": 6,
+        "model": "claude-sonnet-5-5"
+      },
+      "cost_usd": 0.14351160000000002,
+      "premium_requests": null,
+      "host_session_id": "c9a5d885-e07f-4d4e-b4ac-40f10d3f7264",
+      "reattached": false,
+      "stopped_strays": [],
+      "export": null
+    },
+    {
+      "role": "verifier",
+      "attempt_id": "att-0ba3733cad294d89",
+      "epoch": 2,
+      "exit": {
+        "exit": "completed"
+      },
+      "duration_ms": 19348,
+      "summary": "I recorded a passing assessment for all three criteria. Everything below is what I saw running the tree.\n\n- **since:** pass (`observed`). `interlock check run --criterion since` passed on this tree and printed `ok: balances --since 2026-06-02`.\n- **spec:** pass (`observed`). I ran `balances` and `settle` by hand on `examples/trip.csv` and on a scratch file with a bad date on line 3.\n  - `--since` and `--until` are inclusive, work alone or together, and give the right balances for a single day.\n  - An invalid DATE (`2026-6-2`, `2026-02-30`) exits with status 2.\n  - An invalid entry date exits with status 1 and prints `tally: bad.csv:3: invalid date '2026-13-01'`, but only when `--since` or `--until` is given.\n  - With neither option, the same bad file is read as before.\n- **regression:** pass (`tested`). `interlock check run --criterion regression` passed, and `python3 -m unittest discover -s tests -q` ran 23 tests, all OK.",
+      "denials": 0,
+      "transcript": "/tmp/agent-ws/57e2782a06/tally/.interlock/transcripts/att-0ba3733cad294d89.jsonl",
+      "moves": [
+        {
+          "signal": "G4",
+          "from": "awaiting_verification",
+          "to": "verified",
+          "reason": "every required criterion has current passing evidence"
+        },
+        {
+          "signal": "G7",
+          "from": "verified",
+          "to": "done",
+          "reason": "verified; the workflow needs no delivery"
+        }
+      ],
+      "ended_because": "completed",
+      "end_detail": null,
+      "spent": {
+        "wall_ms": 19348,
+        "cost_usd": 0.0861912,
+        "premium_requests": null,
+        "turns": 4,
+        "model": "claude-sonnet-5-5"
+      },
+      "cost_usd": 0.0861912,
+      "premium_requests": null,
+      "host_session_id": "9fe91919-f37a-4cd7-8181-a72c8c8e4488",
+      "reattached": false,
+      "stopped_strays": [],
+      "export": null
+    }
+  ],
+  "pin": null,
+  "spent": {
+    "wall_ms": 75836,
+    "cost_usd": 0.2297028,
+    "premium_requests": null,
+    "turns": 10
+  },
+  "exports": [
+    {
+      "task_id": "py-date-filter",
+      "commit": "3524e23be9fc3c9887baab621944c4f2c4f47c73",
+      "tree": "68ab63d6315c5575573d682fecf0815432205852",
+      "base": "89d6da274a486532b5d8579ffd9b04e3c7e2e421",
+      "reference": "refs/heads/interlock/wip/py-date-filter",
+      "source": "/tmp/agent-ws/57e2782a06/tally/.interlock/worktrees/py-date-filter-worker-1",
+      "attempt_id": "att-58e0d954e57c45e7",
+      "note": "/tmp/agent-ws/57e2782a06/tally/.interlock/exports/py-date-filter.md"
+    }
+  ]
+}

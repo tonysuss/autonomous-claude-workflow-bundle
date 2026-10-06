@@ -1,0 +1,82 @@
+{
+ "base_commit": "290aa6f9fb381eaafefcc3964807623afe36d36a",
+ "criteria": [
+  {
+   "baseline": "it must fail on the input snapshot, reproducing the problem; interlock saw it fail there (run run-743a726b823248a4)",
+   "check": "sh checks/thousands.sh",
+   "id": "balances",
+   "needs": "observed from independent",
+   "statement": "`balances` prints the amounts of `examples/big.csv` with thousands separators",
+   "status": "passes (Observed)"
+  },
+  {
+   "baseline": null,
+   "check": null,
+   "id": "spec",
+   "needs": "observed from independent",
+   "statement": "`balances` and `settle` print amounts with thousands separators, and nothing else about the program's behaviour changes",
+   "status": "passes (Observed)"
+  },
+  {
+   "baseline": "it must pass on the input snapshot, as a regression guard; interlock saw it pass there (run run-dc64aa15ff9847f4)",
+   "check": "python3 -m unittest discover -s tests -q",
+   "id": "regression",
+   "needs": "tested from self",
+   "statement": "The existing unit tests pass",
+   "status": "passes (Tested)"
+  }
+ ],
+ "current_tree": "fd55bba914329df8c4ca93863397b23139fba851",
+ "failures_to_fix": [],
+ "goal": "Large amounts are hard to read in the output of `python3 -m tally balances` and `python3 -m tally settle`: a balance prints as `-121810.78`. Print the amounts in both commands with thousands separators, `-121,810.78`. Nothing else about the program's behaviour should change.\n\n`checks/thousands.sh` checks `balances` for `examples/big.csv`. The tests run with `python3 -m unittest discover -s tests -q`.\n",
+ "grant": {
+  "action_classes": [
+   "read",
+   "local_reversible"
+  ],
+  "grant_ids": [],
+  "landing_authority": "none",
+  "tools": {
+   "allow": [
+    "read",
+    "shell"
+   ],
+   "deny": [
+    "edit",
+    "shell:git push",
+    "shell:git commit"
+   ]
+  }
+ },
+ "next_moves": [],
+ "previous_result": {
+  "attempt_id": "att-5e94c36ecdcc4550",
+  "changed_paths": [
+   "tally/money.py",
+   "tally/report.py",
+   "tests/test_money.py"
+  ],
+  "open_questions": [],
+  "output_tree": "fd55bba914329df8c4ca93863397b23139fba851",
+  "summary": "`balances` and `settle` now print amounts with thousands separators, so `-121810.78` shows as `-121,810.78`.\n\n`format_cents` in `tally/money.py` is shared with the CSV export, which has to stay ungrouped. I added an opt-in `grouped` parameter, off by default. The two renderers in `tally/report.py` turn it on. I added a unit test for the grouped formatting in `tests/test_money.py`.\n\nI had interlock run both checks on the final files, and both passed:\n- **Balances check:** `checks/thousands.sh` passed.\n- **Unit tests:** all 20 passed, including the new one.\n\nI also ran `settle` and `export` on `examples/big.csv` by hand. `settle` printed `121,810.78`, and the export CSV still had plain `246913.56`.\n\nI recorded claims for `balances`, `regression` and `spec`. The `balances` and `spec` criteria still need the independent verifier before they count as done."
+ },
+ "protected": [
+  "checks/thousands.sh"
+ ],
+ "role": "verifier",
+ "scope": [
+  "tally/**",
+  "tests/**",
+  "README.md"
+ ],
+ "state": "done",
+ "task_id": "py-thousands",
+ "upstream": [],
+ "verifier_bindings": [
+  {
+   "attempt": "att-991e72ff11a6409a (verifier, completed)",
+   "bound": "launched by interlock"
+  }
+ ],
+ "workflow": "feature v1"
+}
