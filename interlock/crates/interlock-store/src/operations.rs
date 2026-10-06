@@ -92,13 +92,16 @@ impl Store {
         &mut self,
         task_id: &str,
         kind: OperationKind,
-        intent: OperationIntent,
+        mut intent: OperationIntent,
         now: Timestamp,
     ) -> Result<Operation> {
         let (tx, v) = self.begin()?;
         let task = get_task(&tx, task_id)?;
         if task.state != State::Integrating {
             return Err(refused(RefusalCode::WrongState, format!("task {task_id} is {}, not integrating", task.state)));
+        }
+        if intent.tree.is_none() {
+            intent.tree = task.current_tree.clone();
         }
         let op = Operation {
             id: new_id("op"),

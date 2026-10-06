@@ -104,7 +104,7 @@ G6 is applied only when all of these hold:
 
 "Merge recorded" means the operation is confirmed, because the forge did act, while the task is blocked with the reason for the operator. Nothing here undoes a merge on the forge.
 
-The pinned head and current passing evidence are also G6's own guard in the policy core, so `interlock integrate confirm --merged <head>`, the operator's hand-made report, is held to them too: a head shorter than seven characters is refused, and a merge confirmed after the evidence went stale or failed blocks the task.
+The pinned head, the tree it was built from, and current passing evidence are also G6's own guard in the policy core. Every operation records the task's tree when it was planned (`intent.tree`). So `interlock integrate confirm --merged <head>`, the operator's hand-made report, is held to them too: a head shorter than seven characters, or not the pinned one, is refused (in either case of hex digits), and a merge confirmed after the task's tree changed, or after its evidence went stale or failed, blocks the task. `integrate confirm` also makes settling's other checks: an operation already confirmed or failed cannot be confirmed again, and a merge reported when the task has no landing authority is recorded and blocks the task.
 
 ## Reconcile
 

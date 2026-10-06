@@ -121,8 +121,12 @@ fn integrating_with(store: &mut Store, authority: LandingAuthority) -> Operation
     add(store, EvidenceKind::Assessment, &v, "checked", Strength::Observed);
     store.advance("t1", t(5)).unwrap();
     grant(store, authority, 5);
-    let intent =
-        OperationIntent { expected_head_sha: Some(HEAD.into()), base: Some("main".into()), pull_request: None };
+    let intent = OperationIntent {
+        expected_head_sha: Some(HEAD.into()),
+        base: Some("main".into()),
+        pull_request: None,
+        tree: None,
+    };
     let (mv, op) = store.begin_integration("t1", OperationKind::Merge, intent, t(6)).unwrap();
     assert_eq!(mv.signal, Signal::G5);
     op.unwrap()
@@ -276,11 +280,12 @@ fn a_merge_never_lands_a_task_whose_evidence_went_stale() {
 }
 
 #[test]
-fn a_merge_confirmed_by_hand_never_lands_stale_evidence_or_a_short_head() {
+fn a_merge_confirmed_by_hand_never_lands_a_short_head_or_a_changed_tree() {
     // `interlock integrate confirm` reaches G6 without settle's checks; the
     // guard itself must refuse what the lifecycle property tests found.
     let mut store = Store::open_in_memory().unwrap();
     let landing = integrating(&mut store);
+    assert_eq!(landing.intent.tree.as_deref(), Some(TREE), "G5 records the tree the head is built from");
     let short = MergeReport::Merged { head_sha: HEAD[..3].into() };
     let err = store.confirm_integration("t1", &landing.id, short, t(7)).unwrap_err();
     assert!(err.to_string().contains("verified head was"), "{err}");
@@ -289,7 +294,112 @@ fn a_merge_confirmed_by_hand_never_lands_stale_evidence_or_a_short_head() {
     let mv = store.confirm_integration("t1", &landing.id, merged, t(9)).unwrap();
     assert_eq!((mv.signal, mv.to), (Signal::Block, State::Blocked));
     assert_eq!(store.operation(&landing.id).unwrap().state, OperationState::Confirmed, "what the forge did is kept");
-    assert!(store.task("t1").unwrap().blocked_reason.unwrap().contains("no longer covers"));
+    assert!(store.task("t1").unwrap().blocked_reason.unwrap().contains("the task's tree is now"));
+}
+
+/// Records a claim on a given tree.
+fn claim_on(store: &mut Store, a: &(String, String, u32), criterion: &str, tree: &str) {
+    let req = AddEvidence {
+        attempt_id: a.0.clone(),
+        token: a.1.clone(),
+        criterion_id: criterion.into(),
+        strength: Strength::Tested,
+        tree: tree.into(),
+        environment: None,
+        evidence_refs: vec![],
+        note: None,
+        event_id: None,
+    };
+    store.add_evidence(EvidenceKind::Claim, req, t(4)).unwrap();
+}
+
+#[test]
+fn a_hand_confirmed_merge_of_the_old_head_never_lands_a_newer_tree() {
+    // Found in review: G5 pins the head to TREE; a new tree is recorded and
+    // passes; the operator confirms TREE's head. That landed TREE on the
+    // newer tree's evidence.
+    let mut store = Store::open_in_memory().unwrap();
+    let spec: TaskSpec = serde_json::from_value(json!({
+        "id": "t1", "repository": "/r", "workflow": "bug-fix", "intent": "fix it", "integration_required": true,
+        "criteria": [{"id": "fixed", "statement": "fixed", "min_strength": "tested", "producer": "self"}]
+    }))
+    .unwrap();
+    store.create_task(spec, t(0)).unwrap();
+    let snapshot = Snapshot {
+        repository: "/r".into(),
+        base_commit: "e43c7ee".into(),
+        untracked_hash: None,
+        protected_paths: vec![],
+    };
+    store.ready("t1", snapshot, t(1)).unwrap();
+    let w = start(&mut store, Role::Worker);
+    let result = SubmitResult {
+        attempt_id: w.0.clone(),
+        token: w.1.clone(),
+        epoch: w.2,
+        output_tree: TREE.into(),
+        changed_paths: vec![],
+        summary: "done".into(),
+        open_questions: vec![],
+        event_id: None,
+    };
+    store.submit_result(result, t(3)).unwrap();
+    claim_on(&mut store, &w, "fixed", TREE);
+    store.advance("t1", t(5)).unwrap();
+    grant(&mut store, LandingAuthority::Coordinator, 5);
+    let (_, op) = store.begin_integration("t1", OperationKind::Merge, OperationIntent::default(), t(6)).unwrap();
+    let op = op.unwrap();
+    assert_eq!((op.intent.expected_head_sha.as_deref(), op.intent.tree.as_deref()), (Some(TREE), Some(TREE)));
+
+    let newer = "bbbbbbb2222222222222222222222222222222222";
+    store.record_new_tree("t1", newer, t(7)).unwrap();
+    claim_on(&mut store, &w, "fixed", newer);
+    assert!(store.evaluate("t1").unwrap().1.all_pass, "the newer tree passes");
+    let mv = store.confirm_integration("t1", &op.id, MergeReport::Merged { head_sha: TREE.into() }, t(9)).unwrap();
+    assert_eq!((mv.signal, mv.to), (Signal::Block, State::Blocked));
+    let task = store.task("t1").unwrap();
+    assert!(task.blocked_reason.unwrap().contains("the task's tree is now"), "the reason names the change");
+    assert_eq!(store.operation(&op.id).unwrap().state, OperationState::Confirmed, "what the forge did is kept");
+}
+
+#[test]
+fn a_hand_confirmed_merge_refuses_an_operation_already_settled() {
+    let mut store = Store::open_in_memory().unwrap();
+    let landing = integrating(&mut store);
+    store.start_operation(&landing.id, &pin(Some(7)), t(7)).unwrap().unwrap();
+    store
+        .settle_operation(&landing.id, &Verdict::Failed { reason: "the call failed".into() }, json!({}), t(8))
+        .unwrap();
+    assert_eq!(state(&store), State::Integrating);
+    let merged = MergeReport::Merged { head_sha: HEAD.into() };
+    let err = store.confirm_integration("t1", &landing.id, merged.clone(), t(9)).unwrap_err();
+    assert!(err.to_string().contains("already Failed"), "{err}");
+    assert_eq!(state(&store), State::Integrating, "nothing moved");
+
+    let other = integrating_again(&mut store);
+    store.confirm_integration("t1", &other.id, merged.clone(), t(10)).unwrap();
+    assert_eq!(state(&store), State::Done);
+    let err = store.confirm_integration("t1", &other.id, merged, t(11)).unwrap_err();
+    assert!(err.to_string().contains("already Confirmed"), "{err}");
+}
+
+/// A second landing operation for the integrating task in `store`.
+fn integrating_again(store: &mut Store) -> Operation {
+    let intent = OperationIntent { expected_head_sha: Some(HEAD.into()), ..OperationIntent::default() };
+    store.plan_operation("t1", OperationKind::Merge, intent, t(9)).unwrap()
+}
+
+#[test]
+fn a_hand_confirmed_merge_needs_landing_authority_when_it_is_reported() {
+    let mut store = Store::open_in_memory().unwrap();
+    let landing = integrating(&mut store);
+    for g in store.grants().unwrap() {
+        store.revoke_grant(&g.id, t(7)).unwrap();
+    }
+    let mv = store.confirm_integration("t1", &landing.id, MergeReport::Merged { head_sha: HEAD.into() }, t(8)).unwrap();
+    assert_eq!((mv.signal, mv.to), (Signal::Block, State::Blocked));
+    assert!(store.task("t1").unwrap().blocked_reason.unwrap().contains("no landing authority"));
+    assert_eq!(store.operation(&landing.id).unwrap().state, OperationState::Confirmed, "what the forge did is kept");
 }
 
 #[test]

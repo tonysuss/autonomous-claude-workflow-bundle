@@ -605,6 +605,11 @@ pub struct OperationIntent {
     pub base: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub pull_request: Option<u64>,
+    /// The task's tree when the operation was planned: the tree the pinned
+    /// head was built from. A merge of that head lands only while it is
+    /// still the task's tree.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub tree: Option<String>,
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]

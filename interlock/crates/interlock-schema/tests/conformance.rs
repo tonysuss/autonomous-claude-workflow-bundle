@@ -163,6 +163,7 @@ fn every_record_kind_round_trips_through_its_schema() {
             expected_head_sha: Some(currency().tree),
             base: Some("main".into()),
             pull_request: Some(42),
+            tree: Some(currency().tree),
         },
         state: OperationState::Planned,
         outcome: None,

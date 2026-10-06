@@ -406,8 +406,12 @@ impl Pass<'_> {
         // Nothing here reaches the forge, and no ref is written: without landing authority G5 blocks first.
         let head = git::verified_head(self.repo, task)?;
         let authority = self.store.landing_authority(&task.id, Utc::now())?;
-        let intent =
-            OperationIntent { expected_head_sha: Some(head.clone()), base: self.cfg.base.clone(), pull_request: None };
+        let intent = OperationIntent {
+            expected_head_sha: Some(head.clone()),
+            base: self.cfg.base.clone(),
+            pull_request: None,
+            tree: None,
+        };
         let (mv, op) = self.store.begin_integration(&task.id, self.landing_kind(authority), intent, Utc::now())?;
         self.d.moves.push(mv);
         if let Some(op) = op {
@@ -463,6 +467,7 @@ impl Pass<'_> {
                     expected_head_sha: Some(head.clone()),
                     base: self.cfg.base.clone(),
                     pull_request: None,
+                    tree: None,
                 };
                 let op = self.store.plan_operation(&task.id, self.landing_kind(authority), intent, Utc::now())?;
                 self.note(format!("planned operation {} to land {head}", op.id));
@@ -683,6 +688,7 @@ impl Pass<'_> {
             expected_head_sha: Some(head.to_string()),
             base: Some(base.to_string()),
             pull_request: open.as_ref().map(|p| p.number),
+            tree: None,
         };
         let op = self.store.plan_operation(&task.id, OperationKind::OpenPr, intent, Utc::now())?;
         let pin = Pin { pull_request: None, base: None, tree: task.current_tree.clone() };

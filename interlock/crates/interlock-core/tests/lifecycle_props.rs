@@ -541,7 +541,12 @@ impl World {
                             id: format!("op{}", self.clock),
                             task_id: self.task.id.clone(),
                             kind: OperationKind::Merge,
-                            intent: OperationIntent { expected_head_sha: pinned, base: None, pull_request: Some(7) },
+                            intent: OperationIntent {
+                                expected_head_sha: pinned,
+                                base: None,
+                                pull_request: Some(7),
+                                tree: None,
+                            },
                             state: OperationState::Started,
                             outcome: None,
                             created_at: now,

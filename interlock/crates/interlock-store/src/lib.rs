@@ -1190,6 +1190,9 @@ impl Store {
             if intent.expected_head_sha.is_none() {
                 intent.expected_head_sha = task.current_tree.clone();
             }
+            if intent.tree.is_none() {
+                intent.tree = task.current_tree.clone();
+            }
             let op = Operation {
                 id: new_id("op"),
                 task_id: task.id.clone(),
@@ -1210,8 +1213,12 @@ impl Store {
         Ok((mv, op))
     }
 
-    /// G6, or R2 when the forge refused the pinned merge. A merge whose
-    /// evidence no longer covers the task's tree blocks the task instead.
+    /// The operator's own report of what the forge did with an operation
+    /// (`interlock integrate confirm`): G6, or R2 when the forge refused the
+    /// pinned merge. It is held to what settling the operation checks: an
+    /// operation already settled is refused, and a merge made without
+    /// landing authority, of a tree that is no longer the task's, or whose
+    /// evidence no longer passes is recorded and blocks the task.
     pub fn confirm_integration(
         &mut self,
         task_id: &str,
@@ -1226,8 +1233,26 @@ impl Store {
             .optional()?
             .ok_or_else(|| StoreError::NotFound(format!("operation {operation_id}")))
             .and_then(decode)?;
+        if matches!(op.state, OperationState::Confirmed | OperationState::Failed) {
+            return Err(StoreError::Refused(Refusal {
+                signal: Some(lifecycle::Signal::G6),
+                code: lifecycle::RefusalCode::WrongState,
+                message: format!("operation {} is already {:?}", op.id, op.state),
+                missing: vec![],
+            }));
+        }
         let evidence = report_for(&tx, &task)?;
-        let out = lifecycle::confirm_integration(&task, &op, &report, &evidence, now)?;
+        let mut out = lifecycle::confirm_integration(&task, &op, &report, &evidence, now)?;
+        // Landing authority must have held when the forge merged; the operator's report says now.
+        if let (lifecycle::Signal::G6, MergeReport::Merged { head_sha }) = (out.mv.signal, &report)
+            && grants::landing_authority(&task.id, &all_grants(&tx)?, now) == LandingAuthority::None
+        {
+            let why = format!(
+                "merged at {head_sha} at {}, when no landing authority was granted for this task; reconcile by hand",
+                ts(now)
+            );
+            out = lifecycle::block(&task, &why, now)?;
+        }
         op.state = match report {
             MergeReport::Merged { .. } => OperationState::Confirmed,
             MergeReport::Refused { .. } => OperationState::Failed,

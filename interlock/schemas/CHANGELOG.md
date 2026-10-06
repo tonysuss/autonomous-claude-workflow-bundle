@@ -22,6 +22,7 @@ v1 adds to v0:
 | Result | Status `rejected`: a result that changes files outside the task's scope or a file its checks run |
 | Event | Types `attempt.cancelled` and `task.resumed` |
 | Operation | Kind `disarm_auto_merge` |
+| Operation | `intent.tree`: the task's tree when the operation was planned, which the pinned head was built from. G6 lands the head only while that is still the task's tree |
 
 v1 removes nothing and makes nothing required that a v0 record could leave out: every addition is an optional property, a new enum value, or the new check-run record. So a record valid under v0 is valid under v1.
 

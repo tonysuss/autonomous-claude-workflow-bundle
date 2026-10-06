@@ -1110,8 +1110,12 @@ fn run(cli: &Cli) -> Result<()> {
             let mut store = open(cli)?;
             match cmd {
                 IntegrateCmd::Begin { task, pr, base, head } => {
-                    let intent =
-                        OperationIntent { expected_head_sha: head.clone(), base: base.clone(), pull_request: *pr };
+                    let intent = OperationIntent {
+                        expected_head_sha: head.clone(),
+                        base: base.clone(),
+                        pull_request: *pr,
+                        tree: None,
+                    };
                     let (moved, operation) = store.begin_integration(task, OperationKind::Merge, intent, now()?)?;
                     print(&json!({"moved": moved, "operation": operation}))
                 }
