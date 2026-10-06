@@ -1,0 +1,200 @@
+{
+ "created_at": "2026-10-06T01:22:09+00:00",
+ "invocations": [
+  {
+   "at": "2026-10-06T01:22:09+00:00",
+   "argv": [
+    "run",
+    "--host",
+    "copilot",
+    "--fake-model",
+    "--conditions",
+    "plain,skills,interlock",
+    "--repeats",
+    "2",
+    "--budget-usd",
+    "1",
+    "--session-timeout-min",
+    "3",
+    "--skills-dir",
+    "/tmp/claude-0/-home-user-autonomous-claude-workflow-bundle/<redacted>/scratchpad/dummy-skills",
+    "--copilot-bin",
+    "/tmp/claude-0/-home-user-autonomous-claude-workflow-bundle/<redacted>/scratchpad/cop/node_modules/.bin/copilot",
+    "--state-dir",
+    "/tmp/claude-0/-home-user-autonomous-claude-workflow-bundle/<redacted>/scratchpad/state",
+    "--results",
+    "/tmp/claude-0/-home-user-autonomous-claude-workflow-bundle/<redacted>/scratchpad/results-v2-copilot-fake",
+    "--interlock-bin",
+    "/home/user/autonomous-claude-workflow-bundle/.claude/worktrees/agent-a3de08fe5c01e8fbb/interlock/target/debug/interlock",
+    "--label",
+    "plumbing"
+   ],
+   "label": "plumbing",
+   "runs": [
+    "go-dotted-section.skills.r1.daba82",
+    "go-dotted-section.plain.r1.b764b6",
+    "go-dotted-section.interlock.r1.63da0b",
+    "go-duration-days.skills.r1.be357b",
+    "go-duration-days.interlock.r1.8da870",
+    "go-duration-days.plain.r1.858a5a",
+    "go-env-expand.plain.r1.58827e",
+    "go-env-expand.interlock.r1.035962",
+    "go-env-expand.skills.r1.28e83b",
+    "go-lookup-refactor.plain.r1.66e0b0",
+    "go-lookup-refactor.skills.r1.cdafda",
+    "go-lookup-refactor.interlock.r1.a315d0",
+    "go-quoted-hash.plain.r1.3a1cc8",
+    "go-quoted-hash.interlock.r1.c9eca4",
+    "go-quoted-hash.skills.r1.6c7dab",
+    "py-bisect-settle.skills.r1.b4514d",
+    "py-bisect-settle.plain.r1.78ff4c",
+    "py-bisect-settle.interlock.r1.c9a6ae",
+    "py-csv-format.plain.r1.07f103",
+    "py-csv-format.skills.r1.6f9389",
+    "py-csv-format.interlock.r1.f79f57",
+    "py-date-filter.interlock.r1.1f974c",
+    "py-date-filter.skills.r1.bef7fd",
+    "py-date-filter.plain.r1.fc5b8f",
+    "py-parse-amount.plain.r1.b4603b",
+    "py-parse-amount.skills.r1.163726",
+    "py-parse-amount.interlock.r1.02671d",
+    "py-split-remainder.skills.r1.4a9363",
+    "py-split-remainder.plain.r1.66126f",
+    "py-split-remainder.interlock.r1.764e1b",
+    "py-thousands.interlock.r1.79f318",
+    "py-thousands.plain.r1.527f1d",
+    "py-thousands.skills.r1.faef1c",
+    "go-dotted-section.interlock.r2.9e272d",
+    "go-dotted-section.plain.r2.ee0b04",
+    "go-dotted-section.skills.r2.a2bb5c",
+    "go-duration-days.plain.r2.b8b23a",
+    "go-duration-days.interlock.r2.6cede2",
+    "go-duration-days.skills.r2.e5be8f",
+    "go-env-expand.skills.r2.409236",
+    "go-env-expand.interlock.r2.b1be5b",
+    "go-env-expand.plain.r2.ef295e",
+    "go-lookup-refactor.interlock.r2.a2869d",
+    "go-lookup-refactor.skills.r2.1c4e1e",
+    "go-lookup-refactor.plain.r2.965010",
+    "go-quoted-hash.skills.r2.f9ffc5",
+    "go-quoted-hash.interlock.r2.84e0f1",
+    "go-quoted-hash.plain.r2.212dec",
+    "py-bisect-settle.interlock.r2.b6fef3",
+    "py-bisect-settle.plain.r2.b33355",
+    "py-bisect-settle.skills.r2.42b10e",
+    "py-csv-format.interlock.r2.6c0558",
+    "py-csv-format.skills.r2.f4e17b",
+    "py-csv-format.plain.r2.ef77ab",
+    "py-date-filter.plain.r2.d6fad2",
+    "py-date-filter.skills.r2.052b28",
+    "py-date-filter.interlock.r2.a072af",
+    "py-parse-amount.interlock.r2.9775b5",
+    "py-parse-amount.skills.r2.52c729",
+    "py-parse-amount.plain.r2.8a4d35",
+    "py-split-remainder.interlock.r2.8df7da",
+    "py-split-remainder.plain.r2.972230",
+    "py-split-remainder.skills.r2.7cd138",
+    "py-thousands.skills.r2.e2c613",
+    "py-thousands.plain.r2.240d28",
+    "py-thousands.interlock.r2.64bb48"
+   ],
+   "stopped": null
+  }
+ ],
+ "pinned": {
+  "host": "copilot",
+  "host_version": "1.0.91",
+  "model": null,
+  "effort": null,
+  "max_turns": 80,
+  "session_timeout_s": 180,
+  "max_sessions": 6,
+  "fake_model": true
+ },
+ "harness_version": "2",
+ "interlock_commit": "a8beb5528ccb449ac6d1986cffd708c11dff86a4",
+ "interlock_describe": "a8beb5528ccb-dirty",
+ "interlock_bin_sha256": "4876ff58c83e1695afd39d0633f0ed99bfd613e06c3fb11230d968ee68330e3b",
+ "interlock_features": {
+  "effort": false,
+  "skills": false,
+  "skills_generate": false
+ },
+ "budget_usd": 1.0,
+ "frozen": {
+  "version": 2,
+  "judgelib_sha256": "97dfb93a6aee6a9280fcbe5ae1a368368b23fc81ac5b8b404870f0a83d3ec6cd",
+  "tasks": {
+   "go-dotted-section": {
+    "base_commit": "e8d4d5cb6e3e8475b7a303e95ab63dd3fbd57219",
+    "task_dir_sha256": "8c90673a2f4e80227c4fe41e9ad8cecf2ac5a3c0b9c4438eada1bbf395ecfb49"
+   },
+   "go-duration-days": {
+    "base_commit": "3e6d67d9640d38b817342e51c6fc7daf96c3d31c",
+    "task_dir_sha256": "30d9a8af56618a65c567a96d98f50f5065f8c8541c4def2f456d22ab2250f809"
+   },
+   "go-env-expand": {
+    "base_commit": "5de281b734d79d8cc6b3021086d2235aa7fa7090",
+    "task_dir_sha256": "78c0562c24b712f4c013f3b49f8343d3657535ae1917b14e1259863ae747c8a8"
+   },
+   "go-lookup-refactor": {
+    "base_commit": "5ce47f1e462831e3b89facb176be0829d0461fde",
+    "task_dir_sha256": "4533c91c3826f6ad536a3e24effa5d32ebfc642149f92667357349a037acfc75"
+   },
+   "go-quoted-hash": {
+    "base_commit": "3a45596929955f561b4791aaea6eaceb5e1e60f9",
+    "task_dir_sha256": "ed5235d0f4d4084de21867b99af0f683486649d3ba0258dcb543cd900c10b81f"
+   },
+   "py-bisect-settle": {
+    "base_commit": "7e2bd5330c09b7b41ba3a3a24635453a47c4af48",
+    "task_dir_sha256": "ddad02d4c682850195723485638381b35d445202b4cc3c399666eb60e17185d7"
+   },
+   "py-csv-format": {
+    "base_commit": "c934fc209d4ecd5395e423c165cb502527d39eac",
+    "task_dir_sha256": "42ecc740ecadc1110134d0afe65a554391d9a650798e4af6ff75980fe5235971"
+   },
+   "py-date-filter": {
+    "base_commit": "89d6da274a486532b5d8579ffd9b04e3c7e2e421",
+    "task_dir_sha256": "5335cfa672f97d87d3187675558806167c5f522b7e8fe806585cf8930654ca9a"
+   },
+   "py-parse-amount": {
+    "base_commit": "e331edb28231d0ce12d583d6b69f32d0b48195fe",
+    "task_dir_sha256": "ffd83404c456cea6e2714bbe83130f7fa7e3aff0bfb43538453f358048dd7092"
+   },
+   "py-split-remainder": {
+    "base_commit": "b1a14fd111d2780c83421179a6608ad485eb90ff",
+    "task_dir_sha256": "fc9e43bcb94ea52d8436f497504e3f0fb6a724da64190324e656296eae08c986"
+   },
+   "py-thousands": {
+    "base_commit": "290aa6f9fb381eaafefcc3964807623afe36d36a",
+    "task_dir_sha256": "43685cdddfa5ffb571ef89ad8372126bbb51be2f0a3a06ae0214a5d360dd9f3a"
+   }
+  }
+ },
+ "env_allowlist": [
+  "ANTHROPIC_BASE_URL",
+  "COPILOT_AUTO_UPDATE",
+  "CURL_CA_BUNDLE",
+  "GIT_SSL_CAINFO",
+  "GOTOOLCHAIN",
+  "HOME",
+  "HTTPS_PROXY",
+  "LC_CTYPE",
+  "NODE_EXTRA_CA_CERTS",
+  "NO_PROXY",
+  "PATH",
+  "REQUESTS_CA_BUNDLE",
+  "SHELL",
+  "SSL_CERT_FILE",
+  "TERM",
+  "https_proxy",
+  "no_proxy"
+ ],
+ "skills_plugin": "/tmp/claude-0/-home-user-autonomous-claude-workflow-bundle/<redacted>/scratchpad/state/skills-plugin",
+ "skills_plugin_sha256": "51d16b154882cf3526665d3fa06b540315161033ee757a7045523f3611d20b67",
+ "environment": {
+  "python": "3.11.15",
+  "go": "go version go1.24.7 linux/amd64",
+  "git": "git version 2.43.0"
+ }
+}

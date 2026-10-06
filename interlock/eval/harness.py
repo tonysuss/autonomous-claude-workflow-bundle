@@ -80,9 +80,11 @@ RECOVERY_PREFIX = (
     "made are still in the working directory.\n\n"
 )
 
-# Budget charge for a session whose cost the host never reported (killed or
-# timed out before its result event). For the budget only; never a metric.
-UNREPORTED_SESSION_RESERVE_USD = 0.75
+# Default budget charge for a session whose cost the host never reported
+# (killed or timed out before its result event). For the budget only; never
+# a metric. On October 6 a whole plain session averaged $0.076 and a whole
+# interlock worker session $0.105; a session killed part-way costs less.
+UNREPORTED_SESSION_RESERVE_USD = 0.30
 
 
 # --------------------------------------------------------------------------
@@ -630,6 +632,7 @@ class HostConfig:
         self.fake_model = a.fake_model
         self.pass_env = list(a.pass_env or [])
         self.interlock_skills = getattr(a, "interlock_skills", False)
+        self.unreported_reserve_usd = getattr(a, "unreported_reserve_usd", UNREPORTED_SESSION_RESERVE_USD)
         self.state_dir = state_dir
         self.skills_plugin = None
         self._features = None
@@ -1202,11 +1205,12 @@ class Runner:
         unreported = sum(1 for s in record["sessions"] if s.get("cost_usd") is None and s.get("events"))
         if record["fake_model"]:
             unreported = 0  # a scripted model costs nothing
-        record["budget_charge_usd"] = round(sum(costs) + unreported * UNREPORTED_SESSION_RESERVE_USD, 4)
+        reserve = self.cfg.unreported_reserve_usd
+        record["budget_charge_usd"] = round(sum(costs) + unreported * reserve, 4)
         if unreported:
             record["notes"].append(
-                f"{unreported} session(s) never reported a cost; the budget reserves "
-                f"${UNREPORTED_SESSION_RESERVE_USD} each, which is not a measurement"
+                f"{unreported} session(s) never reported a cost; the budget reserves ${reserve} each, "
+                "which is not a measurement"
             )
 
     def _start_fake(self, task, frozen, env):
@@ -1705,46 +1709,58 @@ def cmd_run(a):
         for task in tasks:
             plan += [(task, c, repeat) for c in condition_order(conditions, task.id, repeat, a.seed)]
     for task, condition, repeat in plan:
-        attempt = 0
-        while True:
-            runs = load_runs(results)
-            same = [r for r in runs if r["task"] == task.id and r["condition"] == condition
-                    and r.get("label") in count_labels]
-            if sum(1 for r in same if run_counts(r)) >= repeat:
-                break  # already run; earlier runs with a counted label are data
-            tries = [r for r in same if r.get("repeat") == repeat]
-            if attempt >= 1 + a.interrupt_retries or len(tries) > a.interrupt_retries:
-                invocation.setdefault("gave_up", []).append(f"{task.id} {condition} r{repeat}")
-                print(f"    giving up on {task.id} {condition} r{repeat}: the interruption never landed as designed")
-                break
-            attempt += 1
-            spent = round(sum(r.get("budget_charge_usd", 0) for r in runs), 4)
-            est = 0.0 if cfg.fake_model else estimate_next(runs, task, condition, defaults)
-            if spent + est > a.budget_usd:
-                invocation["stopped"] = (f"budget: spent ${spent:.2f}; the next run ({task.id}, {condition}) is "
-                                         f"estimated at ${est:.2f}, which would pass the ${a.budget_usd:.2f} cap")
-                print(invocation["stopped"])
-                write_json(manifest_path, manifest)
-                return 0
-            if a.dry_run:
-                print(f"would run {task.id} {condition} r{repeat} (estimate ${est:.2f}, spent ${spent:.2f})")
-                break
-            print(f"[{now_iso()}] {task.id} {condition} r{repeat} (spent ${spent:.2f}, estimate ${est:.2f})",
-                  flush=True)
-            rec = runner.run_one(task, frozen[task.id], condition, repeat, len(tries) + 1)
-            m = rec["metrics"]
-            inter = rec.get("interruption")
-            print(f"    accepted={m['accepted']} claimed={m['claimed_done']} hidden={m['hidden_pass']} "
-                  f"scope={rec['output']['scope_violations']} cost={m['cost_usd']} wall={m['wall_s']}s"
-                  + (f" interruption={'valid' if inter.get('valid') else 'NOT VALID: ' + str(inter.get('why_not_valid'))}"
-                     if inter else "")
-                  + (" LEAK" if m["hidden_material_seen"] else ""), flush=True)
-            invocation["runs"].append(rec["run_id"])
-            write_json(manifest_path, manifest)
-            if run_counts(rec):
-                break
+        stopped = run_until_counted(runner, task, frozen[task.id], condition, repeat, results, a.budget_usd,
+                                    defaults, count_labels, a.interrupt_retries, cfg.fake_model, a.dry_run, invocation,
+                                    lambda: write_json(manifest_path, manifest))
+        if stopped:
+            break
     write_json(manifest_path, manifest)
     return 0
+
+
+def run_until_counted(runner, task, frozen, condition, repeat, results, budget_usd, defaults, count_labels, retries,
+                      free, dry_run, invocation, save):
+    """Runs one (task, condition, repeat) until a run counts. A forced
+    interruption that did not land as designed is kept, flagged, and re-run
+    up to `retries` times. Returns a reason when the budget stops the plan."""
+    attempt = 0
+    while True:
+        runs = load_runs(results)
+        same = [r for r in runs if r["task"] == task.id and r["condition"] == condition
+                and r.get("label") in count_labels]
+        if sum(1 for r in same if run_counts(r)) >= repeat:
+            return None  # already run; earlier runs with a counted label are data
+        tries = [r for r in same if r.get("repeat") == repeat]
+        if attempt >= 1 + retries or len(tries) > retries:
+            invocation.setdefault("gave_up", []).append(f"{task.id} {condition} r{repeat}")
+            print(f"    giving up on {task.id} {condition} r{repeat}: the interruption never landed as designed")
+            save()
+            return None
+        attempt += 1
+        spent = round(sum(r.get("budget_charge_usd", 0) for r in runs), 4)
+        est = 0.0 if free else estimate_next(runs, task, condition, defaults)
+        if spent + est > budget_usd:
+            invocation["stopped"] = (f"budget: spent ${spent:.2f}; the next run ({task.id}, {condition}) is "
+                                     f"estimated at ${est:.2f}, which would pass the ${budget_usd:.2f} cap")
+            print(invocation["stopped"])
+            save()
+            return invocation["stopped"]
+        if dry_run:
+            print(f"would run {task.id} {condition} r{repeat} (estimate ${est:.2f}, spent ${spent:.2f})")
+            return None
+        print(f"[{now_iso()}] {task.id} {condition} r{repeat} (spent ${spent:.2f}, estimate ${est:.2f})", flush=True)
+        rec = runner.run_one(task, frozen, condition, repeat, len(tries) + 1)
+        m = rec["metrics"]
+        inter = rec.get("interruption")
+        print(f"    accepted={m['accepted']} claimed={m['claimed_done']} hidden={m['hidden_pass']} "
+              f"scope={rec['output']['scope_violations']} cost={m['cost_usd']} wall={m['wall_s']}s"
+              + (f" interruption={'valid' if inter.get('valid') else 'NOT VALID: ' + str(inter.get('why_not_valid'))}"
+                 if inter else "")
+              + (" LEAK" if m["hidden_material_seen"] else ""), flush=True)
+        invocation["runs"].append(rec["run_id"])
+        save()
+        if run_counts(rec):
+            return None
 
 
 # --------------------------------------------------------------------------
@@ -2091,6 +2107,8 @@ def main(argv=None):
     r.add_argument("--max-sessions", type=int, default=6)
     r.add_argument("--budget-usd", type=float, required=True)
     r.add_argument("--per-run-usd", type=float, default=3.0, help="--max-budget-usd for plain Claude Code runs")
+    r.add_argument("--unreported-reserve-usd", type=float, default=UNREPORTED_SESSION_RESERVE_USD,
+                   help="budget charge for a session that never reported its cost (bookkeeping, not a metric)")
     r.add_argument("--default-plain-usd", type=float, default=1.0)
     r.add_argument("--default-interlock-usd", type=float, default=2.5)
     r.add_argument("--results", required=True)

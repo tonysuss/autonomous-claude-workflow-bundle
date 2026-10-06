@@ -1,0 +1,65 @@
+[
+ {
+  "seq": 1,
+  "signal": "G1",
+  "from": "pending",
+  "to": "ready",
+  "reason": "dependencies done; input snapshot recorded",
+  "attempt_id": null,
+  "at": "2026-10-06T01:23:02.672266Z"
+ },
+ {
+  "seq": 2,
+  "signal": "G2",
+  "from": "ready",
+  "to": "running",
+  "reason": "attempt att-3c3fa5acc04d40b8 opened at epoch 1",
+  "attempt_id": "att-3c3fa5acc04d40b8",
+  "at": "2026-10-06T01:23:05.391259Z"
+ },
+ {
+  "seq": 3,
+  "signal": "R3",
+  "from": "running",
+  "to": "ready",
+  "reason": "reconciled after a supervisor restart",
+  "attempt_id": "att-3c3fa5acc04d40b8",
+  "at": "2026-10-06T01:23:09.795919Z"
+ },
+ {
+  "seq": 4,
+  "signal": "G2",
+  "from": "ready",
+  "to": "running",
+  "reason": "attempt att-54ae9191bea84d6c opened at epoch 2",
+  "attempt_id": "att-54ae9191bea84d6c",
+  "at": "2026-10-06T01:23:11.288837Z"
+ },
+ {
+  "seq": 5,
+  "signal": "G3",
+  "from": "running",
+  "to": "awaiting_verification",
+  "reason": "result accepted from attempt att-54ae9191bea84d6c at epoch 2",
+  "attempt_id": "att-54ae9191bea84d6c",
+  "at": "2026-10-06T01:23:17.463221Z"
+ },
+ {
+  "seq": 6,
+  "signal": "G4",
+  "from": "awaiting_verification",
+  "to": "verified",
+  "reason": "every required criterion has current passing evidence",
+  "attempt_id": null,
+  "at": "2026-10-06T01:23:22.701392Z"
+ },
+ {
+  "seq": 7,
+  "signal": "G7",
+  "from": "verified",
+  "to": "done",
+  "reason": "verified; the workflow needs no delivery",
+  "attempt_id": null,
+  "at": "2026-10-06T01:23:22.701392Z"
+ }
+]

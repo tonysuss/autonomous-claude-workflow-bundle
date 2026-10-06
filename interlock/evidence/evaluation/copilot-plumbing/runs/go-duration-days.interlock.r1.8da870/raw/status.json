@@ -1,0 +1,74 @@
+{
+ "attempts": [
+  {
+   "epoch": 1,
+   "host": "copilot",
+   "id": "att-35c03b83893941e3",
+   "role": "worker",
+   "status": "submitted"
+  },
+  {
+   "epoch": 1,
+   "host": "copilot",
+   "id": "att-18af7db910cf43b0",
+   "role": "verifier",
+   "status": "completed"
+  }
+ ],
+ "evidence": {
+  "all_pass": true,
+  "any_fail": false,
+  "criteria": [
+   {
+    "criterion_id": "repro",
+    "current_assessments": 1,
+    "current_claims": 0,
+    "current_runs": 1,
+    "evidence_id": "asm-0abbfe0567644da9",
+    "source": "assessment",
+    "stale": 0,
+    "strength": "observed",
+    "verdict": "pass"
+   },
+   {
+    "criterion_id": "spec",
+    "current_assessments": 1,
+    "current_claims": 0,
+    "current_runs": 0,
+    "evidence_id": "asm-21348ae59ffe46be",
+    "source": "assessment",
+    "stale": 0,
+    "strength": "tested",
+    "verdict": "pass"
+   },
+   {
+    "criterion_id": "regression",
+    "current_assessments": 1,
+    "current_claims": 1,
+    "current_runs": 2,
+    "evidence_id": "asm-b894658a42c34d61",
+    "source": "assessment",
+    "stale": 0,
+    "strength": "tested",
+    "verdict": "pass"
+   }
+  ]
+ },
+ "next_moves": [],
+ "task": {
+  "attempts_used": 1,
+  "blocked_reason": null,
+  "current_attempt": "att-35c03b83893941e3",
+  "current_tree": "81e8ff6fd5509aff10af9a4705b0ec54806bf8c4",
+  "id": "go-duration-days",
+  "integration_required": false,
+  "intent": "Retention periods in our configuration files are written in days, but `GetDuration` does not understand them: `retention = 30d` fails with `kvconf: store.retention: \"30d\" is not a duration`.\n\nMake `GetDuration` accept the unit `d`, for days of 24 hours, so that `30d` is 720 hours. Everything `GetDuration` accepts today must keep working as it does now.\n\n`checks/days.sh` checks the reported value. The tests run with `go test ./...`.\n",
+  "lease_epoch": 1,
+  "max_attempts": 3,
+  "state": "done",
+  "workflow": {
+   "name": "feature",
+   "version": 1
+  }
+ }
+}

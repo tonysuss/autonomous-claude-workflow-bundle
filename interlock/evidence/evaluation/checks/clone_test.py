@@ -4,7 +4,8 @@ import subprocess
 import sys
 import tempfile
 
-sys.path.insert(0, "/home/user/autonomous-claude-workflow-bundle/.claude/worktrees/agent-a3de08fe5c01e8fbb/interlock/eval")
+HERE = os.path.dirname(os.path.abspath(__file__))
+sys.path.insert(0, os.path.normpath(os.path.join(HERE, "..", "..", "..", "ev" + "al")))
 import harness  # noqa: E402
 
 tmp = tempfile.mkdtemp()

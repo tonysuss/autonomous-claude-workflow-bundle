@@ -1,0 +1,74 @@
+{
+ "attempts": [
+  {
+   "epoch": 1,
+   "host": "copilot",
+   "id": "att-922694e4ddbe49f2",
+   "role": "worker",
+   "status": "submitted"
+  },
+  {
+   "epoch": 1,
+   "host": "copilot",
+   "id": "att-eb97718393614f24",
+   "role": "verifier",
+   "status": "completed"
+  }
+ ],
+ "evidence": {
+  "all_pass": true,
+  "any_fail": false,
+  "criteria": [
+   {
+    "criterion_id": "repro",
+    "current_assessments": 1,
+    "current_claims": 0,
+    "current_runs": 1,
+    "evidence_id": "asm-b7b4a5670be24572",
+    "source": "assessment",
+    "stale": 0,
+    "strength": "observed",
+    "verdict": "pass"
+   },
+   {
+    "criterion_id": "spec",
+    "current_assessments": 1,
+    "current_claims": 0,
+    "current_runs": 0,
+    "evidence_id": "asm-c5b916ce201b46f1",
+    "source": "assessment",
+    "stale": 0,
+    "strength": "tested",
+    "verdict": "pass"
+   },
+   {
+    "criterion_id": "regression",
+    "current_assessments": 1,
+    "current_claims": 1,
+    "current_runs": 2,
+    "evidence_id": "asm-2b7c152e02554a3f",
+    "source": "assessment",
+    "stale": 0,
+    "strength": "tested",
+    "verdict": "pass"
+   }
+  ]
+ },
+ "next_moves": [],
+ "task": {
+  "attempts_used": 1,
+  "blocked_reason": null,
+  "current_attempt": "att-922694e4ddbe49f2",
+  "current_tree": "04cf9f7f45408a4dbc11a34ff907b23a6fd0a5c6",
+  "id": "py-parse-amount",
+  "integration_required": false,
+  "intent": "`parse_amount` in `tally/money.py` misreads some amounts. A ledger row with the amount `12.5` is recorded as 12.05 instead of 12.50.\n\nExpected behaviour of `parse_amount(text)`, which returns cents:\n\n- One decimal digit means tenths: `parse_amount(\"12.5\") == 1250`.\n- The sign applies to the whole amount, fraction included: `parse_amount(\"-0.50\") == -50` and `parse_amount(\"-3.25\") == -325`.\n- More than two decimal places is an error: `parse_amount(\"1.234\")` raises `ValueError`.\n- Everything that works today keeps working: thousands separators (`\"1,234.56\"` is 123456), whole numbers (`\"7\"` is 700), surrounding spaces, and `ValueError` for text that is not an amount.\n\n`checks/parse-repro.sh` reproduces the problem. The tests run with `python3 -m unittest discover -s tests -q`.\n",
+  "lease_epoch": 1,
+  "max_attempts": 3,
+  "state": "done",
+  "workflow": {
+   "name": "bug-fix",
+   "version": 1
+  }
+ }
+}

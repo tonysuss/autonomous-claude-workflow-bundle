@@ -1,0 +1,71 @@
+{
+  "task_id": "py-split-remainder",
+  "host": "copilot",
+  "final_state": "done",
+  "stopped_because": "done",
+  "reconciled": [],
+  "baseline": [
+    {
+      "criterion_id": "repro",
+      "run_id": "run-9c2650333f9f4029",
+      "exit_code": 1,
+      "vacuous": null,
+      "problem": null
+    },
+    {
+      "criterion_id": "regression",
+      "run_id": "run-681b3095c4704162",
+      "exit_code": 0,
+      "vacuous": null,
+      "problem": null
+    }
+  ],
+  "sessions": [
+    {
+      "role": "worker",
+      "attempt_id": "att-fd8dde02264b4a34",
+      "epoch": 1,
+      "exit": {
+        "exit": "completed"
+      },
+      "duration_ms": 2310,
+      "summary": "Applied the scripted change.\n",
+      "denials": 0,
+      "transcript": "/tmp/agent-ws/a6b43534c4/tally/.interlock/transcripts/att-fd8dde02264b4a34.jsonl",
+      "moves": [
+        {
+          "signal": "G3",
+          "from": "running",
+          "to": "awaiting_verification",
+          "reason": "result accepted from attempt att-fd8dde02264b4a34 at epoch 1"
+        }
+      ]
+    },
+    {
+      "role": "verifier",
+      "attempt_id": "att-0a6aef891c824fd7",
+      "epoch": 1,
+      "exit": {
+        "exit": "completed"
+      },
+      "duration_ms": 2710,
+      "summary": "Scripted verification finished.",
+      "denials": 0,
+      "transcript": "/tmp/agent-ws/a6b43534c4/tally/.interlock/transcripts/att-0a6aef891c824fd7.jsonl",
+      "moves": [
+        {
+          "signal": "G4",
+          "from": "awaiting_verification",
+          "to": "verified",
+          "reason": "every required criterion has current passing evidence"
+        },
+        {
+          "signal": "G7",
+          "from": "verified",
+          "to": "done",
+          "reason": "verified; the workflow needs no delivery"
+        }
+      ]
+    }
+  ]
+}

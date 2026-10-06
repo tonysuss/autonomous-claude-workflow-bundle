@@ -1,0 +1,73 @@
+{
+  "task_id": "go-env-expand",
+  "host": "copilot",
+  "final_state": "done",
+  "stopped_because": "done",
+  "reconciled": [
+    "att-15a86ffd301f4e00"
+  ],
+  "baseline": [
+    {
+      "criterion_id": "expand",
+      "run_id": "run-a1c2627dc75849cf",
+      "exit_code": 1,
+      "vacuous": null,
+      "problem": null
+    },
+    {
+      "criterion_id": "regression",
+      "run_id": "run-6eff83ca9de4418d",
+      "exit_code": 0,
+      "vacuous": null,
+      "problem": null
+    }
+  ],
+  "sessions": [
+    {
+      "role": "worker",
+      "attempt_id": "att-59873e1193e244da",
+      "epoch": 2,
+      "exit": {
+        "exit": "completed"
+      },
+      "duration_ms": 5321,
+      "summary": "Applied the scripted change.\n",
+      "denials": 0,
+      "transcript": "/tmp/agent-ws/c4c1c376c0/kvconf/.interlock/transcripts/att-59873e1193e244da.jsonl",
+      "moves": [
+        {
+          "signal": "G3",
+          "from": "running",
+          "to": "awaiting_verification",
+          "reason": "result accepted from attempt att-59873e1193e244da at epoch 2"
+        }
+      ]
+    },
+    {
+      "role": "verifier",
+      "attempt_id": "att-d9039534bfa44708",
+      "epoch": 2,
+      "exit": {
+        "exit": "completed"
+      },
+      "duration_ms": 3615,
+      "summary": "Scripted verification finished.",
+      "denials": 0,
+      "transcript": "/tmp/agent-ws/c4c1c376c0/kvconf/.interlock/transcripts/att-d9039534bfa44708.jsonl",
+      "moves": [
+        {
+          "signal": "G4",
+          "from": "awaiting_verification",
+          "to": "verified",
+          "reason": "every required criterion has current passing evidence"
+        },
+        {
+          "signal": "G7",
+          "from": "verified",
+          "to": "done",
+          "reason": "verified; the workflow needs no delivery"
+        }
+      ]
+    }
+  ]
+}

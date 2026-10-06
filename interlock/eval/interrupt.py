@@ -55,12 +55,14 @@ class Inotify:
         self.roots = set()
 
     def add_tree(self, root):
+        """Watches a tree; True if it was not watched before."""
         if root in self.roots:
-            return
+            return False
         self.roots.add(root)
         for dirpath, dirs, _ in os.walk(root):
             dirs[:] = [d for d in dirs if d not in SKIP_DIRS]
             self._add(dirpath)
+        return True
 
     def _add(self, path):
         wd = self.libc.inotify_add_watch(self.fd, os.fsencode(path), MASK)
@@ -191,6 +193,7 @@ class Interrupter:
         self.trigger = None
         self.changes = []
         self.tests_finished_after_edit = 0
+        self.last_full_check = self.start
         self.inotify = None
         self.mechanism = "poll"
         if use_inotify:
@@ -203,13 +206,16 @@ class Interrupter:
     def _edited(self):
         dirs = [d for d in self.work_dirs() if os.path.isdir(d)]
         if self.inotify:
-            for d in dirs:
-                self.inotify.add_tree(d)
+            # A tree watched for the first time may already hold an edit, and
+            # an event can be missed: check git then, and every 2 s anyway.
+            new = any([self.inotify.add_tree(d) for d in dirs])
             touched = self.inotify.events(0.1)
-            if not touched:
+            due = self.clock() - self.last_full_check >= 2.0
+            if not (touched or new or due):
                 return []
         else:
             time.sleep(0.1)
+        self.last_full_check = self.clock()
         for d in dirs:
             lines = porcelain(d)
             if lines:

@@ -1,0 +1,74 @@
+{
+ "task_id": "go-dotted-section",
+ "role": "verifier",
+ "goal": "`kvconf get` cannot read a key in a section whose name contains a dot. With this file:\n\n```\n[db.eu]\nhost = db1.example.org\n```\n\n`go run ./cmd/kvconf get app.conf db.eu.host` prints `kvconf: no section \"db\"` instead of `db1.example.org`.\n\nSection names may contain dots; keys never do. So in a name of the form `SECTION.KEY`, the key is the part after the last dot: `db.eu.host` is the key `host` in the section `db.eu`. A name without a dot is a key in the unnamed section.\n\n`checks/dotted.sh` reproduces the problem. The tests run with `go test ./...`.\n",
+ "workflow": "bug-fix v1",
+ "state": "done",
+ "scope": [
+  "config.go",
+  "cmd/kvconf/*.go",
+  "*_test.go",
+  "README.md"
+ ],
+ "protected": [
+  "checks/dotted.sh"
+ ],
+ "base_commit": "e8d4d5cb6e3e8475b7a303e95ab63dd3fbd57219",
+ "current_tree": "7928f92edb85b5f50ed1e400a4ba12340cd6289c",
+ "criteria": [
+  {
+   "id": "repro",
+   "statement": "`kvconf get` prints the value of `db.eu.host` for the reported file",
+   "check": "sh checks/dotted.sh",
+   "baseline": "it must fail on the input snapshot, reproducing the problem; interlock saw it fail there (run run-164dc36ce9cb432f)",
+   "needs": "observed from independent",
+   "status": "passes (Observed)"
+  },
+  {
+   "id": "spec",
+   "statement": "In a name of the form SECTION.KEY, the key is the part after the last dot, and a name without a dot is a key in the unnamed section",
+   "check": null,
+   "baseline": null,
+   "needs": "tested from independent",
+   "status": "passes (Tested)"
+  },
+  {
+   "id": "regression",
+   "statement": "The existing Go tests pass",
+   "check": "go test ./...",
+   "baseline": "it must pass on the input snapshot, as a regression guard; interlock saw it pass there (run run-c53b2e0134854948)",
+   "needs": "tested from self",
+   "status": "passes (Tested)"
+  }
+ ],
+ "previous_result": {
+  "attempt_id": "att-84eb1891471b4160",
+  "summary": "Applied the scripted change.\n",
+  "changed_paths": [
+   "cmd/kvconf/main.go",
+   "config.go"
+  ],
+  "open_questions": []
+ },
+ "failures_to_fix": [],
+ "grant": {
+  "action_classes": [
+   "read",
+   "local_reversible"
+  ],
+  "tools": {
+   "allow": [
+    "read",
+    "shell"
+   ],
+   "deny": [
+    "edit",
+    "shell:git push",
+    "shell:git commit"
+   ]
+  },
+  "landing_authority": "none",
+  "grant_ids": []
+ },
+ "next_moves": []
+}

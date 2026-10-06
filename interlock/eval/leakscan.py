@@ -30,7 +30,9 @@ PATH_KEYS = ("file_path", "path", "notebook_path", "filePath", "directory", "dir
 # Shell verbs that list or search a directory tree.
 SEARCH_VERBS = {"ls", "find", "tree", "du", "grep", "egrep", "rg", "ag", "fd", "locate", "cp", "rsync", "tar", "zip"}
 GLOB_CHARS = set("*?[")
-_INNER_PATH = re.compile(r"(?:~|\.{1,2})?/[^\s'\"`;|&<>(),]+")
+# A path inside a longer token, such as code in a quoted string. It must not
+# start in the middle of another path (the "/x.py" in "tally/x.py").
+_INNER_PATH = re.compile(r"(?<![\w.~/*?\[\]-])(?:~|\.{1,2})?/[^\s'\"`;|&<>(),]+")
 
 
 # Any checkout of the harness holds the task set and earlier evidence, so a
@@ -151,10 +153,10 @@ def _shell_paths(command, cwd, home):
         for tok in toks:
             tok = re.sub(r"^\d*[<>]+&?", "", tok)  # redirections: >file, 2>file, <file
             for part in tok.split("=") if tok.startswith("-") else [tok]:
-                if _looks_like_path(part):
+                if _looks_like_path(part) and not re.search(r"['\"()`{}\s]", part):
                     candidates.append(part)
-            if not _looks_like_path(tok):
-                candidates += [m for m in _INNER_PATH.findall(tok)]
+            # Paths inside code or quoted strings: python3 -c "open('../x')".
+            candidates += [m for m in _INNER_PATH.findall(tok) if m not in candidates]
         for c in candidates:
             path, glob = resolve(c, cwd, home)
             out.append((verb, path, glob, c))

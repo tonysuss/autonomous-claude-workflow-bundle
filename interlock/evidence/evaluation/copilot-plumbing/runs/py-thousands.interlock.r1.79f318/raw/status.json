@@ -1,0 +1,74 @@
+{
+ "attempts": [
+  {
+   "epoch": 1,
+   "host": "copilot",
+   "id": "att-806c6874b0cd4960",
+   "role": "worker",
+   "status": "submitted"
+  },
+  {
+   "epoch": 1,
+   "host": "copilot",
+   "id": "att-2015796da4014325",
+   "role": "verifier",
+   "status": "completed"
+  }
+ ],
+ "evidence": {
+  "all_pass": true,
+  "any_fail": false,
+  "criteria": [
+   {
+    "criterion_id": "balances",
+    "current_assessments": 1,
+    "current_claims": 0,
+    "current_runs": 1,
+    "evidence_id": "asm-ae27c522c8f24ca8",
+    "source": "assessment",
+    "stale": 0,
+    "strength": "observed",
+    "verdict": "pass"
+   },
+   {
+    "criterion_id": "spec",
+    "current_assessments": 1,
+    "current_claims": 0,
+    "current_runs": 0,
+    "evidence_id": "asm-e120f3ddf3cc4638",
+    "source": "assessment",
+    "stale": 0,
+    "strength": "observed",
+    "verdict": "pass"
+   },
+   {
+    "criterion_id": "regression",
+    "current_assessments": 1,
+    "current_claims": 1,
+    "current_runs": 2,
+    "evidence_id": "asm-38c88490ad204693",
+    "source": "assessment",
+    "stale": 0,
+    "strength": "tested",
+    "verdict": "pass"
+   }
+  ]
+ },
+ "next_moves": [],
+ "task": {
+  "attempts_used": 1,
+  "blocked_reason": null,
+  "current_attempt": "att-806c6874b0cd4960",
+  "current_tree": "584a03a6aab76b481759ca6f98e9292b53c366bc",
+  "id": "py-thousands",
+  "integration_required": false,
+  "intent": "Large amounts are hard to read in the output of `python3 -m tally balances` and `python3 -m tally settle`: a balance prints as `-121810.78`. Print the amounts in both commands with thousands separators, `-121,810.78`. Nothing else about the program's behaviour should change.\n\n`checks/thousands.sh` checks `balances` for `examples/big.csv`. The tests run with `python3 -m unittest discover -s tests -q`.\n",
+  "lease_epoch": 1,
+  "max_attempts": 3,
+  "state": "done",
+  "workflow": {
+   "name": "feature",
+   "version": 1
+  }
+ }
+}

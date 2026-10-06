@@ -1,7 +1,245 @@
 {
- "harness_version": "1",
- "at": "2026-10-06T00:26:03+00:00",
+ "harness_version": "2",
+ "at": "2026-10-06T01:35:20+00:00",
+ "lock": {
+  "version": 2,
+  "judgelib_sha256": "97dfb93a6aee6a9280fcbe5ae1a368368b23fc81ac5b8b404870f0a83d3ec6cd",
+  "tasks": {
+   "go-dotted-section": {
+    "base_commit": "e8d4d5cb6e3e8475b7a303e95ab63dd3fbd57219",
+    "task_dir_sha256": "8c90673a2f4e80227c4fe41e9ad8cecf2ac5a3c0b9c4438eada1bbf395ecfb49"
+   },
+   "go-duration-days": {
+    "base_commit": "3e6d67d9640d38b817342e51c6fc7daf96c3d31c",
+    "task_dir_sha256": "30d9a8af56618a65c567a96d98f50f5065f8c8541c4def2f456d22ab2250f809"
+   },
+   "go-env-expand": {
+    "base_commit": "5de281b734d79d8cc6b3021086d2235aa7fa7090",
+    "task_dir_sha256": "78c0562c24b712f4c013f3b49f8343d3657535ae1917b14e1259863ae747c8a8"
+   },
+   "go-lookup-refactor": {
+    "base_commit": "5ce47f1e462831e3b89facb176be0829d0461fde",
+    "task_dir_sha256": "4533c91c3826f6ad536a3e24effa5d32ebfc642149f92667357349a037acfc75"
+   },
+   "go-quoted-hash": {
+    "base_commit": "3a45596929955f561b4791aaea6eaceb5e1e60f9",
+    "task_dir_sha256": "ed5235d0f4d4084de21867b99af0f683486649d3ba0258dcb543cd900c10b81f"
+   },
+   "py-bisect-settle": {
+    "base_commit": "7e2bd5330c09b7b41ba3a3a24635453a47c4af48",
+    "task_dir_sha256": "ddad02d4c682850195723485638381b35d445202b4cc3c399666eb60e17185d7"
+   },
+   "py-csv-format": {
+    "base_commit": "c934fc209d4ecd5395e423c165cb502527d39eac",
+    "task_dir_sha256": "42ecc740ecadc1110134d0afe65a554391d9a650798e4af6ff75980fe5235971"
+   },
+   "py-date-filter": {
+    "base_commit": "89d6da274a486532b5d8579ffd9b04e3c7e2e421",
+    "task_dir_sha256": "5335cfa672f97d87d3187675558806167c5f522b7e8fe806585cf8930654ca9a"
+   },
+   "py-parse-amount": {
+    "base_commit": "e331edb28231d0ce12d583d6b69f32d0b48195fe",
+    "task_dir_sha256": "ffd83404c456cea6e2714bbe83130f7fa7e3aff0bfb43538453f358048dd7092"
+   },
+   "py-split-remainder": {
+    "base_commit": "b1a14fd111d2780c83421179a6608ad485eb90ff",
+    "task_dir_sha256": "fc9e43bcb94ea52d8436f497504e3f0fb6a724da64190324e656296eae08c986"
+   },
+   "py-thousands": {
+    "base_commit": "290aa6f9fb381eaafefcc3964807623afe36d36a",
+    "task_dir_sha256": "43685cdddfa5ffb571ef89ad8372126bbb51be2f0a3a06ae0214a5d360dd9f3a"
+   }
+  }
+ },
  "tasks": {
+  "go-dotted-section": {
+   "baseline": {
+    "repro": 1,
+    "regression": 0
+   },
+   "hidden_on_start": {
+    "existing_tests": true,
+    "TestHiddenLookupDottedSection": false,
+    "TestHiddenLookupPlainNames": false,
+    "cli_get_dotted_section": false,
+    "cli_get_plain_names": true
+   },
+   "hidden_on_solution": {
+    "existing_tests": true,
+    "TestHiddenLookupDottedSection": true,
+    "TestHiddenLookupPlainNames": true,
+    "cli_get_dotted_section": true,
+    "cli_get_plain_names": true
+   },
+   "solution_changes": [
+    "cmd/kvconf/main.go",
+    "config.go"
+   ],
+   "near_misses": [
+    {
+     "name": "fix the reported call site only (the CLI); Lookup still splits at the first dot",
+     "visible_exit_codes": {
+      "repro": 0,
+      "regression": 0
+     },
+     "hidden_failing": [
+      "TestHiddenLookupDottedSection",
+      "TestHiddenLookupPlainNames"
+     ]
+    },
+    {
+     "name": "fix Lookup only; the CLI still splits at the first dot",
+     "visible_exit_codes": {
+      "repro": 1,
+      "regression": 0
+     },
+     "hidden_failing": [
+      "cli_get_dotted_section"
+     ]
+    }
+   ],
+   "cross_task": {
+    "go-duration-days": {
+     "files": [
+      "cmd/kvconf/main.go",
+      "config.go"
+     ],
+     "passes_hidden": false
+    },
+    "go-env-expand": {
+     "files": [
+      "cmd/kvconf/main.go",
+      "config.go"
+     ],
+     "passes_hidden": false
+    },
+    "go-lookup-refactor": {
+     "files": [
+      "cmd/kvconf/main.go",
+      "config.go"
+     ],
+     "passes_hidden": false
+    },
+    "go-quoted-hash": {
+     "files": [
+      "cmd/kvconf/main.go",
+      "config.go"
+     ],
+     "passes_hidden": false
+    },
+    "repos/kvconf": {
+     "files": [
+      "cmd/kvconf/main.go",
+      "config.go"
+     ],
+     "passes_hidden": false
+    }
+   },
+   "interlock_baseline": {
+    "repro": {
+     "passed": false,
+     "failed": true,
+     "checked_nothing": null
+    },
+    "regression": {
+     "passed": true,
+     "failed": false,
+     "checked_nothing": null
+    }
+   }
+  },
+  "go-duration-days": {
+   "baseline": {
+    "repro": 1,
+    "regression": 0
+   },
+   "hidden_on_start": {
+    "existing_tests": true,
+    "TestHiddenDays": false,
+    "TestHiddenDaysWithOtherUnits": false,
+    "TestHiddenFractionalDays": false,
+    "TestHiddenExistingFormsUnchanged": true,
+    "TestHiddenInvalidValuesKeepTheirMessage": true
+   },
+   "hidden_on_solution": {
+    "existing_tests": true,
+    "TestHiddenDays": true,
+    "TestHiddenDaysWithOtherUnits": true,
+    "TestHiddenFractionalDays": true,
+    "TestHiddenExistingFormsUnchanged": true,
+    "TestHiddenInvalidValuesKeepTheirMessage": true
+   },
+   "solution_changes": [
+    "getters.go"
+   ],
+   "near_misses": [
+    {
+     "name": "a whole number followed by d, as a special case",
+     "visible_exit_codes": {
+      "repro": 0,
+      "regression": 0
+     },
+     "hidden_failing": [
+      "TestHiddenDaysWithOtherUnits",
+      "TestHiddenFractionalDays"
+     ]
+    },
+    {
+     "name": "a decimal number followed by d, as a special case (no other units with it)",
+     "visible_exit_codes": {
+      "repro": 0,
+      "regression": 0
+     },
+     "hidden_failing": [
+      "TestHiddenDaysWithOtherUnits"
+     ]
+    }
+   ],
+   "cross_task": {
+    "go-dotted-section": {
+     "files": [
+      "getters.go"
+     ],
+     "passes_hidden": false
+    },
+    "go-env-expand": {
+     "files": [
+      "getters.go"
+     ],
+     "passes_hidden": false
+    },
+    "go-lookup-refactor": {
+     "files": [
+      "getters.go"
+     ],
+     "passes_hidden": false
+    },
+    "go-quoted-hash": {
+     "files": [
+      "getters.go"
+     ],
+     "passes_hidden": false
+    },
+    "repos/kvconf": {
+     "files": [
+      "getters.go"
+     ],
+     "passes_hidden": false
+    }
+   },
+   "interlock_baseline": {
+    "repro": {
+     "passed": false,
+     "failed": true,
+     "checked_nothing": null
+    },
+    "regression": {
+     "passed": true,
+     "failed": false,
+     "checked_nothing": null
+    }
+   }
+  },
   "go-env-expand": {
    "baseline": {
     "expand": 1,
@@ -38,7 +276,81 @@
     "config.go",
     "parser.go"
    ],
-   "interlock_task_create": {
+   "near_misses": [
+    {
+     "name": "$$ not handled",
+     "visible_exit_codes": {
+      "expand": 0,
+      "regression": 0
+     },
+     "hidden_failing": [
+      "TestHiddenDollarRules"
+     ]
+    },
+    {
+     "name": "fallback only when the variable is unset, not when it is empty",
+     "visible_exit_codes": {
+      "expand": 0,
+      "regression": 0
+     },
+     "hidden_failing": [
+      "TestHiddenFallbacks"
+     ]
+    },
+    {
+     "name": "--no-expand accepted by get only",
+     "visible_exit_codes": {
+      "expand": 0,
+      "regression": 0
+     },
+     "hidden_failing": [
+      "cli_dump_no_expand"
+     ]
+    }
+   ],
+   "cross_task": {
+    "go-dotted-section": {
+     "files": [
+      "cmd/kvconf/main.go",
+      "config.go",
+      "parser.go"
+     ],
+     "passes_hidden": false
+    },
+    "go-duration-days": {
+     "files": [
+      "cmd/kvconf/main.go",
+      "config.go",
+      "parser.go"
+     ],
+     "passes_hidden": false
+    },
+    "go-lookup-refactor": {
+     "files": [
+      "cmd/kvconf/main.go",
+      "config.go",
+      "parser.go"
+     ],
+     "passes_hidden": false
+    },
+    "go-quoted-hash": {
+     "files": [
+      "cmd/kvconf/main.go",
+      "config.go",
+      "parser.go"
+     ],
+     "passes_hidden": false
+    },
+    "repos/kvconf": {
+     "files": [
+      "cmd/kvconf/main.go",
+      "config.go",
+      "parser.go"
+     ],
+     "passes_hidden": false
+    }
+   },
+   "interlock_baseline": {
     "expand": {
      "passed": false,
      "failed": true,
@@ -80,7 +392,60 @@
    "solution_changes": [
     "getters.go"
    ],
-   "interlock_task_create": {
+   "near_misses": [
+    {
+     "name": "GetBool's missing-key message unified with the others",
+     "visible_exit_codes": {
+      "regression": 0
+     },
+     "hidden_failing": [
+      "TestHiddenGetBoolMissingKeyMessage"
+     ]
+    },
+    {
+     "name": "a lookup method added, but the getters keep their own lookup code",
+     "visible_exit_codes": {
+      "regression": 0
+     },
+     "hidden_failing": [
+      "getters_call_lookup",
+      "getters_do_not_read_sections"
+     ]
+    }
+   ],
+   "cross_task": {
+    "go-dotted-section": {
+     "files": [
+      "getters.go"
+     ],
+     "passes_hidden": false
+    },
+    "go-duration-days": {
+     "files": [
+      "getters.go"
+     ],
+     "passes_hidden": false
+    },
+    "go-env-expand": {
+     "files": [
+      "getters.go"
+     ],
+     "passes_hidden": false
+    },
+    "go-quoted-hash": {
+     "files": [
+      "getters.go"
+     ],
+     "passes_hidden": false
+    },
+    "repos/kvconf": {
+     "files": [
+      "getters.go"
+     ],
+     "passes_hidden": false
+    }
+   },
+   "interlock_baseline": {
     "regression": {
      "passed": true,
      "failed": false,
@@ -112,7 +477,65 @@
    "solution_changes": [
     "parser.go"
    ],
-   "interlock_task_create": {
+   "near_misses": [
+    {
+     "name": "skip comment stripping for quoted values, cut at the last quote",
+     "visible_exit_codes": {
+      "repro": 0,
+      "regression": 0
+     },
+     "hidden_failing": [
+      "TestHiddenCommentAfterClosingQuote"
+     ]
+    },
+    {
+     "name": "only strip a comment that follows whitespace",
+     "visible_exit_codes": {
+      "repro": 1,
+      "regression": 0
+     },
+     "hidden_failing": [
+      "TestHiddenHashInsideQuotes",
+      "TestHiddenUnquotedValueEndsAtHash",
+      "TestHiddenCommentAfterClosingQuote",
+      "TestHiddenEscapes",
+      "cli_get_reported_value"
+     ]
+    }
+   ],
+   "cross_task": {
+    "go-dotted-section": {
+     "files": [
+      "parser.go"
+     ],
+     "passes_hidden": false
+    },
+    "go-duration-days": {
+     "files": [
+      "parser.go"
+     ],
+     "passes_hidden": false
+    },
+    "go-env-expand": {
+     "files": [
+      "parser.go"
+     ],
+     "passes_hidden": false
+    },
+    "go-lookup-refactor": {
+     "files": [
+      "parser.go"
+     ],
+     "passes_hidden": false
+    },
+    "repos/kvconf": {
+     "files": [
+      "parser.go"
+     ],
+     "passes_hidden": false
+    }
+   },
+   "interlock_baseline": {
     "repro": {
      "passed": false,
      "failed": true,
@@ -136,12 +559,49 @@
     "answer_names_culprit": true
    },
    "solution_changes": [],
-   "culprit": "6fb44a053405cf209422a5ba505fa0bb929b18d4",
+   "near_misses": [
+    {
+     "name": "the culprit's parent",
+     "visible_exit_codes": {},
+     "hidden_failing": [
+      "answer_names_culprit"
+     ]
+    },
+    {
+     "name": "the culprit's child",
+     "visible_exit_codes": {},
+     "hidden_failing": [
+      "answer_names_culprit"
+     ]
+    },
+    {
+     "name": "two ids on the ANSWER line",
+     "visible_exit_codes": {},
+     "hidden_failing": [
+      "answer_names_culprit"
+     ]
+    },
+    {
+     "name": "the right answer, then a wrong one on a later ANSWER line",
+     "visible_exit_codes": {},
+     "hidden_failing": [
+      "answer_names_culprit"
+     ]
+    },
+    {
+     "name": "no ANSWER line",
+     "visible_exit_codes": {},
+     "hidden_failing": [
+      "answer_given",
+      "answer_names_culprit"
+     ]
+    }
+   ],
+   "culprit": "91a6a159d5c7e295504c4280c17ca9f883bdcaa9",
    "repro_at_culprit_parent": true,
    "repro_at_culprit": false,
    "repro_at_head": false,
-   "visible_criteria_with_checks": 0,
-   "interlock_task_create": {}
+   "interlock_baseline": {}
   },
   "py-csv-format": {
    "baseline": {
@@ -151,27 +611,234 @@
    "hidden_on_start": {
     "existing_tests": true,
     "test_balances_csv": false,
+    "test_format_values_and_unknown_format": false,
     "test_names_with_commas_are_quoted": false,
     "test_nothing_to_list_is_header_only": false,
     "test_settle_csv": false,
-    "test_text_is_default_and_unchanged": false,
-    "test_unknown_format_exits_2": true
+    "test_text_is_default_and_unchanged": false
    },
    "hidden_on_solution": {
     "existing_tests": true,
     "test_balances_csv": true,
+    "test_format_values_and_unknown_format": true,
     "test_names_with_commas_are_quoted": true,
     "test_nothing_to_list_is_header_only": true,
     "test_settle_csv": true,
-    "test_text_is_default_and_unchanged": true,
-    "test_unknown_format_exits_2": true
+    "test_text_is_default_and_unchanged": true
    },
    "solution_changes": [
     "tally/cli.py",
     "tally/report.py"
    ],
-   "interlock_task_create": {
+   "near_misses": [
+    {
+     "name": "csv.writer's default \\r\\n line endings",
+     "visible_exit_codes": {
+      "balances-csv": 1,
+      "regression": 0
+     },
+     "hidden_failing": [
+      "test_balances_csv",
+      "test_names_with_commas_are_quoted",
+      "test_nothing_to_list_is_header_only",
+      "test_settle_csv"
+     ]
+    },
+    {
+     "name": "manual join, no quoting",
+     "visible_exit_codes": {
+      "balances-csv": 0,
+      "regression": 0
+     },
+     "hidden_failing": [
+      "test_names_with_commas_are_quoted"
+     ]
+    },
+    {
+     "name": "CSV for balances only; settle ignores --format",
+     "visible_exit_codes": {
+      "balances-csv": 0,
+      "regression": 0
+     },
+     "hidden_failing": [
+      "test_names_with_commas_are_quoted",
+      "test_nothing_to_list_is_header_only",
+      "test_settle_csv"
+     ]
+    }
+   ],
+   "cross_task": {
+    "py-bisect-settle": {
+     "files": [
+      "tally/cli.py",
+      "tally/report.py"
+     ],
+     "passes_hidden": false
+    },
+    "py-date-filter": {
+     "files": [
+      "tally/cli.py",
+      "tally/report.py"
+     ],
+     "passes_hidden": false
+    },
+    "py-parse-amount": {
+     "files": [
+      "tally/cli.py",
+      "tally/report.py"
+     ],
+     "passes_hidden": false
+    },
+    "py-split-remainder": {
+     "files": [
+      "tally/cli.py",
+      "tally/report.py"
+     ],
+     "passes_hidden": false
+    },
+    "py-thousands": {
+     "files": [
+      "tally/cli.py",
+      "tally/report.py"
+     ],
+     "passes_hidden": false
+    },
+    "repos/tally": {
+     "files": [
+      "tally/cli.py",
+      "tally/report.py"
+     ],
+     "passes_hidden": false
+    }
+   },
+   "interlock_baseline": {
     "balances-csv": {
+     "passed": false,
+     "failed": true,
+     "checked_nothing": null
+    },
+    "regression": {
+     "passed": true,
+     "failed": false,
+     "checked_nothing": null
+    }
+   }
+  },
+  "py-date-filter": {
+   "baseline": {
+    "since": 1,
+    "regression": 0
+   },
+   "hidden_on_start": {
+    "existing_tests": true,
+    "test_both_bounds_are_inclusive": false,
+    "test_invalid_entry_date_names_file_and_line": false,
+    "test_invalid_option_date_exits_2": true,
+    "test_settle_is_filtered": false,
+    "test_since": false,
+    "test_until": false,
+    "test_without_options_nothing_changes": true
+   },
+   "hidden_on_solution": {
+    "existing_tests": true,
+    "test_both_bounds_are_inclusive": true,
+    "test_invalid_entry_date_names_file_and_line": true,
+    "test_invalid_option_date_exits_2": true,
+    "test_settle_is_filtered": true,
+    "test_since": true,
+    "test_until": true,
+    "test_without_options_nothing_changes": true
+   },
+   "solution_changes": [
+    "tally/cli.py",
+    "tally/csvio.py",
+    "tally/ledger.py"
+   ],
+   "near_misses": [
+    {
+     "name": "--until excludes its own day",
+     "visible_exit_codes": {
+      "since": 0,
+      "regression": 0
+     },
+     "hidden_failing": [
+      "test_both_bounds_are_inclusive",
+      "test_until"
+     ]
+    },
+    {
+     "name": "invalid entry date reported without the file and line",
+     "visible_exit_codes": {
+      "since": 0,
+      "regression": 0
+     },
+     "hidden_failing": [
+      "test_invalid_entry_date_names_file_and_line"
+     ]
+    },
+    {
+     "name": "dates checked even without --since or --until",
+     "visible_exit_codes": {
+      "since": 0,
+      "regression": 0
+     },
+     "hidden_failing": [
+      "test_without_options_nothing_changes"
+     ]
+    }
+   ],
+   "cross_task": {
+    "py-bisect-settle": {
+     "files": [
+      "tally/cli.py",
+      "tally/csvio.py",
+      "tally/ledger.py"
+     ],
+     "passes_hidden": false
+    },
+    "py-csv-format": {
+     "files": [
+      "tally/cli.py",
+      "tally/csvio.py",
+      "tally/ledger.py"
+     ],
+     "passes_hidden": false
+    },
+    "py-parse-amount": {
+     "files": [
+      "tally/cli.py",
+      "tally/csvio.py",
+      "tally/ledger.py"
+     ],
+     "passes_hidden": false
+    },
+    "py-split-remainder": {
+     "files": [
+      "tally/cli.py",
+      "tally/csvio.py",
+      "tally/ledger.py"
+     ],
+     "passes_hidden": false
+    },
+    "py-thousands": {
+     "files": [
+      "tally/cli.py",
+      "tally/csvio.py",
+      "tally/ledger.py"
+     ],
+     "passes_hidden": false
+    },
+    "repos/tally": {
+     "files": [
+      "tally/cli.py",
+      "tally/csvio.py",
+      "tally/ledger.py"
+     ],
+     "passes_hidden": false
+    }
+   },
+   "interlock_baseline": {
+    "since": {
      "passed": false,
      "failed": true,
      "checked_nothing": null
@@ -207,7 +874,69 @@
    "solution_changes": [
     "tally/money.py"
    ],
-   "interlock_task_create": {
+   "near_misses": [
+    {
+     "name": "pad the fraction only: sign and length rules missed",
+     "visible_exit_codes": {
+      "repro": 0,
+      "regression": 0
+     },
+     "hidden_failing": [
+      "test_csv_rows_use_the_fixed_parser",
+      "test_more_than_two_places_is_an_error",
+      "test_sign_covers_the_fraction"
+     ]
+    },
+    {
+     "name": "sign handled, more than two decimals still accepted",
+     "visible_exit_codes": {
+      "repro": 0,
+      "regression": 0
+     },
+     "hidden_failing": [
+      "test_more_than_two_places_is_an_error"
+     ]
+    }
+   ],
+   "cross_task": {
+    "py-bisect-settle": {
+     "files": [
+      "tally/money.py"
+     ],
+     "passes_hidden": false
+    },
+    "py-csv-format": {
+     "files": [
+      "tally/money.py"
+     ],
+     "passes_hidden": false
+    },
+    "py-date-filter": {
+     "files": [
+      "tally/money.py"
+     ],
+     "passes_hidden": false
+    },
+    "py-split-remainder": {
+     "files": [
+      "tally/money.py"
+     ],
+     "passes_hidden": false
+    },
+    "py-thousands": {
+     "files": [
+      "tally/money.py"
+     ],
+     "passes_hidden": false
+    },
+    "repos/tally": {
+     "files": [
+      "tally/money.py"
+     ],
+     "passes_hidden": false
+    }
+   },
+   "interlock_baseline": {
     "repro": {
      "passed": false,
      "failed": true,
@@ -244,8 +973,181 @@
    "solution_changes": [
     "tally/money.py"
    ],
-   "interlock_task_create": {
+   "near_misses": [
+    {
+     "name": "divmod without sign handling: -100 splits [-33, -33, -34]",
+     "visible_exit_codes": {
+      "repro": 0,
+      "regression": 0
+     },
+     "hidden_failing": [
+      "test_ledger_balances_sum_to_zero",
+      "test_negative_total_mirrors",
+      "test_rejects_non_positive_n",
+      "test_sum_spread_and_order"
+     ]
+    },
+    {
+     "name": "sign handled, but no ValueError for n <= 0",
+     "visible_exit_codes": {
+      "repro": 0,
+      "regression": 0
+     },
+     "hidden_failing": [
+      "test_rejects_non_positive_n"
+     ]
+    },
+    {
+     "name": "extra cents to the last shares",
+     "visible_exit_codes": {
+      "repro": 1,
+      "regression": 0
+     },
+     "hidden_failing": [
+      "test_ledger_balances_sum_to_zero",
+      "test_negative_total_mirrors",
+      "test_reported_case",
+      "test_sum_spread_and_order"
+     ]
+    }
+   ],
+   "cross_task": {
+    "py-bisect-settle": {
+     "files": [
+      "tally/money.py"
+     ],
+     "passes_hidden": false
+    },
+    "py-csv-format": {
+     "files": [
+      "tally/money.py"
+     ],
+     "passes_hidden": false
+    },
+    "py-date-filter": {
+     "files": [
+      "tally/money.py"
+     ],
+     "passes_hidden": false
+    },
+    "py-parse-amount": {
+     "files": [
+      "tally/money.py"
+     ],
+     "passes_hidden": false
+    },
+    "py-thousands": {
+     "files": [
+      "tally/money.py"
+     ],
+     "passes_hidden": false
+    },
+    "repos/tally": {
+     "files": [
+      "tally/money.py"
+     ],
+     "passes_hidden": false
+    }
+   },
+   "interlock_baseline": {
     "repro": {
+     "passed": false,
+     "failed": true,
+     "checked_nothing": null
+    },
+    "regression": {
+     "passed": true,
+     "failed": false,
+     "checked_nothing": null
+    }
+   }
+  },
+  "py-thousands": {
+   "baseline": {
+    "balances": 1,
+    "regression": 0
+   },
+   "hidden_on_start": {
+    "existing_tests": true,
+    "test_balances_separators": false,
+    "test_export_unchanged": true,
+    "test_millions": false,
+    "test_settle_separators": false,
+    "test_small_amounts_unchanged": true
+   },
+   "hidden_on_solution": {
+    "existing_tests": true,
+    "test_balances_separators": true,
+    "test_export_unchanged": true,
+    "test_millions": true,
+    "test_settle_separators": true,
+    "test_small_amounts_unchanged": true
+   },
+   "solution_changes": [
+    "tally/report.py"
+   ],
+   "near_misses": [
+    {
+     "name": "group digits in the shared format_cents: export changes too",
+     "visible_exit_codes": {
+      "balances": 0,
+      "regression": 0
+     },
+     "hidden_failing": [
+      "test_export_unchanged"
+     ]
+    },
+    {
+     "name": "separators in balances only; settle unchanged",
+     "visible_exit_codes": {
+      "balances": 0,
+      "regression": 0
+     },
+     "hidden_failing": [
+      "test_settle_separators"
+     ]
+    }
+   ],
+   "cross_task": {
+    "py-bisect-settle": {
+     "files": [
+      "tally/report.py"
+     ],
+     "passes_hidden": false
+    },
+    "py-csv-format": {
+     "files": [
+      "tally/report.py"
+     ],
+     "passes_hidden": false
+    },
+    "py-date-filter": {
+     "files": [
+      "tally/report.py"
+     ],
+     "passes_hidden": false
+    },
+    "py-parse-amount": {
+     "files": [
+      "tally/report.py"
+     ],
+     "passes_hidden": false
+    },
+    "py-split-remainder": {
+     "files": [
+      "tally/report.py"
+     ],
+     "passes_hidden": false
+    },
+    "repos/tally": {
+     "files": [
+      "tally/report.py"
+     ],
+     "passes_hidden": false
+    }
+   },
+   "interlock_baseline": {
+    "balances": {
      "passed": false,
      "failed": true,
      "checked_nothing": null

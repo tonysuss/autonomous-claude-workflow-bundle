@@ -1,0 +1,56 @@
+{
+  "task_id": "py-bisect-settle",
+  "host": "copilot",
+  "final_state": "done",
+  "stopped_because": "done",
+  "reconciled": [],
+  "baseline": [],
+  "sessions": [
+    {
+      "role": "worker",
+      "attempt_id": "att-d86aff72526848d6",
+      "epoch": 1,
+      "exit": {
+        "exit": "completed"
+      },
+      "duration_ms": 1710,
+      "summary": "Applied the scripted change.\nANSWER: 91a6a159d5c7e295504c4280c17ca9f883bdcaa9\n",
+      "denials": 0,
+      "transcript": "/tmp/agent-ws/76dc4fc5ad/tally/.interlock/transcripts/att-d86aff72526848d6.jsonl",
+      "moves": [
+        {
+          "signal": "G3",
+          "from": "running",
+          "to": "awaiting_verification",
+          "reason": "result accepted from attempt att-d86aff72526848d6 at epoch 1"
+        }
+      ]
+    },
+    {
+      "role": "verifier",
+      "attempt_id": "att-5affa97766494be8",
+      "epoch": 1,
+      "exit": {
+        "exit": "completed"
+      },
+      "duration_ms": 1707,
+      "summary": "Scripted verification finished.",
+      "denials": 0,
+      "transcript": "/tmp/agent-ws/76dc4fc5ad/tally/.interlock/transcripts/att-5affa97766494be8.jsonl",
+      "moves": [
+        {
+          "signal": "G4",
+          "from": "awaiting_verification",
+          "to": "verified",
+          "reason": "every required criterion has current passing evidence"
+        },
+        {
+          "signal": "G7",
+          "from": "verified",
+          "to": "done",
+          "reason": "verified; the workflow needs no delivery"
+        }
+      ]
+    }
+  ]
+}

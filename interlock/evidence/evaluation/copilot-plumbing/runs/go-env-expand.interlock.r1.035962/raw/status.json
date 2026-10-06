@@ -1,0 +1,81 @@
+{
+ "attempts": [
+  {
+   "epoch": 1,
+   "host": "copilot",
+   "id": "att-3c3fa5acc04d40b8",
+   "role": "worker",
+   "status": "failed"
+  },
+  {
+   "epoch": 2,
+   "host": "copilot",
+   "id": "att-54ae9191bea84d6c",
+   "role": "worker",
+   "status": "submitted"
+  },
+  {
+   "epoch": 2,
+   "host": "copilot",
+   "id": "att-7e16f62cf52c4c30",
+   "role": "verifier",
+   "status": "completed"
+  }
+ ],
+ "evidence": {
+  "all_pass": true,
+  "any_fail": false,
+  "criteria": [
+   {
+    "criterion_id": "expand",
+    "current_assessments": 1,
+    "current_claims": 0,
+    "current_runs": 1,
+    "evidence_id": "asm-8552ab3db0984fba",
+    "source": "assessment",
+    "stale": 0,
+    "strength": "observed",
+    "verdict": "pass"
+   },
+   {
+    "criterion_id": "spec",
+    "current_assessments": 1,
+    "current_claims": 0,
+    "current_runs": 0,
+    "evidence_id": "asm-de7b34d827f84fc8",
+    "source": "assessment",
+    "stale": 0,
+    "strength": "tested",
+    "verdict": "pass"
+   },
+   {
+    "criterion_id": "regression",
+    "current_assessments": 1,
+    "current_claims": 1,
+    "current_runs": 2,
+    "evidence_id": "asm-b7821f5d852649e4",
+    "source": "assessment",
+    "stale": 0,
+    "strength": "tested",
+    "verdict": "pass"
+   }
+  ]
+ },
+ "next_moves": [],
+ "task": {
+  "attempts_used": 2,
+  "blocked_reason": null,
+  "current_attempt": "att-54ae9191bea84d6c",
+  "current_tree": "621cbbf79c13e0abb9fa5619b3faffbc19a3e7eb",
+  "id": "go-env-expand",
+  "integration_required": false,
+  "intent": "Configuration values should be able to use environment variables.\n\n- In unquoted and double-quoted values, `${NAME}` is replaced by the value of the environment variable `NAME`, and `${NAME:-fallback}` by its value, or by `fallback` when `NAME` is unset or empty.\n- `$$` stands for a literal `$`. A `$` followed by anything other than `{` or `$` is kept as it is.\n- Referring to an unset variable without a fallback is an error: parsing fails with `kvconf: line N: undefined variable \"NAME\"`, where N is the line number.\n- `Parse` and `Load` expand values. Add this API so callers can keep values literally:\n\n  ```go\n  type ParseOptions struct{ NoExpand bool }\n\n  func ParseWithOptions(r io.Reader, opts ParseOptions) (*Config, error)\n  ```\n\n  `Parse(r)` behaves like `ParseWithOptions(r, ParseOptions{})`.\n- `kvconf get` and `kvconf dump` accept a `--no-expand` flag, given before the file name, that keeps values literally: `kvconf get --no-expand app.conf paths.data`.\n\n`checks/expand.sh` checks the basic case. The tests run with `go test ./...`.\n",
+  "lease_epoch": 2,
+  "max_attempts": 3,
+  "state": "done",
+  "workflow": {
+   "name": "feature",
+   "version": 1
+  }
+ }
+}

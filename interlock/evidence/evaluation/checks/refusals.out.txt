@@ -1,0 +1,6 @@
+misnamed interlock binary: exit 1 :: $S/review-eval/interlock-bin: the interlock binary must be named `interlock`, or agents would run whatever `interlock` is on PATH instead of the one measured
+--interlock-skills without interlock run --skills: exit 1 :: this interlock's `run` has no --skills flag yet, so it cannot load the skills plugin
+--skills-generate without interlock skills generate: exit 1 :: this interlock has no `skills generate`; pass --skills-dir instead
+skills condition without a skills directory: exit 1 :: the skills condition and --interlock-skills need --skills-dir or --skills-generate
+run base inside the state dir: exit 1 :: the run base ($S/state/runs) and the state dir ($S/state) must not contain each other
+results inside the run base: exit 1 :: the run base ($S/rb) and the results ($S/rb/results) must not contain each other
