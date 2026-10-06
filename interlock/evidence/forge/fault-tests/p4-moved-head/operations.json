@@ -1,0 +1,64 @@
+[
+  {
+    "created_at": "2026-10-06T00:11:28.864059354Z",
+    "id": "op-e6a400c2f5e641e4",
+    "intent": {
+      "expected_head_sha": "214a9d9140cf26014555313510209221a5dd32af",
+      "pull_request": 1
+    },
+    "kind": "merge",
+    "outcome": {
+      "seen": {
+        "call": "/tmp/.tmpk9a9Az/gh/gh pr merge 1 --merge --match-head-commit 214a9d9140cf26014555313510209221a5dd32af exited 1: GraphQL: Head branch was modified. Review and try the merge again. (mergePullRequest)",
+        "observation": {
+          "detail": {
+            "auto_merge": false,
+            "head": "75504fa4ad1effb722a1caf4987f6b66d6148ab6",
+            "number": 1,
+            "state": "open"
+          },
+          "seen": "pr"
+        }
+      },
+      "verdict": {
+        "report": {
+          "outcome": "refused",
+          "reason": "the head of pull request #1 moved to 75504fa4ad1e before the merge was confirmed; it was pinned to 214a9d9140cf"
+        },
+        "verdict": "land"
+      }
+    },
+    "state": "failed",
+    "task_id": "fix-add",
+    "updated_at": "2026-10-06T00:11:29.439705010Z"
+  },
+  {
+    "created_at": "2026-10-06T00:11:28.984758829Z",
+    "id": "op-08289b536b6844fb",
+    "intent": {
+      "base": "main",
+      "expected_head_sha": "214a9d9140cf26014555313510209221a5dd32af"
+    },
+    "kind": "open_pr",
+    "outcome": {
+      "seen": {
+        "errors": [],
+        "observation": {
+          "detail": {
+            "auto_merge": false,
+            "head": "214a9d9140cf26014555313510209221a5dd32af",
+            "number": 1,
+            "state": "open"
+          },
+          "seen": "pr"
+        }
+      },
+      "verdict": {
+        "verdict": "confirmed"
+      }
+    },
+    "state": "confirmed",
+    "task_id": "fix-add",
+    "updated_at": "2026-10-06T00:11:29.231887601Z"
+  }
+]

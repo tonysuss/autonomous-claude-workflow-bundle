@@ -1,0 +1,64 @@
+[
+  {
+    "created_at": "2026-10-06T00:11:27.343632910Z",
+    "id": "op-5dbdeecf6f1b4b13",
+    "intent": {
+      "expected_head_sha": "5c8afed4c2b5e150bb52c29de6eb15d76acee709",
+      "pull_request": 1
+    },
+    "kind": "merge",
+    "outcome": {
+      "seen": {
+        "observation": {
+          "detail": {
+            "auto_merge": false,
+            "head": "5c8afed4c2b5e150bb52c29de6eb15d76acee709",
+            "number": 1,
+            "state": "merged"
+          },
+          "seen": "pr"
+        },
+        "reconciled": true
+      },
+      "verdict": {
+        "report": {
+          "head_sha": "5c8afed4c2b5e150bb52c29de6eb15d76acee709",
+          "outcome": "merged"
+        },
+        "verdict": "land"
+      }
+    },
+    "state": "confirmed",
+    "task_id": "fix-add",
+    "updated_at": "2026-10-06T00:11:28.208419338Z"
+  },
+  {
+    "created_at": "2026-10-06T00:11:27.457322754Z",
+    "id": "op-0a32f05dabfd45aa",
+    "intent": {
+      "base": "main",
+      "expected_head_sha": "5c8afed4c2b5e150bb52c29de6eb15d76acee709"
+    },
+    "kind": "open_pr",
+    "outcome": {
+      "seen": {
+        "errors": [],
+        "observation": {
+          "detail": {
+            "auto_merge": false,
+            "head": "5c8afed4c2b5e150bb52c29de6eb15d76acee709",
+            "number": 1,
+            "state": "open"
+          },
+          "seen": "pr"
+        }
+      },
+      "verdict": {
+        "verdict": "confirmed"
+      }
+    },
+    "state": "confirmed",
+    "task_id": "fix-add",
+    "updated_at": "2026-10-06T00:11:27.707454210Z"
+  }
+]

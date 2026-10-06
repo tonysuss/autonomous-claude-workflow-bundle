@@ -195,6 +195,26 @@ impl Fixture {
         let (_, log) = self.interlock(&["task", "log", "fix-add"], None);
         log.as_array().unwrap().iter().map(|r| r["signal"].as_str().unwrap().to_string()).collect()
     }
+
+    /// With INTERLOCK_EVIDENCE_OUT set, keeps the run report, the task log,
+    /// the operations, every gh call, and what landed.
+    fn record(&self, test: &str, report: &Value) {
+        let Some(out) = std::env::var_os("INTERLOCK_EVIDENCE_OUT").map(PathBuf::from) else { return };
+        let dir = out.join(test);
+        std::fs::create_dir_all(&dir).unwrap();
+        let (_, log) = self.interlock(&["task", "log", "fix-add"], None);
+        let (_, ops) = self.interlock(&["integrate", "operations", "fix-add"], None);
+        let landed = serde_json::json!({ "base": self.base, "main_and_parents": self.remote.show("main") });
+        for (name, v) in [
+            ("run-report", report.clone()),
+            ("transitions", log),
+            ("operations", ops),
+            ("gh-calls", serde_json::json!(self.gh.calls())),
+            ("remote", landed),
+        ] {
+            std::fs::write(dir.join(format!("{name}.json")), serde_json::to_string_pretty(&v).unwrap()).unwrap();
+        }
+    }
 }
 
 #[test]
@@ -204,6 +224,7 @@ fn walkthrough_step_7_a_verified_bug_fix_lands_through_g5_and_g6_on_copilot() {
     let model = FakeModel::start(script());
     let out = f.run(&model);
     let report = Fixture::report(&out);
+    f.record("copilot-walkthrough-step-7", &report);
     assert_eq!(out.status.code(), Some(0), "{report:#}");
     assert_eq!(report["final_state"], "done", "{report:#}");
     assert_eq!(f.signals(), ["G1", "G2", "G3", "G4", "G5", "G6"]);
@@ -234,6 +255,7 @@ fn without_landing_authority_interlock_run_blocks_at_verified_with_the_reason() 
     let model = FakeModel::start(script());
     let out = f.run(&model);
     let report = Fixture::report(&out);
+    f.record("copilot-no-landing-authority", &report);
     assert_eq!(out.status.code(), Some(5), "{report:#}");
     assert_eq!(report["final_state"], "blocked");
     assert_eq!(report["stopped_because"], "blocked: no landing authority is granted for this task");
@@ -259,6 +281,7 @@ fn a_run_killed_right_after_the_merge_call_is_finished_by_the_next_run() {
 
     let out = f.run(&model);
     let report = Fixture::report(&out);
+    f.record("copilot-run-killed-mid-merge-then-restarted", &report);
     assert_eq!(out.status.code(), Some(0), "{report:#}");
     assert_eq!(report["final_state"], "done");
     assert_eq!(report["sessions"].as_array().unwrap().len(), 0, "no session was needed to finish");

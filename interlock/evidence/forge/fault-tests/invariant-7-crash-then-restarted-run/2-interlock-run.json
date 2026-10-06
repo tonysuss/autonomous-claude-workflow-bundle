@@ -1,0 +1,11 @@
+{
+  "baseline": [],
+  "final_state": "done",
+  "host": "copilot",
+  "reconciled": [
+    "op-5dbdeecf6f1b4b13"
+  ],
+  "sessions": [],
+  "stopped_because": "done",
+  "task_id": "fix-add"
+}

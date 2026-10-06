@@ -1,0 +1,69 @@
+{
+  "attempts": [
+    {
+      "epoch": 1,
+      "host": "test",
+      "id": "att-da86c19e81e7496f",
+      "role": "worker",
+      "status": "submitted"
+    },
+    {
+      "epoch": 1,
+      "host": "test",
+      "id": "att-045c32eca0434225",
+      "role": "verifier",
+      "status": "completed"
+    }
+  ],
+  "evidence": {
+    "all_pass": false,
+    "any_fail": false,
+    "criteria": [
+      {
+        "criterion_id": "fixed",
+        "current_assessments": 0,
+        "current_claims": 0,
+        "current_runs": 0,
+        "reason": "needs tested or stronger from the worker or a verifier; 1 stale record(s) ignored",
+        "stale": 1,
+        "verdict": "not_yet"
+      },
+      {
+        "criterion_id": "verified",
+        "current_assessments": 0,
+        "current_claims": 0,
+        "current_runs": 0,
+        "reason": "needs observed or stronger from an independent verifier; 1 stale record(s) ignored",
+        "stale": 1,
+        "verdict": "not_yet"
+      }
+    ]
+  },
+  "next_moves": [
+    {
+      "needs": [
+        "fixed: needs tested or stronger from the worker or a verifier; 1 stale record(s) ignored",
+        "verified: needs observed or stronger from an independent verifier; 1 stale record(s) ignored"
+      ],
+      "ready": false,
+      "signal": "G4",
+      "to": "verified"
+    }
+  ],
+  "task": {
+    "attempts_used": 1,
+    "blocked_reason": null,
+    "current_attempt": "att-da86c19e81e7496f",
+    "current_tree": "ed76ecb372c99fad7dd41144a545689113032581",
+    "id": "fix-add",
+    "integration_required": true,
+    "intent": "add() returns the difference instead of the sum",
+    "lease_epoch": 1,
+    "max_attempts": 3,
+    "state": "awaiting_verification",
+    "workflow": {
+      "name": "bug-fix",
+      "version": 1
+    }
+  }
+}

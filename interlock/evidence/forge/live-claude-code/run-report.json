@@ -1,0 +1,65 @@
+{
+  "baseline": [
+    {
+      "criterion_id": "repro",
+      "exit_code": 1,
+      "problem": null,
+      "run_id": "run-559cde627d604880",
+      "vacuous": null
+    },
+    {
+      "criterion_id": "regression",
+      "exit_code": 0,
+      "problem": null,
+      "run_id": "run-4cb5ff429578492f",
+      "vacuous": null
+    }
+  ],
+  "final_state": "done",
+  "host": "claude-code",
+  "reconciled": [],
+  "sessions": [
+    {
+      "attempt_id": "att-3d9f0e38bb0847bf",
+      "denials": 0,
+      "duration_ms": 16430,
+      "epoch": 1,
+      "exit": {
+        "exit": "completed"
+      },
+      "moves": [
+        {
+          "from": "running",
+          "reason": "result accepted from attempt att-3d9f0e38bb0847bf at epoch 1",
+          "signal": "G3",
+          "to": "awaiting_verification"
+        }
+      ],
+      "role": "worker",
+      "summary": "I fixed the duplicate rows in `exporter.py`. `export` now keeps a counter of rows already written, so a retry carries on from the failed row instead of restarting the batch.\n\nBoth checks pass on the changed files. `sh checks/export-retry.sh` prints \"ok: no duplicate rows after a retry\", and it failed on the original code. The existing unit tests also pass. I recorded one claim per criterion: `repro` as observed and `regression` as tested. I didn't add a new test under `tests/`. `repro` needs an independent verifier to confirm it, so my claim doesn't satisfy it on its own.",
+      "transcript": "/tmp/.tmpfFB0EP/repo/.interlock/transcripts/att-3d9f0e38bb0847bf.jsonl"
+    },
+    {
+      "attempt_id": "att-4416c4e89db8484b",
+      "denials": 0,
+      "duration_ms": 9020,
+      "epoch": 1,
+      "exit": {
+        "exit": "completed"
+      },
+      "moves": [
+        {
+          "from": "awaiting_verification",
+          "reason": "every required criterion has current passing evidence",
+          "signal": "G4",
+          "to": "verified"
+        }
+      ],
+      "role": "verifier",
+      "summary": "- **repro**: holds (observed). `interlock check run --criterion repro` passed on tree c41effba with \"ok: no duplicate rows after a retry\". `exporter.py` keeps a `written` counter, so a retry resumes at the failed row.\n- **regression**: holds (tested). `interlock check run --criterion regression` ran 2 unit tests, all OK, on the same tree.",
+      "transcript": "/tmp/.tmpfFB0EP/repo/.interlock/transcripts/att-4416c4e89db8484b.jsonl"
+    }
+  ],
+  "stopped_because": "done",
+  "task_id": "export-retry"
+}

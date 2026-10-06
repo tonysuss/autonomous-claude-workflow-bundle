@@ -1,0 +1,27 @@
+{
+  "reconciled": [
+    {
+      "after": "confirmed",
+      "before": "started",
+      "kind": "merge",
+      "moves": [
+        {
+          "from": "integrating",
+          "reason": "merged at 5c8afed4c2b5e150bb52c29de6eb15d76acee709",
+          "signal": "G6",
+          "to": "done"
+        }
+      ],
+      "operation": "op-f270cd05cb2a40ac",
+      "task_id": "fix-add",
+      "verdict": {
+        "report": {
+          "head_sha": "5c8afed4c2b5e150bb52c29de6eb15d76acee709",
+          "outcome": "merged"
+        },
+        "verdict": "land"
+      }
+    }
+  ],
+  "still_unknown": 0
+}
