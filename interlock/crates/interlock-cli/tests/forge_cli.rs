@@ -79,7 +79,7 @@ impl Fixture {
         self.dir.path().join("repo")
     }
 
-    fn run(&self, args: &[&str]) -> Output {
+    fn command(&self, args: &[&str], env: &[(&str, &str)]) -> Command {
         let mut cmd = Command::new(env!("CARGO_BIN_EXE_interlock"));
         cmd.args(args)
             .current_dir(self.repo())
@@ -89,7 +89,40 @@ impl Fixture {
         for k in ["INTERLOCK_ATTEMPT", "INTERLOCK_TOKEN", "INTERLOCK_TREE", "INTERLOCK_MODE", "INTERLOCK_FAULT"] {
             cmd.env_remove(k);
         }
-        cmd.output().unwrap()
+        cmd.envs(env.iter().copied());
+        cmd
+    }
+
+    fn run(&self, args: &[&str]) -> Output {
+        self.command(args, &[]).output().unwrap()
+    }
+
+    /// The pre-tool-use hook's answer to a shell command inside attempt `attempt`.
+    fn hook(&self, attempt: &str, command: &str) -> Output {
+        let mut child = self
+            .command(&["hook", "pre-tool-use"], &[("INTERLOCK_ATTEMPT", attempt)])
+            .stdin(std::process::Stdio::piped())
+            .stdout(std::process::Stdio::piped())
+            .stderr(std::process::Stdio::piped())
+            .spawn()
+            .unwrap();
+        let payload = serde_json::json!({
+            "hook_event_name": "PreToolUse", "tool_name": "Bash", "tool_input": { "command": command }
+        });
+        std::io::Write::write_all(child.stdin.as_mut().unwrap(), payload.to_string().as_bytes()).unwrap();
+        child.wait_with_output().unwrap()
+    }
+
+    /// A tree like `from`'s with `path` = `content`.
+    fn tree_with(&self, from: &str, path: &str, content: &str) -> String {
+        let repo = self.repo();
+        let index = repo.join(".git/test-index").display().to_string();
+        let env = [("GIT_INDEX_FILE", index.as_str())];
+        git(&repo, &["read-tree", from], &env);
+        std::fs::write(repo.join(".git/blob.tmp"), content).unwrap();
+        let blob = git(&repo, &["hash-object", "-w", ".git/blob.tmp"], &[]);
+        git(&repo, &["update-index", "--add", "--cacheinfo", &format!("100644,{blob},{path}")], &env);
+        git(&repo, &["write-tree"], &env)
     }
 
     fn json(&self, args: &[&str]) -> (Option<i32>, Value) {
@@ -196,7 +229,7 @@ impl Fixture {
             "--classes",
             "landing",
             "--landing",
-            "operator",
+            "coordinator",
             "--origin",
             "land the add fix once it is verified",
         ]);
@@ -377,4 +410,108 @@ fn p4_a_changed_base_invalidates_the_evidence() {
     assert_eq!(status["evidence"]["all_pass"], false);
     assert!(status["evidence"]["criteria"].as_array().unwrap().iter().all(|c| c["stale"].as_u64() > Some(0)));
     assert!(f.gh.calls_to(&["pr", "merge"]).is_empty());
+}
+
+/// Review r6b: the tree changes while integrating; `interlock run` must apply
+/// R2 instead of pushing and merging the unverified tree.
+#[test]
+fn r6_a_tree_recorded_while_integrating_is_r2_under_interlock_run() {
+    let Some(f) = Fixture::new() else { return };
+    let tree = f.verify();
+    f.grant_landing();
+    f.gh.checks("pending");
+    let (_, d) = f.json(&["integrate", "run", "fix-add"]);
+    assert_eq!(d["final_state"], "integrating", "{d:#}");
+    let unverified = f.tree_with(&tree, "evil.py", "print('unverified')\n");
+    f.ok(&["task", "tree", "fix-add", "--tree", &unverified]);
+    f.gh.checks("pass");
+
+    let (code, report) = f.json(&["run", "fix-add", "--host", "copilot", "--max-sessions", "0"]);
+    f.record("r6-tree-changed-while-integrating", "interlock-run", &report);
+    f.record_end("r6-tree-changed-while-integrating");
+    assert_eq!(code, Some(5), "{report:#}");
+    assert_eq!(report["final_state"], "awaiting_verification", "{report:#}");
+    assert!(f.signals().contains(&"R2".to_string()));
+    assert!(f.gh.calls_to(&["pr", "merge"]).is_empty(), "nothing was merged");
+    assert_eq!(f.remote.tip("main").as_deref(), Some(f.base.as_str()));
+}
+
+/// Review item 11: after a moved-head R2 the evidence still covers the
+/// verified tree, so `interlock run` advances (G4) instead of spending a
+/// verifier session, then refuses to overwrite the unverified push.
+#[test]
+fn a_moved_head_r2_needs_no_verifier_session() {
+    let Some(f) = Fixture::new() else { return };
+    f.verify();
+    f.grant_landing();
+    // Someone pushes to the pull request's branch while the merge request is in flight.
+    f.gh.fault("merge", "move_head", 1);
+
+    let (code, report) = f.json(&["run", "fix-add", "--host", "copilot", "--max-sessions", "0"]);
+    assert_eq!(code, Some(5), "{report:#}");
+    assert_eq!(report["final_state"], "blocked", "{report:#}");
+    assert_eq!(report["sessions"].as_array().unwrap().len(), 0);
+    let signals = f.signals();
+    assert_eq!(signals[signals.len() - 5..], ["G5", "R2", "G4", "G5", "block"]);
+    let status = f.ok(&["status", "fix-add"]);
+    assert!(status["task"]["blocked_reason"].as_str().unwrap().contains("which interlock did not push"));
+}
+
+/// Review r3: an agent inside an attempt cannot point interlock at a forged
+/// `gh` and reconcile its way to G6. The hook asks the operator (denies
+/// headless), and the commands themselves refuse inside an attempt.
+#[test]
+fn r3_forge_commands_are_the_operators_inside_an_attempt() {
+    let Some(f) = Fixture::new() else { return };
+    f.verify();
+    f.grant_landing();
+    f.gh.checks("pending");
+    assert_eq!(f.json(&["integrate", "run", "fix-add"]).1["final_state"], "integrating");
+    // A worker running on another task.
+    std::fs::write(f.repo().join("other.toml"), TASK.replace("id = \"fix-add\"", "id = \"other\"")).unwrap();
+    f.ok(&["task", "create", "other.toml"]);
+    f.ok(&["task", "ready", "other", "--base", &f.base]);
+    let a = f.ok(&[
+        "attempt",
+        "start",
+        "other",
+        "--role",
+        "worker",
+        "--host",
+        "test",
+        "--mode",
+        "headless",
+        "--capabilities",
+        CAPS,
+    ]);
+    let attempt = a["attempt"]["id"].as_str().unwrap().to_string();
+
+    let push_to_main = ["git", "push origin HEAD:main"].join(" ");
+    for command in [
+        "INTERLOCK_GH_BIN=/tmp/evil-gh interlock reconcile",
+        "interlock reconcile fix-add",
+        "interlock integrate run fix-add",
+        push_to_main.as_str(),
+        "gh pr merge 1 --merge",
+    ] {
+        let out = f.hook(&attempt, command);
+        assert_eq!(out.status.code(), Some(2), "{command}: {}", String::from_utf8_lossy(&out.stdout));
+    }
+    for args in [
+        &["reconcile"][..],
+        &["reconcile", "fix-add"],
+        &["integrate", "run", "fix-add"],
+        &["integrate", "confirm", "fix-add", "--operation", "op-x", "--merged", "abcdef1"],
+        &["run", "fix-add", "--host", "copilot"],
+    ] {
+        let env = [("INTERLOCK_ATTEMPT", attempt.as_str()), ("INTERLOCK_GH_BIN", "/tmp/evil-gh")];
+        let out = f.command(args, &env).output().unwrap();
+        assert_ne!(out.status.code(), Some(0), "{args:?}");
+        assert!(String::from_utf8_lossy(&out.stderr).contains("is the operator's"), "{args:?}");
+    }
+    let env = [("INTERLOCK_ATTEMPT", attempt.as_str())];
+    let listed = f.command(&["integrate", "operations", "fix-add"], &env).output().unwrap();
+    assert!(listed.status.success(), "reading operations is fine");
+    let status = f.ok(&["status", "fix-add"]);
+    assert_eq!(status["task"]["state"], "integrating", "nothing landed");
 }

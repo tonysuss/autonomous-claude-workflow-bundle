@@ -32,12 +32,29 @@ const OPERATOR_ONLY: &[&[&str]] = &[
     &["task", "cancel"],
     &["task", "fail"],
     &["task", "retry"],
+    &["integrate", "begin"],
     &["integrate", "confirm"],
+    &["integrate", "run"],
+    &["reconcile"],
+    // `interlock run` drives a task through delivery, merges included.
+    &["run"],
 ];
+
+/// GraphQL mutations that merge, whatever the shell does to their quoting.
+const MERGE_MUTATIONS: &[&str] =
+    &["mergePullRequest", "enablePullRequestAutoMerge", "mergeBranch", "enqueuePullRequest"];
 
 /// The highest action class among the commands in a shell line.
 pub fn classify_shell(line: &str) -> ActionClass {
-    split_commands(line).iter().map(|c| classify_one(c)).max().unwrap_or(ActionClass::Read)
+    let class = split_commands(line).iter().map(|c| classify_one(c)).max().unwrap_or(ActionClass::Read);
+    if MERGE_MUTATIONS.iter().any(|m| line.contains(m)) { class.max(ActionClass::Landing) } else { class }
+}
+
+/// Setting where interlock finds `gh`, the forge settings, or its store
+/// points interlock at something else: only the operator may.
+fn overrides_interlock(word: &str) -> bool {
+    word.split_once('=')
+        .is_some_and(|(k, _)| k == "INTERLOCK_GH_BIN" || k == "INTERLOCK_DB" || k.starts_with("INTERLOCK_FORGE_"))
 }
 
 /// Splits on command separators, treating subshells and substitutions as
@@ -70,6 +87,9 @@ fn split_commands(line: &str) -> Vec<Vec<String>> {
 }
 
 fn classify_one(words: &[String]) -> ActionClass {
+    if words.iter().any(|w| overrides_interlock(w)) {
+        return ActionClass::Irreversible;
+    }
     let mut words: Vec<&str> = words.iter().map(String::as_str).collect();
     // Strip wrappers, their flags and variable assignments down to the real program.
     loop {
@@ -174,13 +194,33 @@ fn classify_git(args: &[&str]) -> ActionClass {
                     // Short flag clusters such as -f, -uf or -d.
                     || (a.starts_with('-') && !a.starts_with("--") && (a.contains('f') || a.contains('d')))
             });
-            // +ref forces, :ref deletes.
-            let refspec_rewrites = pos.iter().skip(2).any(|r| r.starts_with('+') || r.starts_with(':'));
-            if forced || refspec_rewrites { ActionClass::Irreversible } else { ActionClass::ExternalReversible }
+            // Configured mirroring pushes every ref and deletes the rest.
+            let mirrored = args.windows(2).any(|w| w[0] == "-c" && w[1].contains("mirror"));
+            // After the subcommand and the remote come the refspecs. +ref forces, :ref deletes.
+            let refspecs: Vec<&str> = pos.iter().skip(2).copied().collect();
+            let rewrites = refspecs.iter().any(|r| r.starts_with('+') || r.starts_with(':'));
+            if forced || rewrites || mirrored {
+                ActionClass::Irreversible
+            } else if !refspecs.is_empty()
+                && !args.contains(&"--all")
+                && refspecs.iter().all(|r| to_interlock_branch(r))
+            {
+                ActionClass::ExternalReversible
+            } else {
+                // Any other destination may be a base branch (and a bare push may be one through its
+                // upstream): pushing there lands work without a pull request.
+                ActionClass::Landing
+            }
         }
         s if GIT_READ_ONLY.contains(&s) => ActionClass::Read,
         _ => ActionClass::LocalReversible,
     }
+}
+
+/// Whether a push refspec's destination is one of interlock's own branches.
+fn to_interlock_branch(refspec: &str) -> bool {
+    let dst = refspec.rsplit_once(':').map_or(refspec, |(_, d)| d);
+    dst.strip_prefix("refs/heads/").unwrap_or(dst).starts_with("interlock/")
 }
 
 fn classify_gh(args: &[&str]) -> ActionClass {
@@ -195,9 +235,11 @@ fn classify_gh(args: &[&str]) -> ActionClass {
     if pos.first() == Some(&"api") {
         let method = args.windows(2).find(|w| matches!(w[0], "-X" | "--method")).map(|w| w[1].to_ascii_uppercase());
         let fields = args.iter().any(|a| matches!(*a, "-f" | "-F" | "--field" | "--raw-field"));
+        // With fields and no method, gh sends a POST.
+        let writes = matches!(method.as_deref(), Some("PUT" | "POST" | "PATCH")) || (method.is_none() && fields);
         return match method.as_deref() {
             Some("DELETE") => ActionClass::Irreversible,
-            Some("PUT" | "POST" | "PATCH") if pos.iter().any(|p| p.contains("/merge")) => ActionClass::Landing,
+            _ if writes && pos.iter().any(|p| p.contains("/merge")) => ActionClass::Landing,
             Some("GET") | None if !fields => ActionClass::Read,
             _ => ActionClass::ExternalReversible,
         };
@@ -230,8 +272,8 @@ mod tests {
         assert_eq!(classify_shell("git status"), Read);
         assert_eq!(classify_shell("cargo test"), LocalReversible);
         assert_eq!(classify_shell("git commit -m wip"), LocalReversible);
-        assert_eq!(classify_shell("git push origin feature"), ExternalReversible);
-        assert_eq!(classify_shell("git push -u origin feature"), ExternalReversible);
+        assert_eq!(classify_shell("git push origin interlock/feature"), ExternalReversible);
+        assert_eq!(classify_shell("git push -u origin interlock/feature"), ExternalReversible);
         assert_eq!(classify_shell("gh pr comment 4 --body hi"), ExternalReversible);
         assert_eq!(classify_shell("gh pr merge 4 --squash"), Landing);
         assert_eq!(classify_shell("gh pr view 4"), Read);
@@ -251,7 +293,7 @@ mod tests {
     #[test]
     fn options_before_the_subcommand_do_not_hide_it() {
         assert_eq!(classify_shell("git -C ../repo push --force"), Irreversible);
-        assert_eq!(classify_shell("git -c user.name=x push origin main"), ExternalReversible);
+        assert_eq!(classify_shell("git -c user.name=x push origin interlock/x"), ExternalReversible);
         assert_eq!(classify_shell("gh -R owner/repo pr merge 4"), Landing);
         assert_eq!(classify_shell("gh api -X PUT repos/o/r/pulls/4/merge"), Landing);
         assert_eq!(classify_shell("gh api -X DELETE repos/o/r/git/refs/heads/x"), Irreversible);
@@ -275,8 +317,8 @@ mod tests {
     #[test]
     fn chained_commands_take_the_highest_class() {
         assert_eq!(classify_shell("cargo fmt && git push -f"), Irreversible);
-        assert_eq!(classify_shell("git status; git push"), ExternalReversible);
-        assert_eq!(classify_shell("FOO=1 git push origin x"), ExternalReversible);
+        assert_eq!(classify_shell("git status; git push origin interlock/x"), ExternalReversible);
+        assert_eq!(classify_shell("FOO=1 git push origin interlock/x"), ExternalReversible);
         assert_eq!(classify_shell("cargo test & git push -f"), Irreversible);
     }
 
@@ -291,5 +333,53 @@ mod tests {
             Irreversible
         );
         assert_eq!(classify_shell("interlock result submit --tree abc"), Read);
+    }
+
+    #[test]
+    fn forge_commands_belong_to_the_operator() {
+        for line in [
+            "interlock integrate run fix-add",
+            "interlock integrate begin fix-add",
+            "interlock integrate confirm fix-add --operation op-1 --merged abc",
+            "interlock reconcile",
+            "interlock --db /x/state.db reconcile fix-add",
+            "interlock run fix-add --host copilot",
+        ] {
+            assert_eq!(classify_shell(line), Irreversible, "{line}");
+        }
+        assert_eq!(classify_shell("interlock integrate operations fix-add"), Read);
+    }
+
+    #[test]
+    fn pointing_interlock_at_another_gh_or_store_is_the_operators_call() {
+        assert_eq!(classify_shell("INTERLOCK_GH_BIN=/tmp/evil-gh interlock status t1"), Irreversible);
+        assert_eq!(classify_shell("env INTERLOCK_FORGE_BASE=release interlock status t1"), Irreversible);
+        assert_eq!(classify_shell("export INTERLOCK_DB=/tmp/x.db; interlock status t1"), Irreversible);
+        assert_eq!(classify_shell("GIT_DIR=x git status"), Read);
+    }
+
+    #[test]
+    fn pushing_anywhere_but_an_interlock_branch_is_landing() {
+        assert_eq!(classify_shell("git push origin HEAD:refs/heads/main"), Landing);
+        assert_eq!(classify_shell("git push origin HEAD:main"), Landing);
+        assert_eq!(classify_shell("git push origin main"), Landing);
+        assert_eq!(classify_shell("git push origin release-1"), Landing);
+        assert_eq!(classify_shell("git push"), Landing, "the upstream may be a base branch");
+        assert_eq!(classify_shell("git push --all origin"), Landing);
+        assert_eq!(classify_shell("git push origin interlock/fix-add HEAD:main"), Landing);
+        assert_eq!(classify_shell("git push origin HEAD:refs/heads/interlock/fix-add"), ExternalReversible);
+        assert_eq!(classify_shell("git push --force-with-lease origin interlock/x"), Irreversible);
+        assert_eq!(classify_shell("git -c remote.origin.mirror=true push origin"), Irreversible);
+    }
+
+    #[test]
+    fn merges_through_the_api_are_landing() {
+        assert_eq!(classify_shell("gh api repos/o/r/pulls/1/merge -X PUT"), Landing);
+        assert_eq!(classify_shell("gh api repos/o/r/merges -f base=main -f head=x"), Landing);
+        let graphql =
+            "gh api graphql -f query='mutation{mergePullRequest(input:{pullRequestId:\"x\"}){clientMutationId}}'";
+        assert_eq!(classify_shell(graphql), Landing);
+        assert_eq!(classify_shell("gh api graphql -f query='mutation{enablePullRequestAutoMerge(input:{})}'"), Landing);
+        assert_eq!(classify_shell("gh pr merge 1 --disable-auto"), Landing);
     }
 }

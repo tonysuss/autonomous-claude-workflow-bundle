@@ -388,6 +388,8 @@ pub enum OperationKind {
     OpenPr,
     Merge,
     ArmAutoMerge,
+    /// Withdraws an armed auto-merge, for example when landing authority ends.
+    DisarmAutoMerge,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]

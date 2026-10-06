@@ -4,16 +4,23 @@
 use std::io::Read;
 use std::path::{Path, PathBuf};
 use std::process::{Command, Stdio};
+use std::sync::{Arc, Mutex};
 use std::time::{Duration, Instant};
 
-use interlock_core::delivery::PrState;
+use chrono::{DateTime, Utc};
+use interlock_core::delivery::{Landed, PrState};
 use serde_json::Value;
 
-use crate::{Check, CheckStatus, Forge, ForgeError, MergeMethod, NewPr, PrView};
+use crate::deliver::parse_duration;
+use crate::{Check, CheckStatus, Forge, ForgeError, MergeMethod, NewPr, PrView, forge_var};
 
 /// The fields interlock reads from `gh pr view` and `gh pr list`.
 pub const PR_FIELDS: &str = "number,url,state,isDraft,headRefName,headRefOid,baseRefName,baseRefOid,\
-                             mergeable,mergeStateStatus,statusCheckRollup,mergeCommit,autoMergeRequest";
+                             mergeable,mergeStateStatus,statusCheckRollup,mergeCommit,mergedAt,autoMergeRequest";
+
+/// How long a call's output may keep arriving after the call exits, for
+/// example while a child it left behind still holds the pipe.
+const OUTPUT_GRACE: Duration = Duration::from_secs(2);
 
 #[derive(Debug, Clone)]
 pub struct GhForge {
@@ -30,15 +37,18 @@ pub struct GhForge {
 }
 
 impl GhForge {
-    /// Reads INTERLOCK_GH_BIN, INTERLOCK_FORGE_REMOTE and INTERLOCK_FORGE_REPO.
+    /// Reads INTERLOCK_GH_BIN, INTERLOCK_FORGE_REMOTE, INTERLOCK_FORGE_REPO and
+    /// INTERLOCK_FORGE_CALL_TIMEOUT (default 120s). Inside an attempt all of
+    /// them are ignored.
     pub fn from_env(dir: &Path) -> GhForge {
-        let var = |k: &str| std::env::var(k).ok().filter(|v| !v.is_empty());
         GhForge {
-            gh: var("INTERLOCK_GH_BIN").map_or_else(|| PathBuf::from("gh"), PathBuf::from),
+            gh: forge_var("INTERLOCK_GH_BIN").map_or_else(|| PathBuf::from("gh"), PathBuf::from),
             dir: dir.to_path_buf(),
-            remote: var("INTERLOCK_FORGE_REMOTE").unwrap_or_else(|| "origin".into()),
-            repo: var("INTERLOCK_FORGE_REPO"),
-            timeout: Duration::from_secs(120),
+            remote: forge_var("INTERLOCK_FORGE_REMOTE").unwrap_or_else(|| "origin".into()),
+            repo: forge_var("INTERLOCK_FORGE_REPO"),
+            timeout: forge_var("INTERLOCK_FORGE_CALL_TIMEOUT")
+                .and_then(|t| parse_duration(&t))
+                .unwrap_or(Duration::from_secs(120)),
         }
     }
 
@@ -56,8 +66,35 @@ impl GhForge {
     }
 }
 
+/// Reads a pipe into a shared buffer until it closes.
+fn drain(mut pipe: impl Read + Send + 'static) -> (Arc<Mutex<Vec<u8>>>, std::thread::JoinHandle<()>) {
+    let buf = Arc::new(Mutex::new(Vec::new()));
+    let shared = buf.clone();
+    let handle = std::thread::spawn(move || {
+        let mut chunk = [0u8; 8192];
+        while let Ok(n) = pipe.read(&mut chunk) {
+            if n == 0 {
+                break;
+            }
+            shared.lock().unwrap_or_else(|e| e.into_inner()).extend_from_slice(&chunk[..n]);
+        }
+    });
+    (buf, handle)
+}
+
+/// What a pipe delivered, waiting at most `grace` for it to close.
+fn collected(buf: &Arc<Mutex<Vec<u8>>>, handle: &std::thread::JoinHandle<()>, grace: Duration) -> String {
+    let until = Instant::now() + grace;
+    while !handle.is_finished() && Instant::now() < until {
+        std::thread::sleep(Duration::from_millis(10));
+    }
+    String::from_utf8_lossy(&buf.lock().unwrap_or_else(|e| e.into_inner())).into_owned()
+}
+
 /// Runs one command to completion or `timeout`. A command that cannot start,
 /// times out, or dies from a signal is `Unavailable`: it may have acted.
+/// Output that keeps arriving after the command exits (a child it left
+/// behind holds the pipe) is cut off after a short grace.
 pub(crate) fn run(
     program: &Path,
     args: &[&str],
@@ -75,18 +112,8 @@ pub(crate) fn run(
         .stderr(Stdio::piped())
         .spawn()
         .map_err(|e| ForgeError::Unavailable(format!("cannot run {shown}: {e}")))?;
-    let mut out = child.stdout.take().expect("piped stdout");
-    let mut err = child.stderr.take().expect("piped stderr");
-    let reader = std::thread::spawn(move || {
-        let mut s = String::new();
-        let _ = out.read_to_string(&mut s);
-        s
-    });
-    let err_reader = std::thread::spawn(move || {
-        let mut s = String::new();
-        let _ = err.read_to_string(&mut s);
-        s
-    });
+    let (out, out_reader) = drain(child.stdout.take().expect("piped stdout"));
+    let (err, err_reader) = drain(child.stderr.take().expect("piped stderr"));
     let started = Instant::now();
     let status = loop {
         match child.try_wait() {
@@ -94,14 +121,17 @@ pub(crate) fn run(
             Ok(None) if started.elapsed() > timeout => {
                 let _ = child.kill();
                 let _ = child.wait();
-                return Err(ForgeError::Unavailable(format!("{shown} gave no answer in {}s", timeout.as_secs())));
+                return Err(ForgeError::Unavailable(format!(
+                    "{shown} gave no answer in {:.1}s",
+                    timeout.as_secs_f64()
+                )));
             }
             Ok(None) => std::thread::sleep(Duration::from_millis(20)),
             Err(e) => return Err(ForgeError::Unavailable(format!("{shown}: {e}"))),
         }
     };
-    let stdout = reader.join().unwrap_or_default();
-    let stderr = err_reader.join().unwrap_or_default();
+    let stdout = collected(&out, &out_reader, OUTPUT_GRACE);
+    let stderr = collected(&err, &err_reader, OUTPUT_GRACE);
     match status.code() {
         Some(0) => Ok(stdout.trim().to_string()),
         Some(code) => Err(ForgeError::Failed {
@@ -166,6 +196,10 @@ pub fn parse_pr(v: &Value) -> Result<PrView, ForgeError> {
         merge_state: text("mergeStateStatus"),
         checks: v["statusCheckRollup"].as_array().map(|a| a.iter().map(parse_check).collect()).unwrap_or_default(),
         merge_commit: v["mergeCommit"]["oid"].as_str().map(str::to_string),
+        merged_at: v["mergedAt"]
+            .as_str()
+            .and_then(|t| DateTime::parse_from_rfc3339(t).ok())
+            .map(|t| t.with_timezone(&Utc)),
         auto_merge: v["autoMergeRequest"].is_object(),
     })
 }
@@ -235,5 +269,25 @@ impl Forge for GhForge {
             args.push("--auto");
         }
         self.gh(&args).map(|_| ())
+    }
+
+    fn disarm(&self, number: u64) -> Result<(), ForgeError> {
+        self.gh(&["pr", "merge", &number.to_string(), "--disable-auto"]).map(|_| ())
+    }
+
+    fn landed(&self, merge: &str, base_branch: &str, into: &str) -> Result<Landed, ForgeError> {
+        let tip = self.fetch(base_branch, into)?;
+        let on_base =
+            match run(Path::new("git"), &["merge-base", "--is-ancestor", merge, &tip], &self.dir, &[], self.timeout) {
+                Ok(_) => true,
+                Err(ForgeError::Failed { .. }) => false,
+                Err(e) => return Err(e),
+            };
+        if !on_base {
+            return Ok(Landed { on_base, onto: None, tree: None });
+        }
+        let onto = self.git(&["rev-parse", "--verify", &format!("{merge}^1")]).ok();
+        let tree = self.git(&["rev-parse", "--verify", &format!("{merge}^{{tree}}")]).ok();
+        Ok(Landed { on_base, onto, tree })
     }
 }

@@ -1,6 +1,7 @@
 //! `interlock integrate run`, `interlock reconcile`, and the reconcile that
 //! starts every `interlock run`. All of them hold the controller lock, so
-//! only one process talks to the forge for a checkout at a time.
+//! only one process talks to the forge for a checkout at a time, and none of
+//! them runs inside an attempt: they are the operator's.
 
 use std::path::{Path, PathBuf};
 use std::process::ExitCode;
@@ -9,7 +10,7 @@ use std::sync::atomic::AtomicBool;
 use anyhow::{Result, anyhow, bail};
 use clap::Args;
 use interlock_forge::deliver::parse_duration;
-use interlock_forge::{DeliverConfig, DeliverError, GhForge, MergeMethod};
+use interlock_forge::{DeliverConfig, DeliverError, GhForge, MergeMethod, inside_attempt};
 use interlock_schema::State;
 use interlock_store::Store;
 use serde_json::json;
@@ -37,6 +38,21 @@ pub struct IntegrateRun {
     pub wait: String,
     #[arg(long, env = "INTERLOCK_FORGE_POLL", default_value = "15s")]
     pub poll: String,
+    /// A pull request that reports no checks is not ready until this long after the push.
+    #[arg(long, env = "INTERLOCK_FORGE_CHECKS_SETTLE", default_value = "30s")]
+    pub checks_settle: String,
+    /// How long one gh or git call may take before its outcome counts as unknown.
+    #[arg(long, env = "INTERLOCK_FORGE_CALL_TIMEOUT", default_value = "120s")]
+    pub call_timeout: String,
+}
+
+/// Forge commands are the operator's. An agent inside an attempt may not run
+/// them, whatever the hooks let through.
+pub fn operator_only(command: &str) -> Result<()> {
+    if inside_attempt() {
+        bail!("`interlock {command}` is the operator's; it does not run inside an attempt (INTERLOCK_ATTEMPT is set)");
+    }
+    Ok(())
 }
 
 /// One controller per checkout: the same lock file `interlock run` takes.
@@ -79,6 +95,7 @@ fn repo_root() -> Result<PathBuf> {
 /// G5, push, pull request, readiness, the pinned merge, and G6. Exits 0 when
 /// the task is done and 5 otherwise, like `interlock run`.
 pub fn integrate_run(db: &Path, args: &IntegrateRun) -> Result<ExitCode> {
+    operator_only("integrate run")?;
     let repo = repo_root()?;
     let duration = |s: &str| parse_duration(s).ok_or_else(|| anyhow!("bad duration {s}; use forms like 90s or 15m"));
     let cfg = DeliverConfig {
@@ -87,10 +104,12 @@ pub fn integrate_run(db: &Path, args: &IntegrateRun) -> Result<ExitCode> {
         auto_merge: args.auto_merge,
         wait: duration(&args.wait)?,
         poll: duration(&args.poll)?,
+        checks_settle: duration(&args.checks_settle)?,
     };
     let mut forge = GhForge::from_env(&repo);
     forge.remote = args.remote.clone();
     forge.repo = args.repo.clone().or(forge.repo);
+    forge.timeout = duration(&args.call_timeout)?;
     let _lock = ControllerLock::acquire(db)?;
     let mut store = Store::open(db)?;
     let delivery = interlock_forge::integrate(&mut store, &repo, &forge, &cfg, &args.task, &AtomicBool::new(false))
@@ -101,11 +120,12 @@ pub fn integrate_run(db: &Path, args: &IntegrateRun) -> Result<ExitCode> {
 
 /// Settles every operation nobody confirmed, for one task or all of them.
 pub fn reconcile(db: &Path, task: Option<&str>) -> Result<()> {
+    operator_only("reconcile")?;
     let repo = repo_root()?;
     let _lock = ControllerLock::acquire(db)?;
     let mut store = Store::open(db)?;
     let forge = GhForge::from_env(&repo);
-    let reconciled = interlock_forge::reconcile(&mut store, &forge, task).map_err(deliver_err)?;
+    let reconciled = interlock_forge::reconcile(&mut store, &repo, &forge, task).map_err(deliver_err)?;
     let unknown =
         store.open_operations(task)?.iter().filter(|o| o.state == interlock_schema::OperationState::Unknown).count();
     crate::print(&json!({ "reconciled": reconciled, "still_unknown": unknown }))
@@ -115,12 +135,13 @@ pub fn reconcile(db: &Path, task: Option<&str>) -> Result<()> {
 /// controller left open is settled from the forge before anything else.
 /// Returns the operations it settled.
 pub fn reconcile_on_start(db: &Path, repo: &Path) -> Result<Vec<String>> {
+    operator_only("run")?;
     let _lock = ControllerLock::acquire(db)?;
     let mut store = Store::open(db)?;
-    if store.open_operations(None)?.is_empty() {
+    if store.open_operations(None)?.is_empty() && store.pinned_landings(None)?.is_empty() {
         return Ok(vec![]);
     }
     let forge = GhForge::from_env(repo);
-    let reconciled = interlock_forge::reconcile(&mut store, &forge, None).map_err(deliver_err)?;
+    let reconciled = interlock_forge::reconcile(&mut store, repo, &forge, None).map_err(deliver_err)?;
     Ok(reconciled.into_iter().map(|r| r.operation).collect())
 }

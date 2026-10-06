@@ -2,241 +2,13 @@
 //! repository standing in for GitHub. Deterministic, no network. They skip
 //! when python3 (which runs the fake) is missing.
 
-use std::path::{Path, PathBuf};
-use std::process::Command;
-use std::sync::atomic::AtomicBool;
-use std::time::Duration;
+mod common;
 
 use chrono::Utc;
-use interlock_core::capability::{Capability, CapabilitySet};
+use common::*;
 use interlock_core::delivery::UNKNOWN_OUTCOME;
-use interlock_core::grants::{HostPolicy, Profile};
-use interlock_core::lifecycle::{EvidenceKind, TaskSpec};
-use interlock_core::workflow::Mode;
-use interlock_forge::testing::{FakeGh, Remote, python3_available};
-use interlock_forge::{DeliverConfig, Delivery, GhForge, git, integrate, reconcile};
+use interlock_forge::git;
 use interlock_schema::*;
-use interlock_store::*;
-
-const TASK: &str = "fix-add";
-const BUGGY: &str = "def add(a, b):\n    return a - b\n";
-const FIXED: &str = "def add(a, b):\n    return a + b\n";
-
-fn git(dir: &Path, args: &[&str], env: &[(&str, &str)]) -> String {
-    let out = Command::new("git")
-        .args(["-c", "commit.gpgsign=false", "-c", "user.name=t", "-c", "user.email=t@t"])
-        .args(args)
-        .current_dir(dir)
-        .envs(env.iter().copied())
-        .output()
-        .unwrap();
-    assert!(out.status.success(), "git {args:?}: {}", String::from_utf8_lossy(&out.stderr));
-    String::from_utf8_lossy(&out.stdout).trim().to_string()
-}
-
-fn caps() -> CapabilitySet {
-    [Capability::SessionStart, Capability::SessionCollect, Capability::SessionCancel, Capability::ToolRestriction]
-        .into_iter()
-        .collect()
-}
-
-struct Fixture {
-    _dir: tempfile::TempDir,
-    repo: PathBuf,
-    remote: Remote,
-    gh: FakeGh,
-    forge: GhForge,
-    store: Store,
-    base: String,
-    cfg: DeliverConfig,
-}
-
-impl Fixture {
-    fn new() -> Option<Fixture> {
-        if !python3_available() {
-            eprintln!("skipping: the fake gh needs python3");
-            return None;
-        }
-        let dir = tempfile::tempdir().unwrap();
-        let repo = dir.path().join("repo");
-        std::fs::create_dir_all(&repo).unwrap();
-        git(&repo, &["init", "-q", "-b", "main"], &[]);
-        std::fs::write(repo.join("calc.py"), BUGGY).unwrap();
-        git(&repo, &["add", "-A"], &[]);
-        git(&repo, &["commit", "-q", "-m", "init"], &[]);
-        let base = git(&repo, &["rev-parse", "HEAD"], &[]);
-        let remote = Remote::create(&dir.path().join("remote.git"), &repo);
-        let gh = FakeGh::install(&dir.path().join("gh"), &remote);
-        let db = dir.path().join("state.db");
-        gh.watch_store(&db);
-        let forge = GhForge {
-            gh: gh.bin.clone(),
-            dir: repo.clone(),
-            remote: "origin".into(),
-            repo: None,
-            timeout: Duration::from_secs(30),
-        };
-        let mut store = Store::open(&db).unwrap();
-        let spec: TaskSpec = serde_json::from_value(serde_json::json!({
-            "id": TASK,
-            "repository": repo,
-            "workflow": "bug-fix",
-            "intent": "add() returns the difference instead of the sum",
-            "integration_required": true,
-            "criteria": [
-                {"id": "fixed", "statement": "add(2, 3) returns 5", "min_strength": "tested", "producer": "self"},
-                {"id": "verified", "statement": "An independent check passes",
-                 "min_strength": "observed", "producer": "independent"}
-            ]
-        }))
-        .unwrap();
-        store.create_task(spec, Utc::now()).unwrap();
-        let snapshot = Snapshot {
-            repository: repo.display().to_string(),
-            base_commit: base.clone(),
-            untracked_hash: None,
-            protected_paths: vec![],
-        };
-        store.ready(TASK, snapshot, Utc::now()).unwrap();
-        let cfg = DeliverConfig { wait: Duration::ZERO, poll: Duration::from_millis(10), ..DeliverConfig::default() };
-        Some(Fixture { _dir: dir, repo, remote, gh, forge, store, base, cfg })
-    }
-
-    /// A tree like `commit`'s with `path` = `content`, written through a temporary index.
-    fn tree_with(&self, commit: &str, path: &str, content: &str) -> String {
-        let index = self.repo.join(".git/interlock-test-index");
-        let index = index.display().to_string();
-        let env = [("GIT_INDEX_FILE", index.as_str())];
-        git(&self.repo, &["read-tree", commit], &env);
-        let file = self.repo.join(".git/blob.tmp");
-        std::fs::write(&file, content).unwrap();
-        let blob = git(&self.repo, &["hash-object", "-w", &file.display().to_string()], &[]);
-        git(&self.repo, &["update-index", "--add", "--cacheinfo", &format!("100644,{blob},{path}")], &env);
-        git(&self.repo, &["write-tree"], &env)
-    }
-
-    fn start(&mut self, role: Role) -> (String, String, u32) {
-        let started = self
-            .store
-            .start_attempt(
-                StartAttempt {
-                    task_id: TASK.into(),
-                    role,
-                    mode: Mode::Headless,
-                    host: HostRef { host: "test".into(), version: "0".into() },
-                    capabilities: caps(),
-                    profile: Profile::Conservative,
-                    host_policy: HostPolicy::open(),
-                    agent: None,
-                    model: None,
-                    worktree: None,
-                },
-                Utc::now(),
-            )
-            .unwrap();
-        match started {
-            Started::Yes { attempt, token, .. } => (attempt.id, token, attempt.epoch),
-            Started::Blocked { moved } => panic!("blocked: {}", moved.reason),
-        }
-    }
-
-    fn evidence(
-        &mut self,
-        kind: EvidenceKind,
-        attempt: &(String, String, u32),
-        criterion: &str,
-        s: Strength,
-        tree: &str,
-    ) {
-        self.store
-            .add_evidence(
-                kind,
-                AddEvidence {
-                    attempt_id: attempt.0.clone(),
-                    token: attempt.1.clone(),
-                    criterion_id: criterion.into(),
-                    strength: s,
-                    tree: tree.into(),
-                    environment: None,
-                    evidence_refs: vec![],
-                    note: None,
-                    event_id: None,
-                },
-                Utc::now(),
-            )
-            .unwrap();
-    }
-
-    /// A worker submits the fixed tree, and a verifier passes it: the task is verified.
-    fn verified(&mut self) -> String {
-        let tree = self.tree_with(&self.base.clone(), "calc.py", FIXED);
-        let w = self.start(Role::Worker);
-        self.store
-            .submit_result(
-                SubmitResult {
-                    attempt_id: w.0.clone(),
-                    token: w.1.clone(),
-                    epoch: w.2,
-                    output_tree: tree.clone(),
-                    changed_paths: vec!["calc.py".into()],
-                    summary: "fixed add".into(),
-                    open_questions: vec![],
-                    event_id: None,
-                },
-                Utc::now(),
-            )
-            .unwrap();
-        self.evidence(EvidenceKind::Claim, &w, "fixed", Strength::Tested, &tree);
-        self.reverify(&tree);
-        tree
-    }
-
-    /// Fresh evidence for `tree` from a worker claim on record and a new verifier.
-    fn reverify(&mut self, tree: &str) {
-        let v = self.start(Role::Verifier);
-        self.evidence(EvidenceKind::Assessment, &v, "fixed", Strength::Tested, tree);
-        self.evidence(EvidenceKind::Assessment, &v, "verified", Strength::Observed, tree);
-        self.store.advance(TASK, Utc::now()).unwrap();
-        assert_eq!(self.state(), State::Verified, "{:?}", self.store.evaluate(TASK).unwrap().1.missing());
-    }
-
-    fn grant_landing(&mut self) -> Grant {
-        self.store
-            .create_grant(
-                NewGrant {
-                    principal: "operator".into(),
-                    task_scope: vec![TASK.into()],
-                    action_classes: vec![ActionClass::Landing],
-                    tools: ToolPolicy::default(),
-                    landing_authority: LandingAuthority::Operator,
-                    origin: "land the add fix once it is verified".into(),
-                    expires_at: None,
-                },
-                Utc::now(),
-            )
-            .unwrap()
-    }
-
-    fn integrate(&mut self) -> Delivery {
-        integrate(&mut self.store, &self.repo, &self.forge, &self.cfg, TASK, &AtomicBool::new(false)).unwrap()
-    }
-
-    fn state(&self) -> State {
-        self.store.task(TASK).unwrap().state
-    }
-
-    fn signals(&self) -> Vec<String> {
-        self.store.transitions(TASK).unwrap().into_iter().map(|t| t.signal).collect()
-    }
-
-    fn ops(&self) -> Vec<(OperationKind, OperationState)> {
-        self.store.operations(TASK).unwrap().iter().map(|o| (o.kind, o.state)).collect()
-    }
-
-    fn head(&self) -> String {
-        git::verified_head(&self.repo, &self.store.task(TASK).unwrap()).unwrap()
-    }
-}
 
 #[test]
 fn a_verified_task_lands_only_at_its_verified_head() {
@@ -443,13 +215,13 @@ fn an_unknown_outcome_blocks_the_task_until_reconcile_can_tell() {
     assert_eq!(merge.state, OperationState::Unknown);
 
     // Still unreachable: reconcile changes nothing.
-    let r = reconcile(&mut f.store, &f.forge, None).unwrap();
+    let r = f.reconcile();
     assert_eq!((r[0].before, r[0].after), (OperationState::Unknown, OperationState::Unknown));
     assert_eq!(f.state(), State::Blocked);
 
     // The forge answers again: the merged head is found, the block lifts, and G6 applies.
     f.gh.clear_faults();
-    let r = reconcile(&mut f.store, &f.forge, Some(TASK)).unwrap();
+    let r = f.reconcile();
     assert_eq!((r[0].before, r[0].after), (OperationState::Unknown, OperationState::Confirmed));
     assert_eq!(f.state(), State::Done);
     let tail: Vec<String> = f.signals().into_iter().rev().take(3).collect();
@@ -491,7 +263,7 @@ fn auto_merge_is_armed_at_the_verified_head_and_confirmed_when_the_forge_merges(
 
     // Checks pass and the forge merges on its own; reconcile confirms it.
     f.gh.checks("pass");
-    let r = reconcile(&mut f.store, &f.forge, Some(TASK)).unwrap();
+    let r = f.reconcile();
     assert_eq!(r[0].after, OperationState::Confirmed);
     assert_eq!(f.state(), State::Done);
 }
@@ -521,22 +293,53 @@ fn a_merge_the_forge_accepted_but_has_not_done_stays_in_flight_until_reconciled(
     assert_eq!(merge.state, OperationState::Started, "still in flight, not failed and not retried");
     assert_eq!(f.gh.calls_to(&["pr", "merge"]).len(), 1);
 
-    let r = reconcile(&mut f.store, &f.forge, Some(TASK)).unwrap();
+    let r = f.reconcile();
     assert_eq!((r[0].before, r[0].after), (OperationState::Started, OperationState::Confirmed));
     assert_eq!(f.state(), State::Done);
     assert_eq!(f.gh.calls_to(&["pr", "merge"]).len(), 1, "merged once");
 }
 
+/// The verified head must not depend on the clock, the machine's signing
+/// setup, or which copy of the repository computes it. The fixture's repos
+/// try to sign every commit with a program that always fails; a second copy
+/// is cloned more than a second later.
 #[test]
-fn the_verified_head_is_the_same_commit_every_time_and_moves_no_branch() {
+fn the_verified_head_is_the_same_commit_in_another_clone_a_second_later_and_never_signed() {
     let Some(mut f) = Fixture::new() else { return };
     let tree = f.verified();
+    let task = f.store.task(TASK).unwrap();
     let before = git(&f.repo, &["for-each-ref", "refs/heads"], &[]);
-    let a = f.head();
-    let b = f.head();
-    assert_eq!(a, b, "a restarted controller rebuilds the head it pinned");
+    let a = git::verified_head(&f.repo, &task).unwrap();
     assert_eq!(git::tree_of(&f.repo, &a).unwrap(), tree);
     assert!(!git(&f.repo, &["cat-file", "commit", &a], &[]).contains("gpgsig"), "never signed");
-    assert_eq!(git(&f.repo, &["rev-parse", "refs/interlock/fix-add/head"], &[]), a);
+
+    std::thread::sleep(std::time::Duration::from_millis(1100));
+    let other = f.dir.path().join("clone");
+    git(f.dir.path(), &["clone", "-q", &f.repo.display().to_string(), &other.display().to_string()], &[]);
+    trap_signing(&other);
+    assert_eq!(tree_with(&other, &f.base, "calc.py", FIXED), tree, "the same tree, rebuilt in the clone");
+    let b = git::verified_head(&other, &task).unwrap();
+    assert_eq!(a, b, "a restarted controller, anywhere, rebuilds the head it pinned");
+    // Computing the head writes no ref and moves no branch.
+    assert_eq!(f.refs(), "");
     assert_eq!(git(&f.repo, &["for-each-ref", "refs/heads"], &[]), before);
+}
+
+#[test]
+fn refs_are_kept_from_g5_until_the_task_is_done() {
+    let Some(mut f) = Fixture::new() else { return };
+    f.verified();
+    assert_eq!(f.integrate().final_state, State::Blocked, "no landing authority");
+    assert_eq!(f.refs(), "", "no ref before G5 passes");
+
+    let Some(mut f) = Fixture::new() else { return };
+    f.verified();
+    f.grant_landing();
+    f.gh.checks("pending");
+    let d = f.integrate();
+    assert_eq!(d.final_state, State::Integrating);
+    assert_eq!(f.refs(), "refs/interlock/fix-add/head");
+    f.gh.checks("pass");
+    assert_eq!(f.integrate().final_state, State::Done);
+    assert_eq!(f.refs(), "", "a finished task leaves no refs behind");
 }

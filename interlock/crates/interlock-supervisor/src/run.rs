@@ -194,6 +194,8 @@ impl Supervisor {
                         break format!("cannot start: {e}");
                     }
                 }
+                // The evidence may already decide, as after a moved-head R2: then no verifier session is needed.
+                State::AwaitingVerification if !self.store.advance(task_id, Utc::now())?.is_empty() => {}
                 State::Ready | State::AwaitingVerification if sessions >= self.cfg.max_sessions => {
                     break format!("used all {} sessions this run allows", self.cfg.max_sessions);
                 }

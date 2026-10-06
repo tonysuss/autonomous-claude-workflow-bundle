@@ -16,7 +16,7 @@ use serde::{Deserialize, Serialize, de::DeserializeOwned};
 
 mod operations;
 
-pub use operations::Settled;
+pub use operations::{Pin, Settled};
 
 const MIGRATIONS: &[&str] =
     &[include_str!("migrations/001_initial.sql"), include_str!("migrations/002_check_runs.sql")];

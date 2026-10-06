@@ -161,6 +161,17 @@ impl FakeGh {
         self.update(|v| v["faults"] = json!({}));
     }
 
+    /// Sets one top-level state key, such as `lag` or `base_oid`.
+    pub fn set(&self, key: &str, value: Value) {
+        self.update(|v| v[key] = value);
+    }
+
+    /// Runs the fake directly, as someone else using `gh` would: an operator
+    /// merging, or just time passing for queued merges.
+    pub fn gh(&self, args: &[&str]) -> std::process::Output {
+        Command::new(&self.bin).args(args).output().expect("the fake gh runs")
+    }
+
     pub fn checks(&self, status: &str) {
         self.update(|v| v["checks"] = json!(status));
     }

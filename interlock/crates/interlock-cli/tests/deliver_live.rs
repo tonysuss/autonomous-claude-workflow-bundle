@@ -88,7 +88,7 @@ fn the_export_retry_walkthrough_is_delivered_on_claude_code() {
         "--classes",
         "landing",
         "--landing",
-        "operator",
+        "coordinator",
         "--origin",
         "land the export fix once it is verified",
     ]);
@@ -97,7 +97,14 @@ fn the_export_retry_walkthrough_is_delivered_on_claude_code() {
     let (_, operations) = interlock(&["integrate", "operations", "export-retry"]);
     let (_, status) = interlock(&["status", "export-retry"]);
     let landed = remote.show("main");
-    let diff = git(&repo, &["diff", &base, "refs/interlock/export-retry/head"]);
+    // The head the merge was pinned to; interlock deletes its refs once the task is done.
+    let head = operations
+        .as_array()
+        .and_then(|ops| ops.iter().rev().find(|o| o["kind"] == "merge"))
+        .and_then(|o| o["intent"]["expected_head_sha"].as_str())
+        .unwrap_or_default()
+        .to_string();
+    let diff = if head.is_empty() { String::new() } else { git(&repo, &["diff", &base, &head]) };
     println!("{report:#}\n{log:#}");
 
     if let Some(out) = std::env::var_os("INTERLOCK_LIVE_OUT").map(PathBuf::from) {
@@ -127,5 +134,5 @@ fn the_export_retry_walkthrough_is_delivered_on_claude_code() {
     assert_eq!(report["final_state"], "done");
     let signals: Vec<&str> = log.as_array().unwrap().iter().filter_map(|r| r["signal"].as_str()).collect();
     assert_eq!(signals[signals.len() - 2..], ["G5", "G6"]);
-    assert!(landed.ends_with(&git(&repo, &["rev-parse", "refs/interlock/export-retry/head"])));
+    assert!(!head.is_empty() && landed.ends_with(&head), "{landed} is a merge of {head}");
 }

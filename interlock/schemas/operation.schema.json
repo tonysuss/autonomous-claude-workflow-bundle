@@ -9,7 +9,7 @@
   "properties": {
     "id": { "$ref": "common.schema.json#/$defs/id" },
     "task_id": { "$ref": "common.schema.json#/$defs/id" },
-    "kind": { "enum": ["open_pr", "merge", "arm_auto_merge"] },
+    "kind": { "enum": ["open_pr", "merge", "arm_auto_merge", "disarm_auto_merge"] },
     "intent": {
       "type": "object",
       "additionalProperties": false,

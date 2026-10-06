@@ -65,8 +65,25 @@ fn add(store: &mut Store, kind: EvidenceKind, a: &(String, String, u32), criteri
         .unwrap();
 }
 
-/// A task at G5: integrating, with its landing operation planned.
-fn integrating(store: &mut Store) -> Operation {
+fn grant(store: &mut Store, authority: LandingAuthority, at: i64) -> Grant {
+    store
+        .create_grant(
+            NewGrant {
+                principal: "operator".into(),
+                task_scope: vec!["t1".into()],
+                action_classes: vec![ActionClass::Landing],
+                tools: ToolPolicy::default(),
+                landing_authority: authority,
+                origin: "ship it".into(),
+                expires_at: None,
+            },
+            t(at),
+        )
+        .unwrap()
+}
+
+/// A task at G5 under the given landing authority: integrating, with its landing operation planned.
+fn integrating_with(store: &mut Store, authority: LandingAuthority) -> Operation {
     let spec: TaskSpec = serde_json::from_value(json!({
         "id": "t1", "repository": "/r", "workflow": "bug-fix", "intent": "fix it", "integration_required": true,
         "criteria": [
@@ -103,25 +120,24 @@ fn integrating(store: &mut Store) -> Operation {
     let v = start(store, Role::Verifier);
     add(store, EvidenceKind::Assessment, &v, "checked", Strength::Observed);
     store.advance("t1", t(5)).unwrap();
-    store
-        .create_grant(
-            NewGrant {
-                principal: "operator".into(),
-                task_scope: vec!["t1".into()],
-                action_classes: vec![ActionClass::Landing],
-                tools: ToolPolicy::default(),
-                landing_authority: LandingAuthority::Operator,
-                origin: "ship it".into(),
-                expires_at: None,
-            },
-            t(5),
-        )
-        .unwrap();
+    grant(store, authority, 5);
     let intent =
         OperationIntent { expected_head_sha: Some(HEAD.into()), base: Some("main".into()), pull_request: None };
     let (mv, op) = store.begin_integration("t1", OperationKind::Merge, intent, t(6)).unwrap();
     assert_eq!(mv.signal, Signal::G5);
     op.unwrap()
+}
+
+fn integrating(store: &mut Store) -> Operation {
+    integrating_with(store, LandingAuthority::Coordinator)
+}
+
+fn pin(pr: Option<u64>) -> Pin {
+    Pin { pull_request: pr, base: Some("main".into()), tree: Some(TREE.into()) }
+}
+
+fn merged() -> Verdict {
+    Verdict::Land { report: MergeReport::Merged { head_sha: HEAD.into() }, merged_at: None }
 }
 
 fn state(store: &Store) -> State {
@@ -135,17 +151,16 @@ fn a_started_operation_survives_a_crash_for_reconcile_to_find() {
     let op_id = {
         let mut store = Store::open(&path).unwrap();
         let op = integrating(&mut store);
-        let started = store.start_operation(&op.id, Some(7), t(7)).unwrap().unwrap();
+        let started = store.start_operation(&op.id, &pin(Some(7)), t(7)).unwrap().unwrap();
         assert_eq!((started.state, started.intent.pull_request), (OperationState::Started, Some(7)));
         op.id
-        // The process dies here, after the call and before anything was settled.
+        // The store is closed here, after the call and before anything was settled.
     };
     let mut store = Store::open(&path).unwrap();
     let open = store.open_operations(None).unwrap();
     assert_eq!(open.len(), 1);
     assert_eq!((open[0].id.as_str(), open[0].state), (op_id.as_str(), OperationState::Started));
-    let verdict = Verdict::Land { report: MergeReport::Merged { head_sha: HEAD.into() } };
-    let settled = store.settle_operation(&op_id, &verdict, json!({ "reconciled": true }), t(9)).unwrap();
+    let settled = store.settle_operation(&op_id, &merged(), json!({ "reconciled": true }), t(9)).unwrap();
     assert_eq!(settled.operation.state, OperationState::Confirmed);
     assert_eq!(settled.moves[0].signal, Signal::G6);
     assert_eq!(state(&store), State::Done);
@@ -157,13 +172,40 @@ fn only_integrating_tasks_plan_operations_and_one_runs_at_a_time() {
     let mut store = Store::open_in_memory().unwrap();
     let landing = integrating(&mut store);
     let open_pr = store.plan_operation("t1", OperationKind::OpenPr, OperationIntent::default(), t(7)).unwrap();
-    store.start_operation(&open_pr.id, None, t(7)).unwrap().unwrap();
-    let busy = store.start_operation(&landing.id, Some(7), t(8)).unwrap_err();
+    store.start_operation(&open_pr.id, &pin(None), t(7)).unwrap().unwrap();
+    let busy = store.start_operation(&landing.id, &pin(Some(7)), t(8)).unwrap_err();
     assert!(busy.to_string().contains("still in flight"), "{busy}");
-    assert!(store.start_operation(&open_pr.id, None, t(8)).is_err(), "a started operation cannot start again");
+    assert!(store.start_operation(&open_pr.id, &pin(None), t(8)).is_err(), "a started operation cannot start again");
 
     store.block("t1", "operator wants a look", t(9)).unwrap();
     assert!(store.plan_operation("t1", OperationKind::OpenPr, OperationIntent::default(), t(9)).is_err());
+}
+
+#[test]
+fn stale_evidence_refuses_the_call_and_applies_r2_in_the_same_transaction() {
+    let mut store = Store::open_in_memory().unwrap();
+    let landing = integrating(&mut store);
+    // The code under evidence changes while integrating, as `interlock task tree` records after a rebase.
+    store.record_new_tree("t1", "bbbbbbb2222222222222222222222222222222222", t(7)).unwrap();
+    let Err(mv) = store.start_operation(&landing.id, &pin(Some(7)), t(8)).unwrap() else {
+        panic!("an operation must not start on stale evidence")
+    };
+    assert_eq!((mv.signal, mv.to), (Signal::R2, State::AwaitingVerification));
+    let op = store.operation(&landing.id).unwrap();
+    assert_eq!(op.state, OperationState::Failed);
+    assert_eq!(op.outcome.unwrap()["called"], false);
+}
+
+#[test]
+fn a_head_built_from_another_tree_is_r2_even_with_current_evidence() {
+    let mut store = Store::open_in_memory().unwrap();
+    let landing = integrating(&mut store);
+    let stale = Pin { tree: Some("ddddddd4444444444444444444444444444444444".into()), ..pin(Some(7)) };
+    let Err(mv) = store.start_operation(&landing.id, &stale, t(8)).unwrap() else {
+        panic!("the head must have been built from the task's current tree")
+    };
+    assert_eq!(mv.signal, Signal::R2);
+    assert_eq!(store.operation(&landing.id).unwrap().state, OperationState::Failed);
 }
 
 #[test]
@@ -172,7 +214,7 @@ fn a_revoked_grant_fails_the_operation_before_its_call_and_blocks_the_task() {
     let op = integrating(&mut store);
     let grant = store.grants().unwrap().pop().unwrap();
     store.revoke_grant(&grant.id, t(7)).unwrap();
-    let Err(mv) = store.start_operation(&op.id, Some(7), t(8)).unwrap() else { panic!("must not start") };
+    let Err(mv) = store.start_operation(&op.id, &pin(Some(7)), t(8)).unwrap() else { panic!("must not start") };
     assert_eq!((mv.signal, mv.to), (Signal::Block, State::Blocked));
     assert!(mv.reason.starts_with("landing authority is no longer granted"), "{}", mv.reason);
     let op = store.operation(&op.id).unwrap();
@@ -181,11 +223,76 @@ fn a_revoked_grant_fails_the_operation_before_its_call_and_blocks_the_task() {
 }
 
 #[test]
+fn operator_authority_never_lets_interlock_start_a_merge() {
+    let mut store = Store::open_in_memory().unwrap();
+    let landing = integrating_with(&mut store, LandingAuthority::Operator);
+    let err = store.start_operation(&landing.id, &pin(Some(7)), t(8)).unwrap_err();
+    assert!(err.to_string().contains("the operator merges"), "{err}");
+    assert_eq!(store.operation(&landing.id).unwrap().state, OperationState::Planned);
+    // The operator's merge, once observed, still lands the task.
+    store.pin_operation(&landing.id, &pin(Some(7)), t(9)).unwrap();
+    assert_eq!(store.pinned_landings(None).unwrap().len(), 1);
+    let s = store.settle_operation(&landing.id, &merged(), json!({}), t(10)).unwrap();
+    assert_eq!(s.moves[0].signal, Signal::G6);
+}
+
+#[test]
+fn a_merge_made_after_landing_authority_ended_is_recorded_but_not_g6() {
+    let mut store = Store::open_in_memory().unwrap();
+    let landing = integrating(&mut store);
+    store.start_operation(&landing.id, &pin(Some(7)), t(7)).unwrap().unwrap();
+    let grant = store.grants().unwrap().pop().unwrap();
+    store.revoke_grant(&grant.id, t(8)).unwrap();
+    let late = Verdict::Land { report: MergeReport::Merged { head_sha: HEAD.into() }, merged_at: Some(t(9)) };
+    let s = store.settle_operation(&landing.id, &late, json!({}), t(10)).unwrap();
+    assert_eq!(s.operation.state, OperationState::Confirmed, "the forge did merge");
+    let task = store.task("t1").unwrap();
+    assert_eq!(task.state, State::Blocked);
+    assert!(task.blocked_reason.unwrap().contains("when no landing authority was granted"));
+}
+
+#[test]
+fn a_merge_made_before_the_grant_ended_still_lands() {
+    let mut store = Store::open_in_memory().unwrap();
+    let landing = integrating(&mut store);
+    store.start_operation(&landing.id, &pin(Some(7)), t(7)).unwrap().unwrap();
+    let grant = store.grants().unwrap().pop().unwrap();
+    store.revoke_grant(&grant.id, t(9)).unwrap();
+    let early = Verdict::Land { report: MergeReport::Merged { head_sha: HEAD.into() }, merged_at: Some(t(8)) };
+    let s = store.settle_operation(&landing.id, &early, json!({}), t(10)).unwrap();
+    assert_eq!(s.moves[0].signal, Signal::G6);
+}
+
+#[test]
+fn a_merge_never_lands_a_task_whose_evidence_went_stale() {
+    let mut store = Store::open_in_memory().unwrap();
+    let landing = integrating(&mut store);
+    store.start_operation(&landing.id, &pin(Some(7)), t(7)).unwrap().unwrap();
+    store.record_new_tree("t1", "bbbbbbb2222222222222222222222222222222222", t(8)).unwrap();
+    let s = store.settle_operation(&landing.id, &merged(), json!({}), t(9)).unwrap();
+    assert_eq!(s.operation.state, OperationState::Confirmed);
+    assert_ne!(state(&store), State::Done);
+    assert!(store.task("t1").unwrap().blocked_reason.unwrap().contains("no longer covers"));
+}
+
+#[test]
+fn settled_operations_are_final() {
+    let mut store = Store::open_in_memory().unwrap();
+    let landing = integrating(&mut store);
+    let pending = Verdict::Pending { reason: "x".into() };
+    assert!(store.settle_operation(&landing.id, &pending, json!({}), t(7)).is_err(), "a planned op cannot be pending");
+    store.start_operation(&landing.id, &pin(Some(7)), t(7)).unwrap().unwrap();
+    store.settle_operation(&landing.id, &merged(), json!({}), t(8)).unwrap();
+    let again = store.settle_operation(&landing.id, &Verdict::Failed { reason: "x".into() }, json!({}), t(9));
+    assert!(again.unwrap_err().to_string().contains("already Confirmed"));
+}
+
+#[test]
 fn unknown_outcomes_block_until_every_one_is_known() {
     let mut store = Store::open_in_memory().unwrap();
     let landing = integrating(&mut store);
     let open_pr = store.plan_operation("t1", OperationKind::OpenPr, OperationIntent::default(), t(7)).unwrap();
-    store.start_operation(&open_pr.id, None, t(7)).unwrap().unwrap();
+    store.start_operation(&open_pr.id, &pin(None), t(7)).unwrap().unwrap();
     let unknown = Verdict::Unknown { reason: "no answer".into() };
     let s = store.settle_operation(&open_pr.id, &unknown, json!({}), t(8)).unwrap();
     assert_eq!(s.operation.state, OperationState::Unknown);
@@ -199,8 +306,8 @@ fn unknown_outcomes_block_until_every_one_is_known() {
     assert_eq!(state(&store), State::Integrating);
 
     // A refusal settles the landing operation: R2.
-    store.start_operation(&landing.id, Some(7), t(10)).unwrap().unwrap();
-    let refused = Verdict::Land { report: MergeReport::Refused { reason: "head moved".into() } };
+    store.start_operation(&landing.id, &pin(Some(7)), t(10)).unwrap().unwrap();
+    let refused = Verdict::Land { report: MergeReport::Refused { reason: "head moved".into() }, merged_at: None };
     let s = store.settle_operation(&landing.id, &refused, json!({}), t(11)).unwrap();
     assert_eq!((s.operation.state, s.moves[0].signal), (OperationState::Failed, Signal::R2));
     assert_eq!(state(&store), State::AwaitingVerification);
@@ -210,10 +317,9 @@ fn unknown_outcomes_block_until_every_one_is_known() {
 fn an_operator_block_is_not_lifted_by_the_forge() {
     let mut store = Store::open_in_memory().unwrap();
     let landing = integrating(&mut store);
-    store.start_operation(&landing.id, Some(7), t(7)).unwrap().unwrap();
+    store.start_operation(&landing.id, &pin(Some(7)), t(7)).unwrap().unwrap();
     store.block("t1", "operator wants a look", t(8)).unwrap();
-    let merged = Verdict::Land { report: MergeReport::Merged { head_sha: HEAD.into() } };
-    let s = store.settle_operation(&landing.id, &merged, json!({}), t(9)).unwrap();
+    let s = store.settle_operation(&landing.id, &merged(), json!({}), t(9)).unwrap();
     assert_eq!(s.operation.state, OperationState::Confirmed, "what the forge did is kept");
     assert!(s.moves.is_empty());
     assert_eq!(state(&store), State::Blocked);

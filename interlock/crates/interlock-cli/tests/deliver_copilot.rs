@@ -182,7 +182,7 @@ impl Fixture {
                 "--classes",
                 "landing",
                 "--landing",
-                "operator",
+                "coordinator",
                 "--origin",
                 "land the add fix once it is verified",
             ],

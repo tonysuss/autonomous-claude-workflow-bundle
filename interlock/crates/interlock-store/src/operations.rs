@@ -15,6 +15,18 @@ pub struct Settled {
     pub moves: Vec<Move>,
 }
 
+/// What the caller is about to do with a started operation. The store checks
+/// it in the same transaction that marks the operation started.
+#[derive(Debug, Clone, Default)]
+pub struct Pin {
+    pub pull_request: Option<u64>,
+    /// The branch the pull request targets.
+    pub base: Option<String>,
+    /// The tree the operation's head was built from. It must still be the
+    /// task's current tree.
+    pub tree: Option<String>,
+}
+
 fn get_operation(c: &Connection, id: &str) -> Result<Operation> {
     c.query_row("SELECT record FROM operations WHERE id = ?1", [id], |r| r.get::<_, String>(0))
         .optional()?
@@ -37,6 +49,14 @@ fn refused(code: RefusalCode, message: String) -> StoreError {
     StoreError::Refused(Refusal { signal: None, code, message, missing: vec![] })
 }
 
+/// Fails an operation that was never called.
+fn fail_uncalled(tx: &Transaction, v: &Validators, op: &mut Operation, why: &str, now: Timestamp) -> Result<()> {
+    op.state = OperationState::Failed;
+    op.outcome = Some(serde_json::json!({ "refused": why, "called": false }));
+    op.updated_at = now;
+    put_operation(tx, v, op, false)
+}
+
 impl Store {
     pub fn operation(&self, id: &str) -> Result<Operation> {
         get_operation(&self.conn, id)
@@ -49,6 +69,22 @@ impl Store {
     /// Operations whose outcome nobody has confirmed, for one task or all.
     pub fn open_operations(&self, task_id: Option<&str>) -> Result<Vec<Operation>> {
         Ok(operations_of(&self.conn, task_id)?.into_iter().filter(is_open).collect())
+    }
+
+    /// Landing operations still planned but tied to a pull request: the
+    /// operator may merge it, so reconcile looks at them too.
+    pub fn pinned_landings(&self, task_id: Option<&str>) -> Result<Vec<Operation>> {
+        Ok(operations_of(&self.conn, task_id)?
+            .into_iter()
+            .filter(|o| {
+                delivery::lands(o.kind) && o.state == OperationState::Planned && o.intent.pull_request.is_some()
+            })
+            .collect())
+    }
+
+    /// The landing authority the task's grants give now.
+    pub fn landing_authority(&self, task_id: &str, now: Timestamp) -> Result<LandingAuthority> {
+        Ok(grants::landing_authority(task_id, &all_grants(&self.conn)?, now))
     }
 
     /// Writes a planned operation for an integrating task. No call is made yet.
@@ -79,42 +115,89 @@ impl Store {
         Ok(op)
     }
 
+    /// Ties a planned landing operation to its pull request without starting
+    /// it: the operator will merge, and reconcile watches for that.
+    pub fn pin_operation(&mut self, op_id: &str, pin: &Pin, now: Timestamp) -> Result<Operation> {
+        let (tx, v) = self.begin()?;
+        let mut op = get_operation(&tx, op_id)?;
+        if op.state != OperationState::Planned {
+            return Err(refused(
+                RefusalCode::WrongState,
+                format!("operation {} is {:?}, not planned", op.id, op.state),
+            ));
+        }
+        op.intent.pull_request = pin.pull_request.or(op.intent.pull_request);
+        op.intent.base = pin.base.clone().or(op.intent.base);
+        op.updated_at = now;
+        put_operation(&tx, v, &op, false)?;
+        tx.commit()?;
+        Ok(op)
+    }
+
     /// Marks a planned operation started, committed before the forge call.
-    /// The core checks landing authority again here: if it was revoked, the
-    /// operation fails without a call and the task is blocked, the move
-    /// returned as `Err`. Only one operation per task may be in flight.
+    /// In the same transaction the store checks that the evidence still
+    /// covers the task's current tree, that the head was built from that
+    /// tree, and that landing authority still holds. Stale evidence or a
+    /// changed tree fails the operation without a call and applies R2; a
+    /// revoked grant fails it and blocks the task. Either move comes back as
+    /// `Err`. Only one operation per task may be in flight, except that an
+    /// armed auto-merge may be withdrawn.
     pub fn start_operation(
         &mut self,
         op_id: &str,
-        pull_request: Option<u64>,
+        pin: &Pin,
         now: Timestamp,
     ) -> Result<std::result::Result<Operation, Move>> {
         let (tx, v) = self.begin()?;
         let mut op = get_operation(&tx, op_id)?;
         let task = get_task(&tx, &op.task_id)?;
-        if let Some(busy) = operations_of(&tx, Some(&task.id))?.into_iter().find(|o| o.id != op.id && is_open(o)) {
+        let busy = operations_of(&tx, Some(&task.id))?.into_iter().find(|o| {
+            o.id != op.id
+                && is_open(o)
+                && !(op.kind == OperationKind::DisarmAutoMerge && o.kind == OperationKind::ArmAutoMerge)
+        });
+        if let Some(busy) = busy {
             return Err(refused(
                 RefusalCode::WrongState,
                 format!("operation {} is still in flight; reconcile it first", busy.id),
             ));
+        }
+        if op.kind != OperationKind::DisarmAutoMerge && task.state == State::Integrating && op.task_id == task.id {
+            let report = report_for(&tx, &task)?;
+            if !report.all_pass {
+                let why = "the evidence no longer covers the task's current tree; nothing was sent to the forge";
+                fail_uncalled(&tx, v, &mut op, why, now)?;
+                let out = lifecycle::advance(&task, &report, now)
+                    .ok_or_else(|| StoreError::Invalid("stale evidence while integrating, but no R2".into()))?;
+                let mv = apply(&tx, v, &out, None, now)?;
+                tx.commit()?;
+                return Ok(Err(mv));
+            }
+            let current = task.current_tree.as_deref().unwrap_or("");
+            if let Some(tree) = pin.tree.as_deref().filter(|t| !interlock_core::evidence::same_tree(t, current)) {
+                let why = format!(
+                    "the head was built from tree {tree}, but the task's tree is now {current}; landing starts again from verification"
+                );
+                fail_uncalled(&tx, v, &mut op, &why, now)?;
+                let out = lifecycle::confirm_integration(&task, &op, &MergeReport::Refused { reason: why }, now)?;
+                let mv = apply(&tx, v, &out, None, now)?;
+                tx.commit()?;
+                return Ok(Err(mv));
+            }
         }
         let landing = grants::landing_authority(&task.id, &all_grants(&tx)?, now);
         if let Err(refusal) = delivery::authorize(&task, &op, landing) {
             if refusal.code != RefusalCode::GrantInsufficient {
                 return Err(refusal.into());
             }
-            op.state = OperationState::Failed;
-            op.outcome = Some(serde_json::json!({ "refused": refusal.message, "called": false }));
-            op.updated_at = now;
-            put_operation(&tx, v, &op, false)?;
+            fail_uncalled(&tx, v, &mut op, &refusal.message, now)?;
             let mv = apply(&tx, v, &lifecycle::block(&task, &refusal.message, now)?, None, now)?;
             tx.commit()?;
             return Ok(Err(mv));
         }
         op.state = OperationState::Started;
-        if pull_request.is_some() {
-            op.intent.pull_request = pull_request;
-        }
+        op.intent.pull_request = pin.pull_request.or(op.intent.pull_request);
+        op.intent.base = pin.base.clone().or(op.intent.base);
         op.updated_at = now;
         put_operation(&tx, v, &op, false)?;
         tx.commit()?;
@@ -125,6 +208,11 @@ impl Store {
     /// G6 or R2 for a landing; the operation's own state otherwise; a block
     /// when the operator must decide or nobody can tell what happened. A task
     /// blocked only on unknown outcomes resumes once the forge has answered.
+    ///
+    /// G6 also needs, at that moment, current passing evidence for the task's
+    /// tree and landing authority at the time the forge merged. Without
+    /// either, the merge is recorded and the task is blocked with the reason.
+    /// Confirmed and failed operations are final.
     pub fn settle_operation(
         &mut self,
         op_id: &str,
@@ -134,6 +222,15 @@ impl Store {
     ) -> Result<Settled> {
         let (tx, v) = self.begin()?;
         let mut op = get_operation(&tx, op_id)?;
+        if matches!(op.state, OperationState::Confirmed | OperationState::Failed) {
+            return Err(refused(RefusalCode::WrongState, format!("operation {} is already {:?}", op.id, op.state)));
+        }
+        if op.state == OperationState::Planned && matches!(verdict, Verdict::Pending { .. } | Verdict::Unknown { .. }) {
+            return Err(refused(
+                RefusalCode::WrongState,
+                format!("operation {} was never started; nothing can be pending", op.id),
+            ));
+        }
         let mut task = get_task(&tx, &op.task_id)?;
         let mut moves = Vec::new();
         let determinate = !matches!(verdict, Verdict::Unknown { .. });
@@ -154,30 +251,48 @@ impl Store {
             Ok(())
         };
         op.state = match verdict {
-            Verdict::Land { report } if task.state == State::Integrating => {
-                match lifecycle::confirm_integration(&task, &op, report, now) {
-                    Ok(out) => {
-                        moves.push(apply(&tx, v, &out, None, now)?);
-                        match report {
-                            MergeReport::Merged { .. } => OperationState::Confirmed,
-                            MergeReport::Refused { .. } => OperationState::Failed,
-                        }
-                    }
-                    Err(refusal) => {
-                        block(&mut task, &refusal.message, &mut moves)?;
-                        OperationState::Failed
+            Verdict::Land { report: MergeReport::Merged { head_sha }, merged_at }
+                if task.state == State::Integrating =>
+            {
+                let report = report_for(&tx, &task)?;
+                let at = merged_at.unwrap_or(now);
+                let landing = grants::landing_authority(&task.id, &all_grants(&tx)?, at);
+                if !report.all_pass {
+                    let why = format!(
+                        "merged at {head_sha}, but the evidence no longer covers the task's current tree; reconcile by hand"
+                    );
+                    block(&mut task, &why, &mut moves)?;
+                } else if landing == LandingAuthority::None {
+                    let why = format!(
+                        "merged at {head_sha} at {}, when no landing authority was granted for this task; reconcile by hand",
+                        ts(at)
+                    );
+                    block(&mut task, &why, &mut moves)?;
+                } else {
+                    let merged = MergeReport::Merged { head_sha: head_sha.clone() };
+                    match lifecycle::confirm_integration(&task, &op, &merged, now) {
+                        Ok(out) => moves.push(apply(&tx, v, &out, None, now)?),
+                        Err(refusal) => block(&mut task, &refusal.message, &mut moves)?,
                     }
                 }
+                OperationState::Confirmed
+            }
+            Verdict::Land { report: report @ MergeReport::Refused { .. }, .. } if task.state == State::Integrating => {
+                match lifecycle::confirm_integration(&task, &op, report, now) {
+                    Ok(out) => moves.push(apply(&tx, v, &out, None, now)?),
+                    Err(refusal) => block(&mut task, &refusal.message, &mut moves)?,
+                }
+                OperationState::Failed
             }
             // The task left integrating meanwhile (the operator blocked or cancelled it): keep what the forge did.
-            Verdict::Land { report: MergeReport::Merged { .. } } => OperationState::Confirmed,
-            Verdict::Land { report: MergeReport::Refused { .. } } => OperationState::Failed,
+            Verdict::Land { report: MergeReport::Merged { .. }, .. } => OperationState::Confirmed,
+            Verdict::Land { report: MergeReport::Refused { .. }, .. } => OperationState::Failed,
             Verdict::Confirmed => OperationState::Confirmed,
             Verdict::Failed { .. } => OperationState::Failed,
             Verdict::Pending { .. } => OperationState::Started,
-            Verdict::Block { reason } => {
+            Verdict::Block { reason, took_effect } => {
                 block(&mut task, reason, &mut moves)?;
-                OperationState::Failed
+                if *took_effect { OperationState::Confirmed } else { OperationState::Failed }
             }
             Verdict::Unknown { reason } => {
                 let why = format!(

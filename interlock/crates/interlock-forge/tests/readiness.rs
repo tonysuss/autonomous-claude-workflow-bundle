@@ -38,7 +38,7 @@ fn view(overrides: Value) -> Value {
 }
 
 fn ready(overrides: Value) -> Readiness {
-    readiness(&parse_pr(&view(overrides)).unwrap(), HEAD, BASE)
+    readiness(&parse_pr(&view(overrides)).unwrap(), HEAD, "main", BASE)
 }
 
 #[test]
@@ -64,6 +64,20 @@ fn ready_only_at_the_verified_head_on_the_verified_base_with_checks_green() {
     assert_eq!(ready(json!({"baseRefOid": HEAD})), Readiness::BaseMoved { found: HEAD.into() });
     assert_eq!(ready(json!({"state": "MERGED"})), Readiness::Merged { head: HEAD.into() });
     assert!(matches!(ready(json!({"state": "CLOSED"})), Readiness::Refused(_)));
+}
+
+#[test]
+fn a_pull_request_retargeted_to_another_branch_is_not_ready_even_on_the_same_commit() {
+    // release-1 points at the same commit as main, so the base commit alone would not tell.
+    let Readiness::Refused(why) = ready(json!({"baseRefName": "release-1"})) else { panic!("retargeted") };
+    assert_eq!(why, "pull request #12 targets release-1, but the evidence is for main");
+}
+
+#[test]
+fn reads_when_a_pull_request_was_merged() {
+    let pr = parse_pr(&view(json!({"state": "MERGED", "mergedAt": "2026-10-06T01:02:03Z"}))).unwrap();
+    assert_eq!(pr.merged_at.unwrap().to_rfc3339(), "2026-10-06T01:02:03+00:00");
+    assert_eq!(pr.observed().merged_at, pr.merged_at);
 }
 
 #[test]

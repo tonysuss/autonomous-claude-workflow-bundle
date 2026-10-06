@@ -26,7 +26,8 @@ impl From<DeliverError> for RunError {
 /// Without landing authority, G5 blocks the task at verified with the reason.
 pub(crate) fn step(store: &mut Store, repo: &Path, task_id: &str, cancel: &AtomicBool) -> Result<Option<String>> {
     let task = store.task(task_id)?;
-    if task.state == State::Verified && !store.advance(task_id, Utc::now())?.is_empty() {
+    // R2 when the evidence went stale (for an integrating task too), G7 when no delivery is needed.
+    if !store.advance(task_id, Utc::now())?.is_empty() {
         return Ok(None);
     }
     let cfg = match DeliverConfig::from_env() {

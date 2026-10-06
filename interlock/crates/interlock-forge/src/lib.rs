@@ -13,11 +13,27 @@ pub mod git;
 #[doc(hidden)]
 pub mod testing;
 
-use interlock_core::delivery::{PrState, PullRequest, same_sha};
+use interlock_core::delivery::{Landed, PrState, PullRequest, same_sha};
+use interlock_schema::Timestamp;
 use serde::{Deserialize, Serialize};
 
 pub use deliver::{DeliverConfig, DeliverError, Delivery, Reconciled, integrate, reconcile};
 pub use gh::GhForge;
+
+/// Whether this process runs inside an interlock attempt. There, the forge
+/// settings in the environment are ignored: an agent must not point interlock
+/// at another `gh`, remote or repository.
+pub fn inside_attempt() -> bool {
+    std::env::var("INTERLOCK_ATTEMPT").is_ok_and(|v| !v.is_empty())
+}
+
+/// An environment setting for the forge, ignored inside an attempt.
+pub(crate) fn forge_var(key: &str) -> Option<String> {
+    if inside_attempt() {
+        return None;
+    }
+    std::env::var(key).ok().filter(|v| !v.is_empty())
+}
 
 #[derive(Debug, thiserror::Error)]
 pub enum ForgeError {
@@ -95,13 +111,23 @@ pub struct PrView {
     pub merge_state: Option<String>,
     pub checks: Vec<Check>,
     pub merge_commit: Option<String>,
+    pub merged_at: Option<Timestamp>,
     pub auto_merge: bool,
 }
 
 impl PrView {
-    /// The host-neutral view the core's reconcile rules read.
+    /// The host-neutral view the core's reconcile rules read. Where a merge
+    /// landed is added separately, from git.
     pub fn observed(&self) -> PullRequest {
-        PullRequest { number: self.number, state: self.state, head: self.head.clone(), auto_merge: self.auto_merge }
+        PullRequest {
+            number: self.number,
+            state: self.state,
+            head: self.head.clone(),
+            auto_merge: self.auto_merge,
+            base_branch: Some(self.base_branch.clone()).filter(|b| !b.is_empty()),
+            merged_at: self.merged_at,
+            landed: None,
+        }
     }
 }
 
@@ -143,6 +169,14 @@ pub trait Forge {
     /// Merges pull request `number` only if its head is still `head`. With
     /// `auto`, arms auto-merge pinned to the same head instead.
     fn merge(&self, number: u64, head: &str, method: MergeMethod, auto: bool) -> Result<(), ForgeError>;
+
+    /// Turns auto-merge off on pull request `number`.
+    fn disarm(&self, number: u64) -> Result<(), ForgeError>;
+
+    /// Where merge commit `merge` landed, read with git rather than the
+    /// forge's API: fetches `base_branch` into `into`, then reads whether it
+    /// contains the merge, the merge's first parent and its tree.
+    fn landed(&self, merge: &str, base_branch: &str, into: &str) -> Result<Landed, ForgeError>;
 }
 
 /// Whether a pull request may be merged at the verified head now.
@@ -169,7 +203,7 @@ pub enum Readiness {
 
 /// The readiness observer: reads checks, mergeability, and whether the head
 /// and base are still the ones the evidence is about.
-pub fn readiness(pr: &PrView, head: &str, base: &str) -> Readiness {
+pub fn readiness(pr: &PrView, head: &str, base_branch: &str, base: &str) -> Readiness {
     let n = pr.number;
     match pr.state {
         PrState::Merged => return Readiness::Merged { head: pr.head.clone() },
@@ -178,6 +212,12 @@ pub fn readiness(pr: &PrView, head: &str, base: &str) -> Readiness {
     }
     if !same_sha(&pr.head, head) {
         return Readiness::HeadMoved { found: pr.head.clone() };
+    }
+    if pr.base_branch != base_branch {
+        return Readiness::Refused(format!(
+            "pull request #{n} targets {}, but the evidence is for {base_branch}",
+            if pr.base_branch.is_empty() { "an unknown branch" } else { &pr.base_branch }
+        ));
     }
     if let Some(found) = pr.base.as_deref().filter(|b| !same_sha(b, base)) {
         return Readiness::BaseMoved { found: found.to_string() };

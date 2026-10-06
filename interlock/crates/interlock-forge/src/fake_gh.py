@@ -15,17 +15,26 @@ Faults are set per subcommand ("create", "list", "view", "merge") as
   die          merge: merge, then fail without saying it merged
   vanish       merge: merge, then stop answering anything until faults are cleared
   queue        merge: accept the request, and merge only a few calls later
-"checks" is "pass", "pending" or "fail". Every call is appended to "calls".
-When "db" names interlock's store, each call also records in "seen" the
-operation rows that were committed when the call arrived.
+  queue_then_drop  merge: like queue, but the call then fails like a dropped connection
+  hang         any subcommand: no answer for "hang_seconds" (default 30), then fail
+  orphan       any subcommand: answer normally, but leave a child holding the output open
+"checks" is "pass", "pending", "fail" or "none" (no checks reported).
+Other knobs: "lag" {"head": sha, "reads": n} reports that head for the next n
+reads of an open pull request; "base_oid" reports that as baseRefOid, as a
+lagging API would; a pull request with "lie_merged" is reported merged at its
+head without anything merged. Every call is appended to "calls". When "db"
+names interlock's store, each call also records in "seen" the operation rows
+that were committed when the call arrived.
 """
 
+import datetime
 import json
 import os
 import signal
 import sqlite3
 import subprocess
 import sys
+import time
 
 STATE = os.environ.get("FAKE_GH_STATE") or os.path.join(os.path.dirname(os.path.abspath(__file__)), "gh-state.json")
 URL = "https://github.com/fake/repo/pull/{}"
@@ -122,12 +131,17 @@ def do_merge(st, pr, method):
         message = f"{pr['title']} (#{pr['number']})"
         commit = git(st, "commit-tree", tree, "-p", base, "-m", message).stdout.strip()
     git(st, "update-ref", f"refs/heads/{pr['base']}", commit, base)
-    pr.update(state="MERGED", merged_head=head, merge_commit=commit, auto_merge=None)
+    pr.update(state="MERGED", merged_head=head, merge_commit=commit, auto_merge=None, merged_at=now())
     return None
 
 
+def now():
+    return datetime.datetime.now(datetime.timezone.utc).isoformat().replace("+00:00", "Z")
+
+
 def checks_pass(st):
-    return st.get("checks", "pass") == "pass"
+    # With no checks at all, nothing is required: the branch is clean.
+    return st.get("checks", "pass") in ("pass", "none")
 
 
 def settle_auto_merges(st):
@@ -156,6 +170,8 @@ def rollup(st):
         return [{"__typename": "CheckRun", "name": "ci", "status": "COMPLETED", "conclusion": "SUCCESS"}]
     if checks == "pending":
         return [{"__typename": "CheckRun", "name": "ci", "status": "IN_PROGRESS", "conclusion": ""}]
+    if checks == "none":
+        return []
     return [{"__typename": "CheckRun", "name": "ci", "status": "COMPLETED", "conclusion": "FAILURE"}]
 
 
@@ -163,6 +179,15 @@ def render(st, pr, fields):
     is_open = pr["state"] == "OPEN"
     head = tip(st, pr["head"]) if is_open else pr.get("merged_head") or pr.get("closed_head") or ""
     base = tip(st, pr["base"]) or ""
+    state, merge_commit, merged_at = pr["state"], pr.get("merge_commit"), pr.get("merged_at")
+    if is_open and pr.get("lie_merged"):
+        # A forge (or a forged gh) that claims a merge nothing performed.
+        state, merge_commit, merged_at = "MERGED", head, now()
+    shown_head = head
+    lag = st.get("lag")
+    if is_open and lag and lag.get("reads", 0) > 0:
+        shown_head = lag["head"]
+        lag["reads"] -= 1
     mergeable, merge_state = "UNKNOWN", "UNKNOWN"
     if is_open and head and base:
         mergeable = "MERGEABLE" if merge_tree(st, base, head) else "CONFLICTING"
@@ -175,18 +200,19 @@ def render(st, pr, fields):
     full = {
         "number": pr["number"],
         "url": URL.format(pr["number"]),
-        "state": pr["state"],
+        "state": state,
         "title": pr["title"],
         "body": pr["body"],
         "isDraft": False,
         "headRefName": pr["head"],
-        "headRefOid": head,
+        "headRefOid": shown_head,
         "baseRefName": pr["base"],
-        "baseRefOid": base,
+        "baseRefOid": st.get("base_oid") or base,
         "mergeable": mergeable,
         "mergeStateStatus": merge_state,
         "statusCheckRollup": rollup(st) if head else [],
-        "mergeCommit": {"oid": pr["merge_commit"]} if pr.get("merge_commit") else None,
+        "mergeCommit": {"oid": merge_commit} if merge_commit else None,
+        "mergedAt": merged_at,
         "autoMergeRequest": {"mergeMethod": pr["auto_merge"]["method"].upper()} if pr.get("auto_merge") else None,
     }
     out = {}
@@ -268,6 +294,7 @@ def pr_merge(st, args):
         {
             "--merge": "merge", "-m": "merge", "--squash": "squash", "-s": "squash", "--rebase": "rebase",
             "-r": "rebase", "--auto": "auto", "--delete-branch": "delete", "-d": "delete", "--admin": "admin",
+            "--disable-auto": "disable_auto",
         },
     )
     mode = fault(st, "merge")
@@ -277,6 +304,12 @@ def pr_merge(st, args):
         fail("fake gh: pr merge needs a number", 2)
     pr = find(st, pos[0])
     n = pr["number"]
+    if o.get("disable_auto"):
+        if pr["state"] != "OPEN":
+            fail(f"X Pull request #{n} is not open")
+        pr["auto_merge"] = None
+        sys.stderr.write(f"✓ Auto-merge disabled for pull request #{n}\n")
+        return
     if pr["state"] == "MERGED":
         sys.stderr.write(f"! Pull request #{n} was already merged\n")
         return
@@ -302,9 +335,11 @@ def pr_merge(st, args):
         return
     if not checks_pass(st):
         fail(f"X Pull request #{n} is not mergeable: the base branch policy prohibits the merge.")
-    if mode == "queue":
+    if mode in ("queue", "queue_then_drop"):
         # Accepted, not merged yet: it merges a few calls later, as a merge queue would.
         pr["queued"] = {"method": method, "after": 3}
+        if mode == "queue_then_drop":
+            fail("Post https://api.github.com/graphql: read tcp: connection reset by peer")
         sys.stderr.write(f"✓ Pull request #{n} will be added to the merge queue for {pr['base']} when ready\n")
         return
     err = do_merge(st, pr, method)
@@ -364,10 +399,18 @@ def main():
     commands = {"create": pr_create, "list": pr_list, "view": pr_view, "merge": pr_merge}
     code = 0
     try:
-        settle_auto_merges(st)
         rest = strip_repo(args)
         if len(rest) < 2 or rest[0] != "pr" or rest[1] not in commands:
             fail(f"fake gh: unsupported command: {' '.join(args)}", 2)
+        pending = st.get("faults", {}).get(rest[1], {}).get("mode")
+        if pending == "hang" and fault(st, rest[1]):
+            save(st)
+            time.sleep(st.get("hang_seconds", 30))
+            fail("fake gh: gave up after hanging")
+        if pending == "orphan" and fault(st, rest[1]):
+            # A child that outlives this process and keeps its output open.
+            subprocess.Popen(["sleep", str(st.get("hang_seconds", 30))])
+        settle_auto_merges(st)
         commands[rest[1]](st, rest[2:])
     except Exit as e:
         if e.message:

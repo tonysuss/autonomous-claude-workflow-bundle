@@ -771,6 +771,9 @@ fn run(cli: &Cli) -> Result<()> {
             }
         }
         Command::Integrate(cmd) => {
+            if !matches!(cmd, IntegrateCmd::Operations { .. }) {
+                forge::operator_only("integrate")?;
+            }
             let mut store = open(cli)?;
             match cmd {
                 IntegrateCmd::Begin { task, pr, base, head } => {

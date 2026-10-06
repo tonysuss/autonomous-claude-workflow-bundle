@@ -32,9 +32,9 @@ fn git_ok(repo: &Path, args: &[&str], env: &[(&str, &str)]) -> Result<String, Gi
 
 /// The commit interlock lands for a task: its verified tree, with the
 /// snapshot base as the only parent. Author, committer and date are fixed
-/// and the commit is never signed, so the same tree and base always give the
-/// same id: a restarted controller rebuilds exactly the head it pinned. A ref
-/// under `refs/interlock/<task>/head` keeps it from garbage collection.
+/// (the date is the task's creation time) and the commit is never signed, so
+/// the same tree and base always give the same id: a restarted controller
+/// rebuilds exactly the head it pinned. No ref is written here.
 pub fn verified_head(repo: &Path, task: &Task) -> Result<String, GitError> {
     let missing =
         |what: &str| GitError { args: "commit-tree".into(), message: format!("task {} has no {what}", task.id) };
@@ -54,14 +54,28 @@ pub fn verified_head(repo: &Path, task: &Task) -> Result<String, GitError> {
         ("GIT_AUTHOR_DATE", date.as_str()),
         ("GIT_COMMITTER_DATE", date.as_str()),
     ];
-    let head = git_ok(repo, &["commit-tree", "--no-gpg-sign", tree, "-p", base, "-m", &message], &env)?;
-    git_ok(repo, &["update-ref", &format!("{}/head", ref_prefix(&task.id)), &head], &[])?;
-    Ok(head)
+    git_ok(repo, &["commit-tree", "--no-gpg-sign", tree, "-p", base, "-m", &message], &env)
 }
 
 /// Where interlock keeps a task's refs. Not a branch.
 pub fn ref_prefix(task_id: &str) -> String {
     format!("refs/{}", interlock_core::delivery::branch_for(task_id))
+}
+
+/// Keeps the pinned head from garbage collection while the task integrates,
+/// under `refs/interlock/<task>/head`. Written only after G5.
+pub fn keep_head(repo: &Path, task_id: &str, head: &str) -> Result<(), GitError> {
+    git_ok(repo, &["update-ref", &format!("{}/head", ref_prefix(task_id)), head], &[]).map(|_| ())
+}
+
+/// Deletes every ref interlock keeps for a task.
+pub fn forget(repo: &Path, task_id: &str) -> Result<(), GitError> {
+    // A pattern matches refs below it up to a slash, so `refs/interlock/a` never matches `refs/interlock/ab/head`.
+    let refs = git_ok(repo, &["for-each-ref", "--format=%(refname)", &ref_prefix(task_id)], &[])?;
+    for r in refs.lines().filter(|l| !l.is_empty()) {
+        git_ok(repo, &["update-ref", "-d", r], &[])?;
+    }
+    Ok(())
 }
 
 /// The tree that merging `head` into `base` gives, or the conflicted paths.
