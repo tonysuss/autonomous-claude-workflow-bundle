@@ -1,0 +1,17 @@
+{
+  "final_state": "blocked",
+  "head": null,
+  "moves": [
+    {
+      "from": "verified",
+      "reason": "no landing authority is granted for this task",
+      "signal": "block",
+      "to": "blocked"
+    }
+  ],
+  "pull_request": null,
+  "reconciled": [],
+  "steps": [],
+  "stopped_because": "blocked: no landing authority is granted for this task",
+  "task_id": "fix-add"
+}

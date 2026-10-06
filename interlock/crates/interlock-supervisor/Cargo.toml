@@ -10,6 +10,7 @@ license.workspace = true
 chrono.workspace = true
 interlock-adapter.workspace = true
 interlock-core.workspace = true
+interlock-forge.workspace = true
 interlock-schema.workspace = true
 interlock-store.workspace = true
 serde.workspace = true

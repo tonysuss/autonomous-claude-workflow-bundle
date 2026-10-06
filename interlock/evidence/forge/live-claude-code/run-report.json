@@ -1,0 +1,65 @@
+{
+  "baseline": [
+    {
+      "criterion_id": "repro",
+      "exit_code": 1,
+      "problem": null,
+      "run_id": "run-c2ba9377d2014295",
+      "vacuous": null
+    },
+    {
+      "criterion_id": "regression",
+      "exit_code": 0,
+      "problem": null,
+      "run_id": "run-be435cb38823467f",
+      "vacuous": null
+    }
+  ],
+  "final_state": "done",
+  "host": "claude-code",
+  "reconciled": [],
+  "sessions": [
+    {
+      "attempt_id": "att-1987506d5a3d47f5",
+      "denials": 0,
+      "duration_ms": 10825,
+      "epoch": 1,
+      "exit": {
+        "exit": "completed"
+      },
+      "moves": [
+        {
+          "from": "running",
+          "reason": "result accepted from attempt att-1987506d5a3d47f5 at epoch 1",
+          "signal": "G3",
+          "to": "awaiting_verification"
+        }
+      ],
+      "role": "worker",
+      "summary": "I fixed the duplicate rows in `exporter.py`. `export` now keeps a count of rows already written, so a retry carries on from the failed row instead of restarting the batch.\n\n`sh checks/export-retry.sh` passed and printed \"ok: no duplicate rows after a retry\". `python3 -m unittest discover -s tests -q` also passed, with 2 tests OK. I ran both through `interlock check run` and recorded a claim for each: `repro` as observed and `regression` as tested. The `repro` criterion still needs an independent observation from the verifier.\n\nI didn't add a new test, so only the repro check covers the fix.",
+      "transcript": "/tmp/.tmp8I7Cl6/repo/.interlock/transcripts/att-1987506d5a3d47f5.jsonl"
+    },
+    {
+      "attempt_id": "att-e256a1deaf334a0c",
+      "denials": 0,
+      "duration_ms": 8630,
+      "epoch": 1,
+      "exit": {
+        "exit": "completed"
+      },
+      "moves": [
+        {
+          "from": "awaiting_verification",
+          "reason": "every required criterion has current passing evidence",
+          "signal": "G4",
+          "to": "verified"
+        }
+      ],
+      "role": "verifier",
+      "summary": "- repro: passes (observed). `sh checks/export-retry.sh`, run through interlock on tree 9dac493, printed \"ok: no duplicate rows after a retry\". The `done` counter in `exporter.py` makes a retry resume after the last written row.\n- regression: passes (tested). `python3 -m unittest discover -s tests -q` ran 2 tests, all OK, on the same tree.",
+      "transcript": "/tmp/.tmp8I7Cl6/repo/.interlock/transcripts/att-e256a1deaf334a0c.jsonl"
+    }
+  ],
+  "stopped_because": "done",
+  "task_id": "export-retry"
+}

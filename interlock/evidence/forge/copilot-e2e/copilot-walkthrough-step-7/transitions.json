@@ -1,0 +1,56 @@
+[
+  {
+    "at": "2026-10-06T01:12:08.710038Z",
+    "attempt_id": null,
+    "from": "pending",
+    "reason": "dependencies done; input snapshot recorded",
+    "seq": 1,
+    "signal": "G1",
+    "to": "ready"
+  },
+  {
+    "at": "2026-10-06T01:12:10.201463Z",
+    "attempt_id": "att-5b0c9252d5064cef",
+    "from": "ready",
+    "reason": "attempt att-5b0c9252d5064cef opened at epoch 1",
+    "seq": 2,
+    "signal": "G2",
+    "to": "running"
+  },
+  {
+    "at": "2026-10-06T01:12:12.654899Z",
+    "attempt_id": "att-5b0c9252d5064cef",
+    "from": "running",
+    "reason": "result accepted from attempt att-5b0c9252d5064cef at epoch 1",
+    "seq": 3,
+    "signal": "G3",
+    "to": "awaiting_verification"
+  },
+  {
+    "at": "2026-10-06T01:12:16.457442Z",
+    "attempt_id": null,
+    "from": "awaiting_verification",
+    "reason": "every required criterion has current passing evidence",
+    "seq": 4,
+    "signal": "G4",
+    "to": "verified"
+  },
+  {
+    "at": "2026-10-06T01:12:16.470719Z",
+    "attempt_id": null,
+    "from": "verified",
+    "reason": "landing authorized (Coordinator)",
+    "seq": 5,
+    "signal": "G5",
+    "to": "integrating"
+  },
+  {
+    "at": "2026-10-06T01:12:17.110939Z",
+    "attempt_id": null,
+    "from": "integrating",
+    "reason": "merged at 99b1318094d72a1e9a68177e81643ba480dbb240",
+    "seq": 6,
+    "signal": "G6",
+    "to": "done"
+  }
+]

@@ -1,0 +1,198 @@
+[
+  {
+    "id": "m01-stale-evidence-merges",
+    "finding": "1 (blocker): stale evidence does not stop a merge while integrating",
+    "all_failed": true,
+    "tests": [
+      [
+        "-p interlock-forge --test regressions -- a_tree_recorded_while_integrating_is_r2_never_a_merge",
+        "FAILED"
+      ],
+      [
+        "-p interlock-cli --test forge_cli -- r6_a_tree_recorded_while_integrating_is_r2_under_interlock_run",
+        "FAILED"
+      ]
+    ]
+  },
+  {
+    "id": "m02-no-landing-checks",
+    "finding": "2 (major) and 3: a merge onto a moved base, or one git cannot see, lands the task",
+    "all_failed": true,
+    "tests": [
+      [
+        "-p interlock-forge --test regressions -- an_armed_auto_merge_that_lands_on_a_moved_base_blocks_instead_of_g6",
+        "FAILED"
+      ],
+      [
+        "-p interlock-forge --test regressions -- a_reported_merge_git_cannot_see_on_the_base_branch_never_lands",
+        "FAILED"
+      ],
+      [
+        "-p interlock-forge --test regressions -- an_operator_merge_onto_a_moved_base_is_not_g6",
+        "FAILED"
+      ]
+    ]
+  },
+  {
+    "id": "m03-forge-commands-inside-attempts",
+    "finding": "3 (major): an agent can run forge commands and point interlock at a forged gh",
+    "all_failed": true,
+    "tests": [
+      [
+        "-p interlock-cli --test forge_cli -- r3_forge_commands_are_the_operators_inside_an_attempt",
+        "FAILED"
+      ],
+      [
+        "-p interlock-core --lib -- classify::tests::forge_commands_belong_to_the_operator",
+        "FAILED"
+      ]
+    ]
+  },
+  {
+    "id": "m04-retargeted-base",
+    "finding": "4: readiness ignores the pull request's base branch",
+    "all_failed": true,
+    "tests": [
+      [
+        "-p interlock-forge --test regressions -- a_pull_request_retargeted_to_another_branch_is_not_merged",
+        "FAILED"
+      ]
+    ]
+  },
+  {
+    "id": "m05-unanswered-merge-failed",
+    "finding": "5: an unanswered merge call is recorded failed",
+    "all_failed": true,
+    "tests": [
+      [
+        "-p interlock-forge --test regressions -- an_unanswered_merge_call_stays_open_until_reconcile_sees_the_merge",
+        "FAILED"
+      ]
+    ]
+  },
+  {
+    "id": "m06-push-lag-blocks",
+    "finding": "6: a lagging head right after interlock's own push blocks the task",
+    "all_failed": true,
+    "tests": [
+      [
+        "-p interlock-forge --test regressions -- a_lagging_head_after_interlocks_own_push_is_read_again_not_blocked",
+        "FAILED"
+      ]
+    ]
+  },
+  {
+    "id": "m07a-no-disarm",
+    "finding": "7: revoked authority leaves auto-merge armed",
+    "all_failed": true,
+    "tests": [
+      [
+        "-p interlock-forge --test regressions -- a_grant_revoked_while_auto_merge_is_armed_disarms_it",
+        "FAILED"
+      ]
+    ]
+  },
+  {
+    "id": "m07b-merge-after-grant-ended",
+    "finding": "7: a merge made after the grant ended gets G6",
+    "all_failed": true,
+    "tests": [
+      [
+        "-p interlock-forge --test regressions -- a_merge_made_after_the_grant_ended_is_not_g6",
+        "FAILED"
+      ],
+      [
+        "-p interlock-store --test operations -- a_merge_made_after_landing_authority_ended_is_recorded_but_not_g6",
+        "FAILED"
+      ]
+    ]
+  },
+  {
+    "id": "m08a-no-fixed-dates",
+    "finding": "8: the verified head depends on the clock",
+    "all_failed": true,
+    "tests": [
+      [
+        "-p interlock-forge --test deliver -- the_verified_head_is_the_same_commit_in_another_clone",
+        "FAILED"
+      ]
+    ]
+  },
+  {
+    "id": "m08b-signing-allowed",
+    "finding": "8: the verified head is signed when commit.gpgsign is set",
+    "all_failed": false,
+    "tests": [
+      [
+        "-p interlock-forge --test deliver -- the_verified_head_is_the_same_commit_in_another_clone",
+        "passed"
+      ]
+    ]
+  },
+  {
+    "id": "m08c-asked-to-sign",
+    "finding": "8: the verified head is signed (commit-tree asked to sign, under a failing signer)",
+    "all_failed": true,
+    "tests": [
+      [
+        "-p interlock-forge --test deliver -- the_verified_head_is_the_same_commit_in_another_clone",
+        "FAILED"
+      ]
+    ]
+  },
+  {
+    "id": "m09-base-not-read-before-merge",
+    "finding": "9: the base is not read with git right before the merge",
+    "all_failed": true,
+    "tests": [
+      [
+        "-p interlock-forge --test regressions -- the_base_is_read_with_git_right_before_the_merge",
+        "FAILED"
+      ]
+    ]
+  },
+  {
+    "id": "m10-no-checks-settle",
+    "finding": "10: no checks at all counts as ready at once",
+    "all_failed": true,
+    "tests": [
+      [
+        "-p interlock-forge --test regressions -- no_checks_at_all_is_not_ready_until_ci_has_had_time",
+        "FAILED"
+      ]
+    ]
+  },
+  {
+    "id": "m11-verifier-after-moved-head",
+    "finding": "11: a moved-head R2 starts a verifier session instead of advancing",
+    "all_failed": true,
+    "tests": [
+      [
+        "-p interlock-cli --test forge_cli -- a_moved_head_r2_needs_no_verifier_session",
+        "FAILED"
+      ]
+    ]
+  },
+  {
+    "id": "m12-unbounded-output",
+    "finding": "12: a child holding gh's output open hangs interlock",
+    "all_failed": true,
+    "tests": [
+      [
+        "-p interlock-forge --test regressions -- a_hung_gh_times_out_and_a_lingering_child_does_not_hold_interlock",
+        "FAILED"
+      ]
+    ]
+  },
+  {
+    "id": "m13-planned-landing-left-dangling",
+    "finding": "1: a landing planned before an R2 stays planned after the next G5",
+    "all_failed": true,
+    "tests": [
+      [
+        "-p interlock-forge --test regressions -- a_tree_recorded_while_integrating_is_r2_never_a_merge",
+        "FAILED"
+      ]
+    ]
+  }
+]

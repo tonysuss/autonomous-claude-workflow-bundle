@@ -1,0 +1,128 @@
+     Running tests/deliver_live.rs (target/debug/deps/deliver_live-6a7ab846f4eee1bf)
+
+running 1 test
+{
+  "baseline": [
+    {
+      "criterion_id": "repro",
+      "exit_code": 1,
+      "problem": null,
+      "run_id": "run-559cde627d604880",
+      "vacuous": null
+    },
+    {
+      "criterion_id": "regression",
+      "exit_code": 0,
+      "problem": null,
+      "run_id": "run-4cb5ff429578492f",
+      "vacuous": null
+    }
+  ],
+  "final_state": "done",
+  "host": "claude-code",
+  "reconciled": [],
+  "sessions": [
+    {
+      "attempt_id": "att-3d9f0e38bb0847bf",
+      "denials": 0,
+      "duration_ms": 16430,
+      "epoch": 1,
+      "exit": {
+        "exit": "completed"
+      },
+      "moves": [
+        {
+          "from": "running",
+          "reason": "result accepted from attempt att-3d9f0e38bb0847bf at epoch 1",
+          "signal": "G3",
+          "to": "awaiting_verification"
+        }
+      ],
+      "role": "worker",
+      "summary": "I fixed the duplicate rows in `exporter.py`. `export` now keeps a counter of rows already written, so a retry carries on from the failed row instead of restarting the batch.\n\nBoth checks pass on the changed files. `sh checks/export-retry.sh` prints \"ok: no duplicate rows after a retry\", and it failed on the original code. The existing unit tests also pass. I recorded one claim per criterion: `repro` as observed and `regression` as tested. I didn't add a new test under `tests/`. `repro` needs an independent verifier to confirm it, so my claim doesn't satisfy it on its own.",
+      "transcript": "/tmp/.tmpfFB0EP/repo/.interlock/transcripts/att-3d9f0e38bb0847bf.jsonl"
+    },
+    {
+      "attempt_id": "att-4416c4e89db8484b",
+      "denials": 0,
+      "duration_ms": 9020,
+      "epoch": 1,
+      "exit": {
+        "exit": "completed"
+      },
+      "moves": [
+        {
+          "from": "awaiting_verification",
+          "reason": "every required criterion has current passing evidence",
+          "signal": "G4",
+          "to": "verified"
+        }
+      ],
+      "role": "verifier",
+      "summary": "- **repro**: holds (observed). `interlock check run --criterion repro` passed on tree c41effba with \"ok: no duplicate rows after a retry\". `exporter.py` keeps a `written` counter, so a retry resumes at the failed row.\n- **regression**: holds (tested). `interlock check run --criterion regression` ran 2 unit tests, all OK, on the same tree.",
+      "transcript": "/tmp/.tmpfFB0EP/repo/.interlock/transcripts/att-4416c4e89db8484b.jsonl"
+    }
+  ],
+  "stopped_because": "done",
+  "task_id": "export-retry"
+}
+[
+  {
+    "at": "2026-10-06T00:09:31.989903Z",
+    "attempt_id": null,
+    "from": "pending",
+    "reason": "dependencies done; input snapshot recorded",
+    "seq": 1,
+    "signal": "G1",
+    "to": "ready"
+  },
+  {
+    "at": "2026-10-06T00:09:32.476635Z",
+    "attempt_id": "att-3d9f0e38bb0847bf",
+    "from": "ready",
+    "reason": "attempt att-3d9f0e38bb0847bf opened at epoch 1",
+    "seq": 2,
+    "signal": "G2",
+    "to": "running"
+  },
+  {
+    "at": "2026-10-06T00:09:48.949493Z",
+    "attempt_id": "att-3d9f0e38bb0847bf",
+    "from": "running",
+    "reason": "result accepted from attempt att-3d9f0e38bb0847bf at epoch 1",
+    "seq": 3,
+    "signal": "G3",
+    "to": "awaiting_verification"
+  },
+  {
+    "at": "2026-10-06T00:09:58.276044Z",
+    "attempt_id": null,
+    "from": "awaiting_verification",
+    "reason": "every required criterion has current passing evidence",
+    "seq": 4,
+    "signal": "G4",
+    "to": "verified"
+  },
+  {
+    "at": "2026-10-06T00:09:58.295871Z",
+    "attempt_id": null,
+    "from": "verified",
+    "reason": "landing authorized (Operator)",
+    "seq": 5,
+    "signal": "G5",
+    "to": "integrating"
+  },
+  {
+    "at": "2026-10-06T00:09:58.771184Z",
+    "attempt_id": null,
+    "from": "integrating",
+    "reason": "merged at 72f74093c81719bcd1753280ac9b51bd3784a110",
+    "seq": 6,
+    "signal": "G6",
+    "to": "done"
+  }
+]
+test the_export_retry_walkthrough_is_delivered_on_claude_code ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 27.31s
+

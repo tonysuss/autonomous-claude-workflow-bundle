@@ -1,0 +1,56 @@
+[
+  {
+    "at": "2026-10-06T01:11:57.803351Z",
+    "attempt_id": null,
+    "from": "pending",
+    "reason": "dependencies done; input snapshot recorded",
+    "seq": 1,
+    "signal": "G1",
+    "to": "ready"
+  },
+  {
+    "at": "2026-10-06T01:11:57.877978Z",
+    "attempt_id": "att-b42196dfcb84459b",
+    "from": "ready",
+    "reason": "attempt att-b42196dfcb84459b opened at epoch 1",
+    "seq": 2,
+    "signal": "G2",
+    "to": "running"
+  },
+  {
+    "at": "2026-10-06T01:11:57.936105Z",
+    "attempt_id": "att-b42196dfcb84459b",
+    "from": "running",
+    "reason": "result accepted from attempt att-b42196dfcb84459b at epoch 1",
+    "seq": 3,
+    "signal": "G3",
+    "to": "awaiting_verification"
+  },
+  {
+    "at": "2026-10-06T01:11:58.162224Z",
+    "attempt_id": null,
+    "from": "awaiting_verification",
+    "reason": "every required criterion has current passing evidence",
+    "seq": 4,
+    "signal": "G4",
+    "to": "verified"
+  },
+  {
+    "at": "2026-10-06T01:11:58.295901Z",
+    "attempt_id": null,
+    "from": "verified",
+    "reason": "landing authorized (Coordinator)",
+    "seq": 5,
+    "signal": "G5",
+    "to": "integrating"
+  },
+  {
+    "at": "2026-10-06T01:11:59.076604Z",
+    "attempt_id": null,
+    "from": "integrating",
+    "reason": "merge refused: the head of pull request #1 moved to 253304206352 before the merge was confirmed; it was pinned to d9fbb4eb3aff",
+    "seq": 6,
+    "signal": "R2",
+    "to": "awaiting_verification"
+  }
+]

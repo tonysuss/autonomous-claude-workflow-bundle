@@ -1,0 +1,19 @@
+{
+  "id": "m08c-asked-to-sign",
+  "finding": "8: the verified head is signed (commit-tree asked to sign, under a failing signer)",
+  "undo": [
+    [
+      "crates/interlock-forge/src/git.rs",
+      "\"commit-tree\", \"--no-gpg-sign\", tree",
+      "\"commit-tree\", \"-S\", tree"
+    ]
+  ],
+  "results": [
+    {
+      "test": "-p interlock-forge --test deliver -- the_verified_head_is_the_same_commit_in_another_clone",
+      "exit": 101,
+      "failed": true,
+      "tail": "running 1 test\ntest the_verified_head_is_the_same_commit_in_another_clone_a_second_later_and_never_signed ... FAILED\n\nfailures:\n\n---- the_verified_head_is_the_same_commit_in_another_clone_a_second_later_and_never_signed stdout ----\n\nthread 'the_verified_head_is_the_same_commit_in_another_clone_a_second_later_and_never_signed' (22463) panicked at crates/interlock-forge/tests/deliver.rs:312:48:\ncalled `Result::unwrap()` on an `Err` value: GitError { args: \"commit-tree -S 0b5146d69a7f3435916ca594d9f5fe68057ea59a -p 57dada415f1b71f03e7bd4edd23e78da43f0b015 -m add() returns the difference instead of the sum\\n\\nVerified by interlock. Landed only at this commit.\\n\\nInterlock-Task: fix-add\\nInterlock-Tree: 0b5146d69a7f3435916ca594d9f5fe68057ea59a\\n\", message: \"error: gpg failed to sign the data:\\n(no gpg output)\" }\nstack backtrace:\n   0: __rustc::rust_begin_unwind\n   1: core::panicking::panic_fmt\n   2: core::result::unwrap_failed\n   3: deliver::the_verified_head_is_the_same_commit_in_another_clone_a_second_later_and_never_signed\n   4: deliver::the_verified_head_is_the_same_commit_in_another_clone_a_second_later_and_never_signed::{closure#0}\n   5: <deliver::the_verified_head_is_the_same_commit_in_another_clone_a_second_later_and_never_signed::{closure#0} as core::ops::function::FnOnce<()>>::call_once\nnote: Some details are omitted, run with `RUST_BACKTRACE=full` for a verbose backtrace.\n\n\nfailures:\n    the_verified_head_is_the_same_commit_in_another_clone_a_second_later_and_never_signed\n\ntest result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 15 filtered out; finished in 0.33s\n\nerror: test failed, to rerun pass `-p interlock-forge --test deliver`"
+    }
+  ]
+}

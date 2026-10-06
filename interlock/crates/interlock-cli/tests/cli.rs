@@ -262,8 +262,9 @@ fn policy_check_pauses_irreversible_actions_and_respects_grants() {
     let check = |line: &str| env.ok(&["policy", "check", "--attempt", &w, "--shell", line]);
     assert_eq!(check("cargo test")["decision"], "allow");
     assert_eq!(check("git push origin main --force")["decision"], "ask");
-    assert_eq!(check("git push origin fix")["decision"], "ask", "external actions need a grant");
-    assert_eq!(check("git push origin fix")["class"], "external_reversible");
+    assert_eq!(check("git push origin interlock/fix")["decision"], "ask", "external actions need a grant");
+    assert_eq!(check("git push origin interlock/fix")["class"], "external_reversible");
+    assert_eq!(check("git push origin fix")["class"], "landing", "any other branch may be a base branch");
 }
 
 #[test]

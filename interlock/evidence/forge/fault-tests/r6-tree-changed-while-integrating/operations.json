@@ -1,0 +1,46 @@
+[
+  {
+    "created_at": "2026-10-06T01:11:59.546974460Z",
+    "id": "op-de13ea9d5aef4f36",
+    "intent": {
+      "expected_head_sha": "be38c512cbe976e2ac57cbf3a6a2ee514c9a7ae7"
+    },
+    "kind": "merge",
+    "outcome": null,
+    "state": "planned",
+    "task_id": "fix-add",
+    "updated_at": "2026-10-06T01:11:59.546974460Z"
+  },
+  {
+    "created_at": "2026-10-06T01:11:59.665639618Z",
+    "id": "op-d5a3520bb5fd4202",
+    "intent": {
+      "base": "main",
+      "expected_head_sha": "be38c512cbe976e2ac57cbf3a6a2ee514c9a7ae7"
+    },
+    "kind": "open_pr",
+    "outcome": {
+      "seen": {
+        "errors": [],
+        "observation": {
+          "detail": {
+            "auto_merge": false,
+            "base_branch": "main",
+            "head": "be38c512cbe976e2ac57cbf3a6a2ee514c9a7ae7",
+            "landed": null,
+            "merged_at": null,
+            "number": 1,
+            "state": "open"
+          },
+          "seen": "pr"
+        }
+      },
+      "verdict": {
+        "verdict": "confirmed"
+      }
+    },
+    "state": "confirmed",
+    "task_id": "fix-add",
+    "updated_at": "2026-10-06T01:11:59.856256608Z"
+  }
+]

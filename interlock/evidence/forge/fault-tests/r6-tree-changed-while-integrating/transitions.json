@@ -1,0 +1,56 @@
+[
+  {
+    "at": "2026-10-06T01:11:58.953704Z",
+    "attempt_id": null,
+    "from": "pending",
+    "reason": "dependencies done; input snapshot recorded",
+    "seq": 1,
+    "signal": "G1",
+    "to": "ready"
+  },
+  {
+    "at": "2026-10-06T01:11:59.065573Z",
+    "attempt_id": "att-b848fbffc462442f",
+    "from": "ready",
+    "reason": "attempt att-b848fbffc462442f opened at epoch 1",
+    "seq": 2,
+    "signal": "G2",
+    "to": "running"
+  },
+  {
+    "at": "2026-10-06T01:11:59.136558Z",
+    "attempt_id": "att-b848fbffc462442f",
+    "from": "running",
+    "reason": "result accepted from attempt att-b848fbffc462442f at epoch 1",
+    "seq": 3,
+    "signal": "G3",
+    "to": "awaiting_verification"
+  },
+  {
+    "at": "2026-10-06T01:11:59.432942Z",
+    "attempt_id": null,
+    "from": "awaiting_verification",
+    "reason": "every required criterion has current passing evidence",
+    "seq": 4,
+    "signal": "G4",
+    "to": "verified"
+  },
+  {
+    "at": "2026-10-06T01:11:59.546974Z",
+    "attempt_id": null,
+    "from": "verified",
+    "reason": "landing authorized (Coordinator)",
+    "seq": 5,
+    "signal": "G5",
+    "to": "integrating"
+  },
+  {
+    "at": "2026-10-06T01:12:00.050732Z",
+    "attempt_id": null,
+    "from": "integrating",
+    "reason": "evidence went stale: the tree, checks, environment or policy changed",
+    "seq": 6,
+    "signal": "R2",
+    "to": "awaiting_verification"
+  }
+]

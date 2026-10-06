@@ -5,6 +5,7 @@
 pub mod brief;
 pub mod capability;
 pub mod classify;
+pub mod delivery;
 pub mod digest;
 pub mod evidence;
 pub mod grants;

@@ -1,6 +1,8 @@
 //! `interlock`: agents propose moves, and this command checks each one against
 //! recorded evidence, the current attempt and granted authority. Output is JSON.
 
+mod forge;
+
 use std::path::{Path, PathBuf};
 use std::process::ExitCode;
 
@@ -70,6 +72,11 @@ enum Command {
     /// Hand verified work to the forge (G5) and record what it did (G6).
     #[command(subcommand)]
     Integrate(IntegrateCmd),
+    /// Ask the forge what happened to every operation nobody confirmed, and settle each one.
+    Reconcile {
+        /// One task; all tasks when left out.
+        task: Option<String>,
+    },
     /// Operator only: create, revoke and list grants.
     #[command(subcommand)]
     Grant(GrantCmd),
@@ -370,6 +377,10 @@ enum IntegrateCmd {
         #[arg(long)]
         refused: Option<String>,
     },
+    /// G5, push, pull request, readiness, the merge pinned to the verified head, and G6.
+    Run(forge::IntegrateRun),
+    /// The task's forge operations, oldest first.
+    Operations { task: String },
 }
 
 #[derive(Subcommand)]
@@ -760,6 +771,9 @@ fn run(cli: &Cli) -> Result<()> {
             }
         }
         Command::Integrate(cmd) => {
+            if !matches!(cmd, IntegrateCmd::Operations { .. }) {
+                forge::operator_only("integrate")?;
+            }
             let mut store = open(cli)?;
             match cmd {
                 IntegrateCmd::Begin { task, pr, base, head } => {
@@ -776,8 +790,11 @@ fn run(cli: &Cli) -> Result<()> {
                     };
                     print(&store.confirm_integration(task, operation, report, now()?)?)
                 }
+                IntegrateCmd::Operations { task } => print(&store.operations(task)?),
+                IntegrateCmd::Run(_) => unreachable!("handled in main"),
             }
         }
+        Command::Reconcile { task } => forge::reconcile(&cli.db.clone().unwrap_or_else(default_db), task.as_deref()),
         Command::Grant(cmd) => {
             let mut store = open(cli)?;
             match cmd {
@@ -963,8 +980,11 @@ fn run_task(
         interlock_bin: std::env::current_exe()?,
         capabilities: capabilities.as_deref().map(parse_capabilities).transpose()?,
     };
+    // Settle what a previous controller left open at the forge before anything else.
+    let reconciled = forge::reconcile_on_start(&db, &repo)?;
     let mut supervisor = interlock_supervisor::Supervisor::new(repo, db, host_by_name(host)?, Probe::from_env(), cfg)?;
-    let report = supervisor.run(task)?;
+    let mut report = supervisor.run(task)?;
+    report.reconciled.extend(reconciled);
     print(&report)?;
     Ok(if report.final_state == State::Done { ExitCode::SUCCESS } else { ExitCode::from(5) })
 }
@@ -973,6 +993,9 @@ fn main() -> ExitCode {
     let cli = Cli::parse();
     let result = match &cli.command {
         Command::Hook { .. } => return hook(&cli),
+        Command::Integrate(IntegrateCmd::Run(args)) => {
+            forge::integrate_run(&cli.db.clone().unwrap_or_else(default_db), args)
+        }
         Command::Run { task, host, model, timeout, max_turns, max_sessions, keep_worktrees, capabilities } => {
             run_task(&cli, task, host, model, timeout, *max_turns, *max_sessions, *keep_worktrees, capabilities)
         }

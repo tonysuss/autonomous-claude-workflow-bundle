@@ -1,0 +1,29 @@
+{
+  "final_state": "awaiting_verification",
+  "head": "d9fbb4eb3affbb47614d22503ccd6840cedbd853",
+  "moves": [
+    {
+      "from": "verified",
+      "reason": "landing authorized (Coordinator)",
+      "signal": "G5",
+      "to": "integrating"
+    },
+    {
+      "from": "integrating",
+      "reason": "merge refused: the head of pull request #1 moved to 253304206352 before the merge was confirmed; it was pinned to d9fbb4eb3aff",
+      "signal": "R2",
+      "to": "awaiting_verification"
+    }
+  ],
+  "pull_request": 1,
+  "reconciled": [],
+  "steps": [
+    "G5: operation op-cc2187e174d440b5 will land only d9fbb4eb3affbb47614d22503ccd6840cedbd853",
+    "pushing d9fbb4eb3affbb47614d22503ccd6840cedbd853 to interlock/fix-add (operation op-f987e323a19b458a)",
+    "opening a pull request from interlock/fix-add into main",
+    "pull request #1 holds d9fbb4eb3affbb47614d22503ccd6840cedbd853",
+    "merging #1 pinned to d9fbb4eb3affbb47614d22503ccd6840cedbd853 (operation op-cc2187e174d440b5 started)"
+  ],
+  "stopped_because": "sent back for verification: merge refused: the head of pull request #1 moved to 253304206352 before the merge was confirmed; it was pinned to d9fbb4eb3aff",
+  "task_id": "fix-add"
+}

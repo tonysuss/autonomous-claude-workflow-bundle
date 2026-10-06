@@ -65,7 +65,7 @@ fn pre_tool_use(
     let action = action_of(tool_name, input);
     if let Some(cmd) = &action.command {
         let db = ctx.db.display().to_string();
-        if cmd.contains(&db) || cmd.contains("state.db") {
+        if cmd.contains(&db) || cmd.contains("state.db") || touches_store_dir(cmd, &ctx.db) {
             return HookResponse::deny("interlock's store is off limits; report through the interlock command");
         }
     }
@@ -113,6 +113,17 @@ fn pre_tool_use(
         }
         Verdict::Ask(reason) => HookResponse::ask(&reason, &ctx.host),
     }
+}
+
+/// Whether a command names interlock's own directory: the store, the
+/// controller lock, the hooks plugin. Attempt worktrees under it are fine.
+/// A string check, not a sandbox: a path built at run time gets past it.
+fn touches_store_dir(cmd: &str, db: &Path) -> bool {
+    let mut needles = vec![".interlock".to_string()];
+    if let Some(dir) = db.parent().map(|d| d.display().to_string()).filter(|d| !d.is_empty()) {
+        needles.push(dir);
+    }
+    needles.iter().any(|n| cmd.match_indices(n.as_str()).any(|(i, _)| !cmd[i + n.len()..].starts_with("/worktrees/")))
 }
 
 /// Holds an agent from finishing until it has recorded the evidence its role owes.
@@ -314,6 +325,23 @@ mod tests {
         assert!(grant.stderr.contains("no operator to ask"));
         assert_eq!(pre(&s, "Bash", json!({"command": "cargo test"})).exit_code, 0);
         assert_eq!(pre(&s, "Bash", json!({"command": "git push origin fix"})).exit_code, 2, "external is not granted");
+    }
+
+    #[test]
+    fn everything_under_the_store_directory_but_worktrees_is_off_limits() {
+        let s = setup(true);
+        let dir = s.ctx.db.parent().unwrap().display().to_string();
+        for cmd in [
+            format!("rm {dir}/supervisor.lock"),
+            "echo 999 > .interlock/supervisor.lock".to_string(),
+            "cat ../../.interlock/plugin/hooks/hooks.json".to_string(),
+        ] {
+            let r = pre(&s, "Bash", json!({ "command": cmd }));
+            assert_eq!(r.exit_code, 2, "{cmd}");
+            assert!(r.stderr.contains("store is off limits"), "{cmd}: {}", r.stderr);
+        }
+        let own = format!("cat {}/src/a.rs", s.worktree.display());
+        assert_eq!(pre(&s, "Bash", json!({ "command": own })).exit_code, 0, "the attempt's own worktree is fine");
     }
 
     #[test]

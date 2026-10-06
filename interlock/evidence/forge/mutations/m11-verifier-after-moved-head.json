@@ -1,0 +1,19 @@
+{
+  "id": "m11-verifier-after-moved-head",
+  "finding": "11: a moved-head R2 starts a verifier session instead of advancing",
+  "undo": [
+    [
+      "crates/interlock-supervisor/src/run.rs",
+      "                State::AwaitingVerification if !self.store.advance(task_id, Utc::now())?.is_empty() => {}\n",
+      ""
+    ]
+  ],
+  "results": [
+    {
+      "test": "-p interlock-cli --test forge_cli -- a_moved_head_r2_needs_no_verifier_session",
+      "exit": 101,
+      "failed": true,
+      "tail": "  \"host\": \"copilot\",\n  \"reconciled\": [],\n  \"sessions\": [],\n  \"stopped_because\": \"used all 0 sessions this run allows\",\n  \"task_id\": \"fix-add\"\n}\n  left: String(\"awaiting_verification\")\n right: \"blocked\"\nstack backtrace:\n   0: __rustc::rust_begin_unwind\n   1: core::panicking::panic_fmt\n   2: core::panicking::assert_failed_inner\n   3: core::panicking::assert_failed::<serde_json::value::Value, &str>\n   4: forge_cli::a_moved_head_r2_needs_no_verifier_session\n   5: forge_cli::a_moved_head_r2_needs_no_verifier_session::{closure#0}\n   6: <forge_cli::a_moved_head_r2_needs_no_verifier_session::{closure#0} as core::ops::function::FnOnce<()>>::call_once\nnote: Some details are omitted, run with `RUST_BACKTRACE=full` for a verbose backtrace.\n\n\nfailures:\n    a_moved_head_r2_needs_no_verifier_session\n\ntest result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 8 filtered out; finished in 1.49s\n\nerror: test failed, to rerun pass `-p interlock-cli --test forge_cli`"
+    }
+  ]
+}

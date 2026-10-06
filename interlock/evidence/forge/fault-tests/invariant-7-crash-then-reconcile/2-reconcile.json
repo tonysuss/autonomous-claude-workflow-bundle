@@ -1,0 +1,28 @@
+{
+  "reconciled": [
+    {
+      "after": "confirmed",
+      "before": "started",
+      "kind": "merge",
+      "moves": [
+        {
+          "from": "integrating",
+          "reason": "merged at b76ef6e302f4a52a6ceee68aa80094da6ff1c920",
+          "signal": "G6",
+          "to": "done"
+        }
+      ],
+      "operation": "op-9b223700f2234939",
+      "task_id": "fix-add",
+      "verdict": {
+        "merged_at": "2026-10-06T01:11:57.116981Z",
+        "report": {
+          "head_sha": "b76ef6e302f4a52a6ceee68aa80094da6ff1c920",
+          "outcome": "merged"
+        },
+        "verdict": "land"
+      }
+    }
+  ],
+  "still_unknown": 0
+}
