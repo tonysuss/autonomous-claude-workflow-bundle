@@ -6,6 +6,7 @@ use std::process::ExitCode;
 
 use anyhow::{Result, anyhow};
 use clap::Subcommand;
+use interlock_adapter::HostReport;
 use interlock_skillgen::validate::{self, Severity};
 use interlock_skillgen::{Catalog, Target};
 use serde_json::json;
@@ -102,9 +103,16 @@ pub fn skills(cmd: &SkillsCmd) -> Result<ExitCode> {
 }
 
 /// Installs the guided-session files for `host` in the repository at `repo`.
-pub fn setup(host: &str, repo: &Path, db: &Path, from: Option<&Path>) -> Result<ExitCode> {
+pub fn setup(host: &str, repo: &Path, db: &Path, from: Option<&Path>, inspected: &HostReport) -> Result<ExitCode> {
     let bin = std::env::current_exe()?;
     let report = interlock_skillgen::setup::install(&catalog(from)?, host, repo, db, &bin)?;
-    print(&serde_json::to_value(&report)?);
+    let mut out = serde_json::to_value(&report)?;
+    out["host_report"] = json!({
+        "installed": inspected.installed,
+        "version": inspected.version,
+        "capabilities": inspected.capability_set(),
+        "notes": inspected.notes,
+    });
+    print(&out);
     Ok(ExitCode::SUCCESS)
 }

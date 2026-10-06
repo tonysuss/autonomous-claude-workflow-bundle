@@ -20,8 +20,13 @@ pub struct Step {
     pub args: Value,
 }
 
+/// A shell command. It waits up to two minutes for output, as an agent would
+/// for a command it expects to take a while.
 pub fn bash(command: &str) -> Step {
-    Step { tool: "bash".into(), args: json!({ "command": command, "description": "interlock step" }) }
+    Step {
+        tool: "bash".into(),
+        args: json!({ "command": command, "description": "interlock step", "initial_wait": 120 }),
+    }
 }
 
 pub fn tool(name: &str, args: Value) -> Step {

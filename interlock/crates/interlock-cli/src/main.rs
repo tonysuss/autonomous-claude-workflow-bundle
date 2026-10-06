@@ -1043,9 +1043,12 @@ fn main() -> ExitCode {
         }
         Command::Skills(cmd) => skills_cmd::skills(cmd),
         Command::Setup { host, from } => absolute_db(&cli).and_then(|db| {
-            open(&cli)?;
+            let mut store = open(&cli)?;
+            // Inspect the host once now, so a guided session's attempts read the saved report.
+            let report = host_by_name(host)?.inspect(&Probe::from_env());
+            store.save_host_report(host, &serde_json::to_value(&report)?, now()?)?;
             let repo = interlock_supervisor::git::toplevel(&std::env::current_dir()?)?;
-            skills_cmd::setup(host, &repo, &db, from.as_deref())
+            skills_cmd::setup(host, &repo, &db, from.as_deref(), &report)
         }),
         _ => run(&cli).map(|()| ExitCode::SUCCESS),
     };

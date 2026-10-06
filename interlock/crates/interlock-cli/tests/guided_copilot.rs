@@ -54,6 +54,7 @@ impl Guided {
         let g = Guided { repo, home: tempfile::tempdir().unwrap(), copilot };
         let setup = g.interlock(&["setup", "--host", "copilot"]);
         assert_eq!(setup["skills"], json!(["design", "implement", "investigate", "review", "route", "verify"]));
+        assert_eq!(setup["host_report"]["installed"], true, "setup saves the host's capabilities: {setup:#}");
         Some(g)
     }
 
@@ -122,22 +123,19 @@ impl Guided {
 }
 
 /// Attempt tokens are bookkeeping, not secrets, but evidence never carries them.
+/// Every value shown after a token marker is replaced wherever it appears,
+/// since hosts repeat command arguments in their own metadata.
 fn redact(text: &str) -> String {
-    let mut out = String::with_capacity(text.len());
-    let mut rest = text;
-    while let Some(i) =
-        ["--token ", "token\\\": \\\"", "token\": \""].iter().filter_map(|p| rest.find(p).map(|i| i + p.len())).min()
-    {
-        out.push_str(&rest[..i]);
-        rest = &rest[i..];
-        let hex = rest.chars().take_while(|c| c.is_ascii_hexdigit()).count();
-        if hex >= 32 {
-            out.push_str("<redacted>");
-            rest = &rest[hex..];
+    let mut tokens = std::collections::BTreeSet::new();
+    for marker in ["--token ", "token\\\": \\\"", "token\": \""] {
+        for (i, _) in text.match_indices(marker) {
+            let hex: String = text[i + marker.len()..].chars().take_while(|c| c.is_ascii_hexdigit()).collect();
+            if hex.len() >= 32 {
+                tokens.insert(hex);
+            }
         }
     }
-    out.push_str(rest);
-    out
+    tokens.iter().fold(text.to_string(), |out, t| out.replace(t.as_str(), "<redacted>"))
 }
 
 /// Tool results in a Copilot JSONL stream, in order, with the tool's name.
