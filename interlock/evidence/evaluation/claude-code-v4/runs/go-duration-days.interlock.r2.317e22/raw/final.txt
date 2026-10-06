@@ -1,0 +1,8 @@
+`GetDuration` now accepts `d` as a unit of 24 hours, so `30d` reads as `720h0m0s`. interlock ran both checks on the final tree and both passed: `sh checks/days.sh` and `go test ./...`.
+
+**Cause and fix:** `GetDuration` passed the value straight to `time.ParseDuration`, which has no day unit. It now calls a new `parseDuration` in `getters.go`, which handles a leading `d` and otherwise defers to `time.ParseDuration`. The input forms it accepts:
+- **Old forms:** whole seconds (`90`) and Go syntax (`1m30s`) behave as before.
+- **Day forms:** `30d`, `1.5d`, `-2d` and `1d12h` work.
+- **Rejected:** `1h1d`, `1d-1h`, `1d5` and values too large to fit in a duration give an error.
+
+I added `TestParseDurationDays` in `getters_test.go` and a sentence to `README.md`. The `repro` check is recorded as observed, and `regression` and `spec` as tested. `spec` still needs the independent verifier.

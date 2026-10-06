@@ -16,6 +16,7 @@ interlock decides when work advances. You propose; it checks each move against r
 | Apply what the evidence allows (G4, G7, R1, R2) | `interlock advance <id>` | verify |
 | Keep a design, review or answer on the task | `interlock note add --task <id> --kind <design\|review\|answer> --file - <<'EOF'` ... `EOF` | design, review, investigate |
 | Where things stand | `interlock status <id>` and `interlock task log <id>` | anyone |
+| Which store this directory uses, if any (read-only; exit 3 when there is none) | `interlock where` | anyone |
 | Resume from records | `interlock brief <id>` | anyone |
 
 `--host` names the host you run in (`copilot` or `claude-code`); interlock reads that host's capabilities from it.

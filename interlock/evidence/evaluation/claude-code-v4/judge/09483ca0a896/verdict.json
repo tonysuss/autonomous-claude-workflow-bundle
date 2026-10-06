@@ -1,0 +1,38 @@
+{
+ "anon_id": "09483ca0a896",
+ "task": "go-duration-days",
+ "cases": [
+  {
+   "id": "existing_tests",
+   "pass": true,
+   "detail": "10 passed\n"
+  },
+  {
+   "id": "TestHiddenDays",
+   "pass": true,
+   "detail": ""
+  },
+  {
+   "id": "TestHiddenDaysWithOtherUnits",
+   "pass": true,
+   "detail": ""
+  },
+  {
+   "id": "TestHiddenFractionalDays",
+   "pass": true,
+   "detail": ""
+  },
+  {
+   "id": "TestHiddenExistingFormsUnchanged",
+   "pass": true,
+   "detail": ""
+  },
+  {
+   "id": "TestHiddenInvalidValuesKeepTheirMessage",
+   "pass": true,
+   "detail": ""
+  }
+ ],
+ "pass": true,
+ "condition_words": []
+}

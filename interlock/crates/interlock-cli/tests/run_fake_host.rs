@@ -653,6 +653,35 @@ fn an_escaped_worker_process_cannot_forge_the_verifiers_evidence() {
     assert_ne!(report["final_state"], "done");
 }
 
+/// A verifier that finds a gap the worker cannot close records `blocked` with the reason. The
+/// task does not reach done: a second verifier is asked, then the task waits for the operator,
+/// whose status shows the verifier's reason.
+#[test]
+fn a_gap_the_verifier_records_as_blocked_keeps_the_task_from_done_and_reaches_the_operator() {
+    let f = Fixture::with(
+        "max_attempts = 3",
+        true,
+        "",
+        "if [ -z \"$INTERLOCK_TREE\" ]; then\n  sed -i 's/a - b/a + b/' calc.py\n  \
+         interlock check run --criterion fixed >/dev/null\n  \
+         interlock claim add --criterion fixed --strength tested --tree auto --ref 'sh check.sh' --note ok >/dev/null\n\
+         else\n  interlock check run --criterion verified >/dev/null\n  \
+         interlock assess add --criterion fixed --strength tested --tree auto --ref 'sh check.sh' --note ok >/dev/null\n  \
+         interlock assess add --criterion verified --strength blocked --tree auto --ref 'read the change' \
+         --note 'the goal also needs sub, which is outside the scope' >/dev/null\nfi",
+    );
+    let (_, report, err) = f.run(&["--max-sessions", "6"]);
+    assert_eq!(report["final_state"], "blocked", "{report:#} {err}");
+    let roles: Vec<&str> = report["sessions"].as_array().unwrap().iter().filter_map(|s| s["role"].as_str()).collect();
+    assert_eq!(roles, ["worker", "verifier", "verifier"], "{report:#}");
+    let status = f.ok(&["status", "fix-add"]).to_string();
+    assert!(
+        status.contains("a verifier recorded blocked: the goal also needs sub, which is outside the scope"),
+        "{status}"
+    );
+    assert!(!f.signals("fix-add").iter().any(|s| s == "G7"), "never done");
+}
+
 #[test]
 fn budgets_must_be_finite_amounts() {
     let f = Fixture::new("max_attempts = 3", "", "true");

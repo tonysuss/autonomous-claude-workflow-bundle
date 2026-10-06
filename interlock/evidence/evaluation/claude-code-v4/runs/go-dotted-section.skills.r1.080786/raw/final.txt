@@ -1,0 +1,10 @@
+`kvconf get app.conf db.eu.host` now splits the name at the last dot, so it finds `host` in section `db.eu` and prints `db1.example.org`. `go test ./...` passes and `checks/dotted.sh` prints `ok: db1.example.org`.
+
+Both the command line and `Config.Lookup` split on the first dot, so I fixed both. They now share one new exported helper, `SplitName`, in `config.go`. The rest of the change:
+- **`cmd/kvconf/main.go`:** `splitName` calls `kvconf.SplitName`, and I removed the `strings` import it no longer needed.
+- **`config_test.go`:** this file is new, with a test that `Lookup("db.eu.host")` returns the value.
+- **`README.md`:** the `SECTION.KEY` note now explains the last-dot rule.
+
+A name with no dot is still a key in the unnamed section.
+
+STATUS: DONE

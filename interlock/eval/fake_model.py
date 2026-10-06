@@ -16,6 +16,10 @@ the final message:
 A session is a verifier if its first user message mentions "independent
 verifier", an interlock worker if it mentions "interlock", and a plain session
 otherwise. (Copilot puts interlock's role instructions in that message.)
+
+A kind may also name a "skill". When the host lists that skill for the model
+(Copilot's `<available_skills>`) and offers its skill tool, the session first
+invokes it, then runs its steps: the skills condition's plumbing.
 """
 
 import json
@@ -105,17 +109,31 @@ class FakeModel:
         with self.lock:
             self.requests.append({"kind": kind, "tools_done": tools_done})
         spec = self.script.get(kind) or {}
-        steps = spec.get("steps") or []
+        steps = list(spec.get("steps") or [])
+        tools = {t.get("function", {}).get("name"): t for t in req.get("tools") or []}
+        system = "\n".join(_text(m) for m in msgs if m.get("role") == "system")
+        skill = spec.get("skill")
+        if skill and "skill" in tools and f"<name>{skill}</name>" in system:
+            steps.insert(0, {"tool": "skill", "arguments": {"skill": skill}})
         on_block = self.script.get("on_block") or []
         command = None
         if tools_done < len(steps):
             command = steps[tools_done]
         elif blocked and tools_done - len(steps) < len(on_block):
             command = on_block[tools_done - len(steps)]
-        shell = next(
-            (t for t in req.get("tools") or [] if t.get("function", {}).get("name") in ("bash", "shell")),
-            None,
-        )
+        if isinstance(command, dict):
+            with self.lock:
+                self.requests[-1]["tool"] = command["tool"]
+            return {
+                "role": "assistant",
+                "content": None,
+                "tool_calls": [{
+                    "id": f"call_{tools_done}",
+                    "type": "function",
+                    "function": {"name": command["tool"], "arguments": json.dumps(command["arguments"])},
+                }],
+            }
+        shell = tools.get("bash") or tools.get("shell")
         if command and shell:
             return {
                 "role": "assistant",

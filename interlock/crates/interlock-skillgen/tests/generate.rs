@@ -226,3 +226,82 @@ fn canonical_sources_are_checked() {
     let e = load_err(&[("skills/route/notes.txt", "x")]);
     assert!(e.contains("only references/*.md"), "{e}");
 }
+
+/// The skills a person reaches with an ordinary request ("fix this bug",
+/// "add this feature", "why does X happen") must trigger on it and work
+/// where there is no interlock task, so that skills can be used, and
+/// evaluated, without the runtime.
+#[test]
+fn the_entry_skills_trigger_on_ordinary_requests_and_work_without_interlock() {
+    let catalog = Catalog::embedded().unwrap();
+    let standalone: Vec<&str> =
+        catalog.skills.iter().filter(|s| s.meta.standalone).map(|s| s.meta.name.as_str()).collect();
+    assert_eq!(standalone, ["implement", "investigate"]);
+    let implement = catalog.skill("implement").unwrap();
+    for request in [
+        "whenever you are asked to fix a bug",
+        "add or change a feature",
+        "refactor code",
+        "before your first edit",
+        "Works on its own",
+    ] {
+        assert!(implement.meta.description.contains(request), "{}", implement.meta.description);
+    }
+    let investigate = catalog.skill("investigate").unwrap();
+    for request in ["whenever you are asked how something works", "why it was built that way", "Works on its own"] {
+        assert!(investigate.meta.description.contains(request), "{}", investigate.meta.description);
+    }
+    for s in [implement, investigate] {
+        assert!(!s.meta.description.contains("an interlock task's"), "{}", s.meta.description);
+        let (with, without) = s.body.split_once("\n## Without interlock\n").expect("a standalone section");
+        // The skill says when interlock applies: a task id, a headless attempt, or a store that
+        // `interlock where` finds the way every command does (INTERLOCK_DB first). Not a path test:
+        // a store can live elsewhere, and `skills generate` writes `.interlock/` with no store.
+        for when in ["task id", "`INTERLOCK_ATTEMPT` is set", "`interlock where` exits 0", "`INTERLOCK_DB`"] {
+            assert!(with.contains(when), "{}: {when}", s.meta.name);
+        }
+        // Without it, nothing is recorded: no interlock command at all.
+        assert!(!without.contains("interlock "), "{}: {without}", s.meta.name);
+        assert!(without.contains("nothing is recorded"), "{}", s.meta.name);
+    }
+    // Skills whose job exists only with interlock's records stay tied to it.
+    let route = catalog.skill("route").unwrap();
+    assert!(!route.meta.standalone && route.meta.description.contains("set up for interlock"));
+    assert!(route.meta.description.contains("interlock where") && !route.meta.description.contains("state.db"));
+    for name in ["verify", "review", "design"] {
+        assert!(!catalog.skill(name).unwrap().meta.standalone, "{name}");
+    }
+
+    let out = generate(&catalog, Target::AgentSkills).unwrap();
+    let (fm, _) = split_frontmatter(file(&out, "implement/SKILL.md")).unwrap().unwrap();
+    assert_eq!(
+        fm.str("compatibility"),
+        Some("Uses interlock-cli on PATH where the work is an interlock task; works without it")
+    );
+    let Some(Value::Map(meta)) = fm.get("metadata") else { panic!("no metadata") };
+    assert!(meta.contains(&("interlock-standalone".into(), "true".into())), "{meta:?}");
+    // On the hosts, model-invoked skills still carry name and description only.
+    let out = generate(&catalog, Target::ClaudeCode).unwrap();
+    let (fm, body) = split_frontmatter(file(&out, "skills/implement/SKILL.md")).unwrap().unwrap();
+    let keys: Vec<&str> = fm.0.iter().map(|(k, _)| k.as_str()).collect();
+    assert_eq!(keys, ["name", "description"]);
+    assert!(body.contains("## Without interlock") && body.contains("interlock:route"), "{body}");
+}
+
+#[test]
+fn a_standalone_skill_must_say_how_it_works_without_interlock() {
+    let standalone = "name = \"route\"\ndescription = \"Routes.\"\ninvocation = \"model\"\n\
+                      requires = [\"interlock-cli\"]\nstandalone = true\npack = \"core\"\n";
+    let e = load_err(&[("skills/route/skill.toml", standalone)]);
+    assert!(e.contains("## Without interlock"), "{e}");
+    let body = "Route. See references/tip.md.\n\n## Without interlock\n\nJust do it.\n";
+    Catalog::from_files(files(&[("skills/route/skill.toml", standalone), ("skills/route/SKILL.md", body)])).unwrap();
+    let no_requirement = "name = \"route\"\ndescription = \"Routes.\"\ninvocation = \"model\"\nstandalone = true\n\
+                          pack = \"core\"\n";
+    let e = load_err(&[("skills/route/skill.toml", no_requirement), ("skills/route/SKILL.md", body)]);
+    assert!(e.contains("it has none"), "{e}");
+    let routed = "name = \"tip\"\ndescription = \"A tip.\"\ninvocation = \"routed\"\nrequires = [\"interlock-cli\"]\n\
+                  standalone = true\npack = \"core\"\nrouters = [\"route\"]\n";
+    let e = load_err(&[("skills/tip/skill.toml", routed)]);
+    assert!(e.contains("only a model-invoked skill"), "{e}");
+}

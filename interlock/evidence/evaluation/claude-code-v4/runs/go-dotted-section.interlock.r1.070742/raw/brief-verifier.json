@@ -1,0 +1,84 @@
+{
+ "base_commit": "e8d4d5cb6e3e8475b7a303e95ab63dd3fbd57219",
+ "criteria": [
+  {
+   "baseline": "it must fail on the input snapshot, reproducing the problem; interlock saw it fail there (run run-29088b9a5f054028)",
+   "check": "sh checks/dotted.sh",
+   "id": "repro",
+   "needs": "observed from independent",
+   "statement": "`kvconf get` prints the value of `db.eu.host` for the reported file",
+   "status": "passes (Observed)"
+  },
+  {
+   "baseline": null,
+   "check": null,
+   "id": "spec",
+   "needs": "tested from independent",
+   "statement": "In a name of the form SECTION.KEY, the key is the part after the last dot, and a name without a dot is a key in the unnamed section",
+   "status": "passes (Tested)"
+  },
+  {
+   "baseline": "it must pass on the input snapshot, as a regression guard; interlock saw it pass there (run run-ad760849d5544f81)",
+   "check": "go test ./...",
+   "id": "regression",
+   "needs": "tested from self",
+   "statement": "The existing Go tests pass",
+   "status": "passes (Tested)"
+  }
+ ],
+ "current_tree": "41edb98398d9576e22fd708f578e7838f5121179",
+ "failures_to_fix": [],
+ "goal": "`kvconf get` cannot read a key in a section whose name contains a dot. With this file:\n\n```\n[db.eu]\nhost = db1.example.org\n```\n\n`go run ./cmd/kvconf get app.conf db.eu.host` prints `kvconf: no section \"db\"` instead of `db1.example.org`.\n\nSection names may contain dots; keys never do. So in a name of the form `SECTION.KEY`, the key is the part after the last dot: `db.eu.host` is the key `host` in the section `db.eu`. A name without a dot is a key in the unnamed section.\n\n`checks/dotted.sh` reproduces the problem. The tests run with `go test ./...`.\n",
+ "grant": {
+  "action_classes": [
+   "read",
+   "local_reversible"
+  ],
+  "grant_ids": [],
+  "landing_authority": "none",
+  "tools": {
+   "allow": [
+    "read",
+    "shell"
+   ],
+   "deny": [
+    "edit",
+    "shell:git push",
+    "shell:git commit"
+   ]
+  }
+ },
+ "next_moves": [],
+ "previous_result": {
+  "attempt_id": "att-1bf8b45d45364688",
+  "changed_paths": [
+   "README.md",
+   "cmd/kvconf/main.go",
+   "config.go",
+   "parser_test.go"
+  ],
+  "open_questions": [],
+  "output_tree": "41edb98398d9576e22fd708f578e7838f5121179",
+  "summary": "`kvconf get app.conf db.eu.host` now returns `db1.example.org`. The name is split at the last dot, so `db.eu.host` is the key `host` in the section `db.eu`.\n\nThe bug was in two places that each split `SECTION.KEY` at the first dot: `Config.Lookup` in `config.go` and `splitName` in `cmd/kvconf/main.go`. Both now split at the last dot, and a name with no dot is still a key in the unnamed section. I also added `TestLookupDottedSection` in `parser_test.go` and a note about dotted section names in `README.md`.\n\ninterlock ran `checks/dotted.sh` (repro) and `go test ./...` (regression) on the final files, and both pass. I recorded claims for all three criteria. `spec` rests on `TestLookupDottedSection`, which only exercises `Lookup`, not the CLI. The CLI path is covered by the `checks/dotted.sh` run."
+ },
+ "protected": [
+  "checks/dotted.sh"
+ ],
+ "role": "verifier",
+ "scope": [
+  "config.go",
+  "cmd/kvconf/*.go",
+  "*_test.go",
+  "README.md"
+ ],
+ "state": "done",
+ "task_id": "go-dotted-section",
+ "upstream": [],
+ "verifier_bindings": [
+  {
+   "attempt": "att-8f83cc14f392473b (verifier, completed)",
+   "bound": "launched by interlock"
+  }
+ ],
+ "workflow": "bug-fix v1"
+}

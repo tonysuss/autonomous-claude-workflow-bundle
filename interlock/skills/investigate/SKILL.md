@@ -1,11 +1,12 @@
 # Investigate
 
-Build a working model of the code from evidence you can point at: files and lines, commands you ran and what they printed, and the commits that shaped it. Investigations are read-only. Read `references/interlock-basics.md` once per session.
+Build a working model of the code from evidence you can point at: files and lines, commands you ran and what they printed, and the commits that shaped it. Investigations are read-only.
 
-Use this skill two ways:
+Use this skill three ways:
 
-- **As the worker of an investigation task.** Follow every step below. The answer is your result.
-- **To ground a change** inside {{skill:implement}}. Run steps 3 to 5 in the attempt you already have, then go back.
+- **As the worker of an interlock investigation task**: you were given a task id, `INTERLOCK_ATTEMPT` is set, or `interlock where` exits 0. That command prints the store every interlock command would use from here (`INTERLOCK_DB` when set, then an attempt's worktree, then the repository root) and creates nothing; it exits 3 when there is no store. Do not look for the store's file yourself. Where there is a store but no task for this question yet, invoke {{skill:route}} first. Read `references/interlock-basics.md` once per session and follow every step below. The answer is your result.
+- **To ground a change** inside {{skill:implement}}. Run steps 3 to 5 where you already work, then go back.
+- **On its own**, for any other question about code: follow "Without interlock" at the end.
 
 ## 1. Read the task
 
@@ -22,6 +23,8 @@ interlock attempt start <id> --role worker --host {{host}} --worktree auto
 ```
 
 Keep `attempt.id`, `attempt.epoch`, `attempt.worktree` and `token`. The worktree holds the repository at the input snapshot. Read there. An investigation changes nothing: the hooks deny this attempt the edit tools, and interlock rejects its result if the worktree's files differ from the snapshot in any way, however they were changed. Put scratch files under /tmp.
+
+If `INTERLOCK_ATTEMPT` is set, interlock opened the attempt for you and you are in its worktree: skip this step, leave out `--attempt` and `--token` (interlock reads them from the environment), and report as your instructions say.
 
 ## 3. How it works
 
@@ -68,3 +71,11 @@ EOF
 ```
 
 The task now awaits verification. Invoke {{skill:verify}} with the task id: an independent verifier rechecks your citations and reruns your commands. Give the person the answer when the task is verified.
+
+## Without interlock
+
+There is no task, attempt or store, so nothing is recorded. Change no file; put scratch files under /tmp.
+
+1. **Take the question** from the request: what the answer must show, and any form it must take.
+2. **Follow steps 3 to 5** in the working copy you were given.
+3. **Give the answer** in your reply, in `references/answer-format.md`, with its citations and the commands you ran. Say what you could not confirm.

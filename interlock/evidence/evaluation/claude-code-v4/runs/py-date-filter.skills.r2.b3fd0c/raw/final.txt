@@ -1,0 +1,13 @@
+`balances` and `settle` now accept `--since DATE` and `--until DATE`, both inclusive and either usable alone. The unit tests pass (22), and `checks/date-filter.sh` passes. I also ran `settle --until 2026-06-01` on `examples/trip.csv` and got the two transfers to Ann. I didn't hand-run the exit-status-1 case; the unit test covers it. `export` is unchanged.
+
+- **Invalid option value:** a DATE that isn't a real `YYYY-MM-DD` date is rejected by the argument parser with status 2. I checked `2026-6-1` by hand and got that.
+- **Invalid entry date:** when either option is given, every entry's date is checked. A bad one fails with status 1 and a message like `tally: trip.csv:3: invalid date '2026-13-01'`. Without the options, entry dates aren't checked.
+
+The interrupted session had already written most of this. I fixed two things:
+
+- **Bad calendar dates:** a date like `2026-13-01` leaked Python's own `strptime` error text instead of the `invalid date` message. It now gives the intended message.
+- **Test placement:** the new tests sat below the `if __name__ == "__main__"` block in `tests/test_cli.py`. I moved them above it.
+
+I changed only `tally/cli.py`, `tally/csvio.py`, `tests/test_cli.py` and `README.md`.
+
+STATUS: DONE

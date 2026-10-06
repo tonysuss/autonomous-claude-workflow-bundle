@@ -1,0 +1,5 @@
+`balances` and `settle` now print amounts with thousands separators, so a balance shows as `-121,810.78`. The unit tests pass and `checks/thousands.sh` prints ok.
+
+I added `format_cents_grouped` in `tally/money.py` and switched `tally/report.py` to use it for both commands. I left `format_cents` as it was, because the CSV export also uses it and its output shouldn't change. I added a test for the new function in `tests/test_money.py`. I didn't run `settle` on `examples/big.csv`, so its output isn't checked directly. It uses the same function as `balances`. I didn't touch `README.md`.
+
+STATUS: DONE

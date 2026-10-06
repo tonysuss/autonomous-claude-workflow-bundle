@@ -257,8 +257,13 @@ fn not_yet_reason(criterion: &Criterion, claims: &[&Evidence], assessments: &[&E
         }
     );
     let mut notes = Vec::new();
-    if assessments.iter().any(|e| e.strength == Strength::Blocked) {
-        notes.push("the verifier could not run the check".to_string());
+    // A verifier records blocked when it could not check a criterion, or found a gap only a
+    // person can settle: its note says which, and the operator needs it.
+    if let Some(b) = assessments.iter().find(|e| e.strength == Strength::Blocked) {
+        notes.push(match b.note.as_deref().map(str::trim).filter(|n| !n.is_empty()) {
+            Some(note) => format!("a verifier recorded blocked: {note}"),
+            None => "a verifier recorded blocked, with no reason".to_string(),
+        });
     }
     if criterion.producer == Producer::Independent && !claims.is_empty() {
         notes.push(format!("{} worker claim(s) do not count here", claims.len()));

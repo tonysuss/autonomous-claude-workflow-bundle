@@ -2,14 +2,59 @@
 
 Runtime evidence for the §13 evaluation on the **stand-in** task set. How the harness works and what the results mean: [docs/evaluation.md](../../docs/evaluation.md).
 
-Three stages, newest first:
-- **After integration (October 6, last):** all three conditions, `plain`, `skills` and `interlock` with skills, on Claude Code with the integrated interlock: 45 counted runs.
+Four stages, newest first:
+- **v4, after the fixes (October 6, last):** the worker and verifier prompts and standalone skills (commit `882f3cb`), then `skills` and interlock rerun on the harder tasks and a second repeat of all three conditions on the original tasks: 34 counted runs.
+- **v3, after integration (October 6):** all three conditions, `plain`, `skills` and `interlock` with skills, on Claude Code with the integrated interlock: 45 counted runs.
 - **After the review (October 6, later):** the harness and task set were reworked to address the review, and checked with no model calls.
 - **The first live run (October 6):** 28 Claude Code runs, `plain` and `interlock` only, on the first version of the harness and the seven original tasks.
 
 Paths in commands: `H=interlock/eval/harness.py`. `STATE`, `RESULTS` and `RUNS` are the harness's three separate roots, outside the repository. Every file here is under 200 KB. Transcripts are gzipped, with the init event cut to its model, version, tools and working directory, long tool outputs truncated, and environment secrets redacted.
 
-## After integration: all three conditions on Claude Code
+## v4: after fixing what v3 exposed
+
+interlock-foundation at `a2ec7b9`, plus commit `882f3cb` on this branch: the worker and verifier prompts, standalone `implement` and `investigate` skills, and the harness changes. What changed and why: docs/evaluation.md, "Results v4".
+
+**v4's harder-task runs are in-sample, not a held-out test.** The new prompt sentences were written after reading v3's failures and the tasks' hidden-requirement labels, one per category, and the host (2.1.289 to 2.1.291) and the skill text in every interlock session changed at the same time. docs/evaluation.md says what would test them.
+
+| What | Command | Outcome | Raw output |
+| --- | --- | --- | --- |
+| interlock's own tests, hosts required | `CARGO_PROFILE_DEV_DEBUG=0 CARGO_INCREMENTAL=0 INTERLOCK_REQUIRE_HOSTS=1 INTERLOCK_COPILOT_BIN=<copilot 1.0.91> cargo test --workspace --no-fail-fast` | 320 passed, 0 failed, 1 ignored (the live delivery test). Includes the new prompt tests, the generator's standalone tests, `guided_cli` (15), `guided_copilot` (2) and `skills_load` (5, one new) | [checks/cargo_test_hosts_v4.out.txt](checks/cargo_test_hosts_v4.out.txt) |
+| The harness's unit tests | `python3 interlock/eval/test_harness.py -v` | 41 of 41 pass. New: Copilot skill calls are counted; the scripted model invokes a listed skill first; Copilot-generated skills are wrapped as a plugin; `--first-repeat` continues the ABBA order; a repeat is skipped only when that repeat has counted | [checks/unit_tests.out.txt](checks/unit_tests.out.txt) |
+| Task set selftest, new binary | `python3 $H selftest --state-dir STATE --interlock-bin interlock/target/debug/interlock --out selftest.json` | 11 of 11 tasks pass | [selftest.json](selftest.json) |
+| Worker tools for plain and skills, against v3 | `python3 checks/tools_parity.py interlock/target/debug/interlock claude-code-v3/runs` | Identical on all 11 tasks | [checks/tools_parity_v4.out.json](checks/tools_parity_v4.out.json) |
+| A standalone skill in a plain Copilot session, scripted model | `skills_load`'s `a_standalone_skill_reaches_copilots_model_in_a_plain_session_with_no_interlock` | Copilot lists `interlock-implement` with the new description; the skill tool loads it; its "Without interlock" steps reach the model | in the cargo log above |
+| The skills condition on Copilot, scripted model (**plumbing, not evaluation evidence**) | `python3 $H run --host copilot --fake-model --conditions plain,skills --skills-generate --tasks py-split-remainder py-bisect-settle --repeats 1 --budget-usd 1 --session-timeout-min 3 --copilot-bin .../copilot --state-dir STATE --results R --run-base RUNS --interlock-bin .../interlock --label plumbing` | `skills` runs invoked `interlock-implement` and `interlock-investigate`; `plain` runs none; 4 of 4 accepted. Before the harness fix in this commit, Copilot-generated skills were wrapped one level too deep and never loaded | [copilot-skills-v4/report.md](copilot-skills-v4/report.md), `copilot-skills-v4/runs/` |
+| Live probes: does Claude Code invoke a skill on a plain bug report? | `python3 checks/skills_invoked_probe.py interlock/target/debug/interlock` (12 turns, $0.08 cap), then the same with `3 0.05` | Neither invoked one; both listed the six skills and fixed the one-line bug directly. $0.0426 and $0.0410. Probe 1 had the first description ("Fix a bug, add or change a feature, or refactor code. ..."), probe 2 the second ("Use when asked to fix a bug, ..."); the committed one ("Use this skill whenever you are asked to ...") was tested only by the run | [checks/skills_invoked_probe_1.out.json](checks/skills_invoked_probe_1.out.json), [checks/skills_invoked_probe_2.out.json](checks/skills_invoked_probe_2.out.json) |
+| Verifier writes into the tree under verification | `python3 checks/verifier_writes.py claude-code-v3` and `... claude-code-v4` (the reviewer's scan of every verifier's shell commands, then read by hand) | Three, all on `go-duration-days`: v3 repeat 2 wrote `zz_test.go` into its worktree; v4 repeat 1 copied a probe test in, and v4 repeat 2 wrote one. Each deleted its file; no judged output contains one. The other matches are writes under /tmp or text inside notes. The verifier prompt and agent now say to probe in a copy under /tmp | [checks/verifier_writes.out.txt](checks/verifier_writes.out.txt) |
+| **The run, part 1** | `$H run --host claude-code --model claude-sonnet-5-5 --effort medium --conditions skills,interlock --skills-generate --interlock-skills --tasks go-dotted-section go-duration-days py-thousands py-date-filter --repeats 2 --budget-usd 6.91 --state-dir STATE --results R4 --interlock-bin .../interlock --label main` | 16 runs: skills 8/8, interlock 8/8 (v3: 8/8 and 5/8). No run sent back by the verifier; no skill invoked | [claude-code-v4/report.md](claude-code-v4/report.md) |
+| **The run, part 2** | The same with `--conditions plain,skills,interlock --repeats 1 --first-repeat 2` and the seven original tasks | 18 runs, all accepted. The budget stopped it before `py-split-remainder` (its interlock run was estimated at $0.66) | [claude-code-v4/report.md](claude-code-v4/report.md), [claude-code-v4/report.json](claude-code-v4/report.json), [claude-code-v4/manifest.json](claude-code-v4/manifest.json), `claude-code-v4/runs/`, `claude-code-v4/judge/` |
+| v4 next to v3 | `python3 checks/compare_v3_v4.py claude-code-v3 claude-code-v4` | Fisher two-sided: interlock on the harder tasks, v4 against v3, 8/8 against 5/8, p = 0.20; every other comparison p = 1.0. Paired within v4: interlock 2.43x the cost of skills, 2.44x the time | [checks/compare_v3_v4.out.json](checks/compare_v3_v4.out.json) |
+
+**Leak-scan flag, reviewed by hand.** `go-dotted-section.skills.r2.444b86` is flagged for `/tmp/agent-ws/checks/dotted.conf`: the same false positive as v3's two, a relative path in a Go test the agent wrote.
+
+### Pinned for v4
+
+| | |
+| --- | --- |
+| Host | **Claude Code 2.1.291**: it updated itself after v3, which ran on 2.1.289. Every session also loaded this environment's three `cc-plugin-*` plugins |
+| Model, effort, limits | As v3: `claude-sonnet-5-5`, `medium`, 80 turns and 15 minutes per session, at most 6 sessions per interlock run, `--max-budget-usd 3` per plain or skills run |
+| interlock | Built from `882f3cb`; binary SHA-256 in the manifest |
+
+### After the v4 review: no model calls
+
+Commit `88df4e3`, on interlock-foundation `764518b`, which runs every check in a fresh checkout of the tree it is recorded against. Nothing here was run live, so the v4 numbers above come from the prompts as they were at `882f3cb`. docs/evaluation.md, "Results v4", shows how they have changed since.
+
+| What | Command | Outcome | Raw output |
+| --- | --- | --- | --- |
+| The gate | `cargo fmt --all -- --check`; `cargo clippy --workspace --all-targets`; `CARGO_PROFILE_DEV_DEBUG=0 CARGO_INCREMENTAL=0 INTERLOCK_REQUIRE_HOSTS=1 INTERLOCK_COPILOT_BIN=<copilot 1.0.91> cargo test --workspace --no-fail-fast` | fmt clean; clippy 0 warnings; 324 passed, 0 failed, 2 ignored (the live Claude Code and live GitHub tests) | [checks/cargo_test_hosts_v4_review.out.txt](checks/cargo_test_hosts_v4_review.out.txt) |
+| `interlock where` | `cli.rs::where_finds_the_store_every_command_uses_and_creates_none` | It finds the same store from the root, a subdirectory, an attempt's worktree, and an `INTERLOCK_DB` store. It reports a missing store with exit 3 and creates nothing | in the log above |
+| The skill text uses it | `skills_load.rs::a_standalone_skill_reaches_copilots_model_in_a_plain_session_with_no_interlock`; the generator's standalone test | The text Copilot's model receives says "`interlock where` exits 0" and names `INTERLOCK_DB` | in the log above |
+| A gap no worker can close | `run_fake_host.rs::a_gap_the_verifier_records_as_blocked_keeps_the_task_from_done_and_reaches_the_operator` | A verifier records `blocked` with a reason. A second verifier is asked, then the task is blocked, never done, and `status` shows the reason | in the log above |
+| The prompts' structure | `prompts::tests` (4) | Each prompt's steps in order; the goal, gap and scratch texts; and the guided verifier agent carrying the same four texts verbatim | in the log above |
+| The harness's unit tests | `python3 interlock/eval/test_harness.py -v` | 41 of 41 pass | [checks/unit_tests.out.txt](checks/unit_tests.out.txt) |
+| Task set selftest | `python3 $H selftest ... --interlock-bin <absolute path>/interlock` | 11 of 11 tasks pass | [selftest.json](selftest.json) |
+
+## v3: all three conditions on Claude Code, after integration
 
 interlock-foundation at `858879e`, fast-forwarded into this branch; harness at `fe4597d`. No file under `interlock/eval/` or `interlock/crates/` changed between that commit and the end of the run; the manifest's `fe4597ddb023-dirty` is this documentation being edited while the second invocation ran.
 
@@ -98,13 +143,17 @@ That run's report and records use the old metric name "unsupported completion cl
 | Reported in probes before the review (two connectivity probes, two effort probes, one skills probe) | 0.14 |
 | Reported in the 46 runs after integration (45 counted, one re-run interruption) | 4.81 |
 | Reported in the three probes after integration (two effort, one skills) | 0.08 |
-| **Total reported** (the rows are rounded) | **8.98** |
-| Not reported: ten sessions killed by forced interruptions after integration, four before, and one skills probe session whose result was not parsed | unavailable |
+| Reported in the 34 v4 runs | 4.20 |
+| Reported in the two v4 skill probes | 0.08 |
+| **Total reported** (the rows are rounded) | **13.27** |
+| Not reported: sessions killed by forced interruptions (seven in v4, ten in v3, four in v1), and one skills probe session whose result was not parsed | unavailable |
 
-For the post-integration step, the cap was $8.50 of reported spend, with $0.30 reserved for each killed session: $4.89 reported plus $3.00 reserved for the ten killed sessions, **$7.89**. The budget never stopped a run. The report's own line ("$7.81 charged against the $8.41 budget") covers the runs only: the three probe sessions ($0.08) ran first, outside the harness's budget, which was set to what was left of the $8.50.
+For the v3 step, the cap was $8.50 of reported spend, with $0.30 reserved for each killed session: $4.89 reported plus $3.00 reserved for the ten killed sessions, **$7.89**. The budget never stopped a run. The v3 report's own line ("$7.81 charged against the $8.41 budget") covers the runs only: the three probe sessions ($0.08) ran first, outside the harness's budget, which was set to what was left of the $8.50.
 
-The report's row "Runs whose transcripts reach hidden material" counts the two leak-scan flags on go-dotted-section (one plain, one skills). Both are false positives: the agent's Go test named `../../checks/dotted.conf`, which the scanner resolved against the shell's directory rather than the test's. docs/evaluation.md explains them; the scanner and the report were left unchanged.
+For v4, the cap was $7.00 on the same terms: $4.29 reported plus $2.10 reserved for seven killed sessions, **$6.39**. The budget stopped the run before its last task. The v4 report's own line ("$6.30 charged against the $6.91 budget") likewise covers the runs only: the two skill probes ($0.084) ran first, outside the harness's budget, which was set to $7.00 less the probes.
+
+The reports' row "Runs whose transcripts reach hidden material" counts leak-scan flags: in v3, two on go-dotted-section (one plain, one skills); in v4, one (skills, repeat 2). All three are false positives: the agent's Go test named `../../checks/dotted.conf`, which the scanner resolved against the shell's directory rather than the test's. docs/evaluation.md explains them; the scanner and the reports were left unchanged.
 
 ## Secrets scan
 
-Every file here, transcripts decompressed, was searched for the values of all environment variables whose names mention a token, key, secret, email, UUID, session or auth; for API key, bearer token and GitHub token patterns; for unredacted interlock attempt tokens (`--token`, `INTERLOCK_TOKEN`, a `"token"` field); for email addresses other than `example.org`; for the launching sessions' ids; and for 64-hex strings. Rerun after the post-integration export: 1,043 files, no hits. The only 64-hex strings are digests: SHA-256 references, the lock's task-directory and judge-library hashes, and the binary and plugin hashes.
+Every file here, transcripts decompressed, was searched for the values of all environment variables whose names mention a token, key, secret, email, UUID, session or auth; for API key, bearer token and GitHub token patterns; for unredacted interlock attempt tokens (`--token`, `INTERLOCK_TOKEN`, a `"token"` field); for email addresses other than `example.org`; for the launching sessions' ids; and for 64-hex strings. Rerun after the v4 review: 1,337 files, no hits. The only 64-hex strings are digests: SHA-256 references, the lock's task-directory and judge-library hashes, the binary and plugin hashes, and Copilot's `skillNameHash`.

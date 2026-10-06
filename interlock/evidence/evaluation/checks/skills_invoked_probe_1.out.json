@@ -1,0 +1,25 @@
+{
+ "exit_code": 0,
+ "interlock_on_path": [],
+ "interlock_store": false,
+ "prompt": "`mean([2, 4])` in stats.py returns 6.0, not 3.0. Please fix this bug.",
+ "skills_listed": [
+  "interlock:design",
+  "interlock:implement",
+  "interlock:investigate",
+  "interlock:review",
+  "interlock:route",
+  "interlock:verify"
+ ],
+ "tool_calls_in_order": [
+  "Grep",
+  "Edit",
+  "Bash"
+ ],
+ "skills_invoked": [],
+ "shell_commands_calling_interlock": [],
+ "mean_2_4_after": "3.0",
+ "result": "Fixed. `mean` in `stats.py` divided by `len(xs) - 1`, which is the sample-variance denominator, not the one for a mean. It now divides by `len(xs)`, and `mean([2, 4])` returns `3.0`.\n\nI only ran that one call. I didn't look for other tests or other callers of `mean`.",
+ "stop": "success",
+ "cost_usd": 0.0425782
+}

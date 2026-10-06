@@ -1,0 +1,10 @@
+Environment variable expansion is now in place. `go test ./...` passes, and `checks/expand.sh` prints `ok: paths.data expanded to /srv/data`.
+
+- **Expansion:** `${NAME}` and `${NAME:-fallback}` are replaced in unquoted and double-quoted values. `$$` becomes a literal `$`, and any other `$` is kept. An unset variable with no fallback fails with `kvconf: line N: undefined variable "NAME"`. The code is in `parser.go`.
+- **API:** `ParseOptions{NoExpand}` and `ParseWithOptions` are added in `config.go`. `Parse` and `Load` expand by default, and I also added `LoadWithOptions`, which wasn't in your spec.
+- **CLI:** `kvconf get` and `kvconf dump` accept `--no-expand` before the file name (`cmd/kvconf/main.go`).
+- **Tests and docs:** I added `TestExpand` to `parser_test.go` and an environment-variables section to `README.md`.
+
+The earlier session had already written most of the code, so I only checked it against your spec and added the test and README text.
+
+STATUS: DONE

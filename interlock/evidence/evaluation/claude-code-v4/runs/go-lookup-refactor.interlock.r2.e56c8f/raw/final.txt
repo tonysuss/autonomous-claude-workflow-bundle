@@ -1,0 +1,5 @@
+I added `lookup(section, key)` to `getters.go`, and `Get`, `GetInt`, `GetBool` and `GetDuration` now all call it. Only `lookup` reads `c.sections`. `go test ./...` passes on the final tree, and the interlock regression check passed too.
+
+`GetBool` words its missing-key error differently from the other three ("key %q not set" instead of "no key %q"). To keep every message identical, `lookup` returns a small `missingKeyError` type, and `GetBool` recognises it and rewrites the message.
+
+I added `TestGetterErrorMessages` to `getters_test.go`. It pins the missing-section and missing-key messages of all four getters, including the top-level cases. I recorded claims for all three criteria: regression and behaviour at `tested`, structure at `static`. The structure and behaviour criteria still need an independent check.

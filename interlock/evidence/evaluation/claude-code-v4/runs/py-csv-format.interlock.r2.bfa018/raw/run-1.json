@@ -1,0 +1,111 @@
+{
+  "task_id": "py-csv-format",
+  "host": "claude-code",
+  "final_state": "done",
+  "stopped_because": "done",
+  "reconciled": [],
+  "reattached": [],
+  "interrupted": false,
+  "baseline": [
+    {
+      "criterion_id": "balances-csv",
+      "run_id": "run-ed642fd5218642e1",
+      "exit_code": 1,
+      "vacuous": null,
+      "problem": null
+    },
+    {
+      "criterion_id": "regression",
+      "run_id": "run-f030eaed72b24f5c",
+      "exit_code": 0,
+      "vacuous": null,
+      "problem": null
+    }
+  ],
+  "sessions": [
+    {
+      "role": "worker",
+      "attempt_id": "att-ac261b70de044d31",
+      "epoch": 1,
+      "exit": {
+        "exit": "completed"
+      },
+      "duration_ms": 18037,
+      "summary": "`balances` and `settle` now take `--format text|csv`, with `text` as the default and its output unchanged. `balances-csv` and `regression` both passed when interlock ran them on my tree, and all 23 unit tests pass.\n\n- **What changed:** `tally/report.py` has the new CSV renderers, which use Python's `csv` module with `\\n` line endings. `tally/cli.py` adds the option to `balances` and `settle`, not `export`. An unknown format is rejected by the argument parser. I also added tests to `tests/test_cli.py` and a line to `README.md`.\n- **Checks:** I ran `settle --format csv` on the trip example by hand and it printed `from,to,amount`, then `Bea,Cal,40.00` and `Dan,Ann,36.00`, in the same order as the text output. Quoting of names with commas, header-only output when there is nothing to list, and exit status 2 for an unknown format are covered by unit tests, not run on the command line.\n- **Open item:** the `spec` criterion needs `observed` evidence and I could only record `tested` for it, so the independent verifier has to cover it.",
+      "denials": 0,
+      "transcript": "/tmp/agent-ws/d2e49b4736/tally/.interlock/transcripts/att-ac261b70de044d31.jsonl",
+      "moves": [
+        {
+          "signal": "G3",
+          "from": "running",
+          "to": "awaiting_verification",
+          "reason": "result accepted from attempt att-ac261b70de044d31 at epoch 1"
+        }
+      ],
+      "ended_because": "completed",
+      "end_detail": null,
+      "spent": {
+        "wall_ms": 18037,
+        "cost_usd": 0.09485579999999999,
+        "premium_requests": null,
+        "turns": 5,
+        "model": "claude-sonnet-5-5"
+      },
+      "cost_usd": 0.09485579999999999,
+      "premium_requests": null,
+      "host_session_id": "df390af1-3d04-41b8-945f-fb5a71f50729",
+      "reattached": false,
+      "stopped_strays": [],
+      "export": null
+    },
+    {
+      "role": "verifier",
+      "attempt_id": "att-70e583a09e094ea7",
+      "epoch": 1,
+      "exit": {
+        "exit": "completed"
+      },
+      "duration_ms": 14831,
+      "summary": "All three criteria hold on tree 1194ca8, and I recorded an assessment for each.\n\n- **balances-csv**: holds, recorded `observed`. I ran `interlock check run --criterion balances-csv` on this tree and it passed with `ok: balances --format csv`.\n- **spec**: holds, recorded `observed`. I ran each rule on the command line:\n  - **Settle CSV:** `settle --format csv` on the trip example printed `from,to,amount`, then `Bea,Cal,40.00` and `Dan,Ann,36.00`, in the same order as the text output.\n  - **Quoting:** a name with a comma came out quoted, as `\"Smith, J\",15.00`, in both commands, and every line ended with `\\n`.\n  - **Header only:** a file with only a header row gave `person,balance` and `from,to,amount` alone.\n  - **Text default:** plain `balances` and `settle` output is unchanged.\n  - **Unknown format:** `--format xml` was rejected by the argument parser on both commands, with exit status 2.\n- **regression**: holds, recorded `tested`. `interlock check run --criterion regression` passed on this tree. I did not run the unit test command myself.",
+      "denials": 0,
+      "transcript": "/tmp/agent-ws/d2e49b4736/tally/.interlock/transcripts/att-70e583a09e094ea7.jsonl",
+      "moves": [
+        {
+          "signal": "G4",
+          "from": "awaiting_verification",
+          "to": "verified",
+          "reason": "every required criterion has current passing evidence"
+        },
+        {
+          "signal": "G7",
+          "from": "verified",
+          "to": "done",
+          "reason": "verified; the workflow needs no delivery"
+        }
+      ],
+      "ended_because": "completed",
+      "end_detail": null,
+      "spent": {
+        "wall_ms": 14831,
+        "cost_usd": 0.0845342,
+        "premium_requests": null,
+        "turns": 5,
+        "model": "claude-sonnet-5-5"
+      },
+      "cost_usd": 0.0845342,
+      "premium_requests": null,
+      "host_session_id": "fc49a9de-a40c-4c2d-a483-e3998050d7de",
+      "reattached": false,
+      "stopped_strays": [],
+      "export": null
+    }
+  ],
+  "pin": null,
+  "spent": {
+    "wall_ms": 32868,
+    "cost_usd": 0.17939,
+    "premium_requests": null,
+    "turns": 10
+  },
+  "exports": []
+}

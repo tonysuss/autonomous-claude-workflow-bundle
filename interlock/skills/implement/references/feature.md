@@ -1,6 +1,6 @@
 # Feature playbook
 
-You own the design. The behavior criterion says what done looks like; build the least that meets it.
+You own the design. The behavior criterion says what done looks like, and the request says what it means: build what the request implies, including the inputs the existing behavior already accepts, and nothing it does not need.
 
 1. **Record the before.** Have interlock run every check on the input snapshot (`--target base`). The behavior check fails there because the behavior does not exist yet; read why it fails.
 2. **Ground it.** Trace the code the feature touches (investigate, steps 3 to 5).

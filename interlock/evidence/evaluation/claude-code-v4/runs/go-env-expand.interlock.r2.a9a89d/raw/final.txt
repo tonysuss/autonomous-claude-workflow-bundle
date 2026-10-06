@@ -1,0 +1,11 @@
+Values now expand environment variables, and `kvconf get` and `kvconf dump` take `--no-expand` before the file name. `go test ./...` passes with the new tests. interlock also ran `checks/expand.sh` and `go test ./...` on this tree, and both passed. I recorded claims for all three criteria. `spec` rests on my own tests, so it still needs the independent verifier.
+
+- **Expansion:** `parseValue` in `parser.go` now calls a new `expand` function after stripping comments and quotes. It handles `${NAME}`, `${NAME:-fallback}`, `$$` and a bare `$`. An unset variable without a fallback fails with `kvconf: line N: undefined variable "NAME"`. Expanded text isn't scanned again.
+- **API:** `config.go` has `ParseOptions{NoExpand}` and `ParseWithOptions`, and `Parse` calls it with the defaults. I also added `LoadWithOptions` so the command can pass the option through; `Load` uses it.
+- **Command:** `cmd/kvconf/main.go` reads `--no-expand` ahead of the file name for both `get` and `dump`. The README documents it.
+- **Tests:** `TestExpand` in `parser_test.go` and `TestNoExpand` in `cmd/kvconf/main_test.go` cover the spec rules. `TestNoExpand` uses a new fixture, `testdata/expand.conf`.
+
+Decisions you didn't specify:
+- A `${` with no closing `}` is an error (`unterminated ${`).
+- A variable that is set but empty with no fallback expands to an empty string, not an error.
+- A `#` inside a quoted value still starts an inline comment, as it did before, so it also cuts off a fallback like `${X:-a#b}`.

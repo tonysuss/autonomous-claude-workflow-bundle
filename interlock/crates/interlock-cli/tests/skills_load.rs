@@ -185,6 +185,70 @@ fn a_person_can_type_the_design_skill_in_copilots_interactive_session() {
     assert!(seen.contains("/interlock-design"), "{seen}");
 }
 
+/// Skills without the runtime (the evaluation's skills condition): a plain session, in a repository with
+/// no interlock store and no interlock attempt, gets a bug report that never mentions interlock. Copilot
+/// lists the implement skill with a description that matches such a request, the skill tool invokes it,
+/// and the model receives the steps for working without interlock. The scripted model decides to invoke
+/// it, so this checks the plumbing and the text, not a model's choice.
+#[test]
+fn a_standalone_skill_reaches_copilots_model_in_a_plain_session_with_no_interlock() {
+    let Some(copilot) = hosts::copilot() else { return };
+    let repo = tempfile::tempdir().unwrap();
+    let home = tempfile::tempdir().unwrap();
+    generate("copilot", repo.path());
+    git_repo(repo.path());
+    assert!(!repo.path().join(".interlock/state.db").exists(), "generating skills makes no store");
+    let marker = "PLAIN-BUG-REPORT";
+    let model = GuidedModel::start(vec![Conversation {
+        marker: marker.into(),
+        steps: vec![tool("skill", json!({"skill": "interlock-implement"}))],
+        reply: "Fixed, without interlock.".into(),
+    }]);
+    let mut cmd = copilot_cmd(&copilot, repo.path(), home.path());
+    for (k, _) in std::env::vars().filter(|(k, _)| k.starts_with("INTERLOCK_")) {
+        cmd.env_remove(k);
+    }
+    let out = cmd
+        .args(["-p", &format!("{marker}: `total` counts the last line twice. Please fix this bug.")])
+        .args(["--output-format", "json", "--allow-all-tools", "--no-ask-user", "--no-auto-update"])
+        .env("COPILOT_PROVIDER_BASE_URL", model.base_url())
+        .output()
+        .unwrap();
+    assert!(out.status.success(), "{}", String::from_utf8_lossy(&out.stderr));
+    let events: Vec<Value> =
+        String::from_utf8_lossy(&out.stdout).lines().filter_map(|l| serde_json::from_str(l).ok()).collect();
+    let results = hosts::copilot_tool_results(&events);
+    let log = model.log();
+    hosts::keep(
+        "copilot-standalone-skill",
+        &[("copilot-transcript.jsonl", hosts::jsonl(&events)), ("model-requests.jsonl", hosts::jsonl(&log))],
+    );
+    // What the model was offered: the implement skill, described by the requests it serves.
+    let listed = log[0]["available_skills"].as_str().unwrap_or_else(|| panic!("no skill list: {:#?}", log[0]));
+    let implement = listed.split("<skill>").find(|s| s.contains("<name>interlock-implement</name>")).unwrap();
+    assert!(
+        implement.contains("whenever you are asked to fix a bug, add or change a feature, or refactor code"),
+        "{implement}"
+    );
+    assert!(!implement.contains("an interlock task&apos;s criteria"), "{implement}");
+    // The skill tool loaded it, and its standalone steps reached the model.
+    assert_eq!(results.len(), 1, "{results:#?}");
+    assert!(results[0].1, "{results:#?}");
+    let seen = log.iter().find(|r| r["tools_done"] == 1).expect("a request after the skill call")["new_text"]
+        .as_str()
+        .unwrap_or_default()
+        .to_string();
+    for want in [
+        "## Without interlock",
+        "nothing is recorded",
+        "Run each check yourself",
+        "`interlock where` exits 0",
+        "`INTERLOCK_DB`",
+    ] {
+        assert!(seen.contains(want), "{want:?} never reached the model; it saw: {seen}");
+    }
+}
+
 #[test]
 fn every_generated_skill_and_the_verifier_load_on_claude_code() {
     let Some(claude) = hosts::claude() else { return };

@@ -1,0 +1,84 @@
+{
+ "base_commit": "89d6da274a486532b5d8579ffd9b04e3c7e2e421",
+ "criteria": [
+  {
+   "baseline": "it must fail on the input snapshot, reproducing the problem; interlock saw it fail there (run run-d61a4797457c4f6b)",
+   "check": "sh checks/date-filter.sh",
+   "id": "since",
+   "needs": "observed from independent",
+   "statement": "`balances --since 2026-06-02` counts only the trip's entries from that date on",
+   "status": "passes (Observed)"
+  },
+  {
+   "baseline": null,
+   "check": null,
+   "id": "spec",
+   "needs": "observed from independent",
+   "statement": "Every rule in the task holds for balances and settle: inclusive --since and --until, either alone, exit status 2 for an invalid DATE, the file-and-line error for an invalid entry date when filtering, and no change without the options",
+   "status": "passes (Observed)"
+  },
+  {
+   "baseline": "it must pass on the input snapshot, as a regression guard; interlock saw it pass there (run run-f99013f7632743be)",
+   "check": "python3 -m unittest discover -s tests -q",
+   "id": "regression",
+   "needs": "tested from self",
+   "statement": "The existing unit tests pass",
+   "status": "passes (Tested)"
+  }
+ ],
+ "current_tree": "67ada626a45132b999fb2c46888830258b3a7b8b",
+ "failures_to_fix": [],
+ "goal": "Add `--since DATE` and `--until DATE` options to `python3 -m tally balances` and `python3 -m tally settle`, so that part of a trip can be looked at on its own. DATE is written `YYYY-MM-DD`.\n\n- Only entries dated on or after `--since` and on or before `--until` count. Either option may be given alone.\n- A DATE that is not a valid `YYYY-MM-DD` date is rejected by the argument parser, which exits with status 2.\n- When `--since` or `--until` is given, every entry's date must be a valid `YYYY-MM-DD` date. Otherwise the command fails with status 1 and an error that names the file and the line, like `tally: trip.csv:3: invalid date '2026-13-01'`.\n- Without these options, nothing changes.\n\n`checks/date-filter.sh` checks `balances --since 2026-06-02` for `examples/trip.csv`. The tests run with `python3 -m unittest discover -s tests -q`.\n",
+ "grant": {
+  "action_classes": [
+   "read",
+   "local_reversible"
+  ],
+  "grant_ids": [],
+  "landing_authority": "none",
+  "tools": {
+   "allow": [
+    "read",
+    "shell"
+   ],
+   "deny": [
+    "edit",
+    "shell:git push",
+    "shell:git commit"
+   ]
+  }
+ },
+ "next_moves": [],
+ "previous_result": {
+  "attempt_id": "att-5fff6e2c3e5641dc",
+  "changed_paths": [
+   "README.md",
+   "tally/cli.py",
+   "tally/csvio.py",
+   "tally/ledger.py",
+   "tests/test_cli.py"
+  ],
+  "open_questions": [],
+  "output_tree": "67ada626a45132b999fb2c46888830258b3a7b8b",
+  "summary": "`balances` and `settle` now take `--since DATE` and `--until DATE`, and I've recorded my claims in interlock. The independent verifier hasn't checked it yet, and the `since` and `spec` criteria need that.\n\n- **Cause:** nothing filtered entries by date. Entries also didn't remember their source line, which the error message needs.\n- **Change:** `tally/cli.py` adds the two options to `balances` and `settle` (not `export`). `tally/csvio.py` adds strict `YYYY-MM-DD` parsing and the inclusive filter. `tally/ledger.py` gives `Entry` an optional `line` field that doesn't affect equality. I also updated `README.md` and added tests in `tests/test_cli.py`.\n- **Checks:** `interlock check run` passed for `since` and `regression` (the unit tests run 22, all passing).\n- **Manual runs:**\n  - A bad option date like `2026-6-2` exits 2.\n  - An invalid entry date gives `file:line: invalid date '\u2026'` with status 1, but only when a filter is given.\n  - `settle --until 2026-06-01` works.\n\nI didn't edit `checks/date-filter.sh`."
+ },
+ "protected": [
+  "checks/date-filter.sh"
+ ],
+ "role": "verifier",
+ "scope": [
+  "tally/**",
+  "tests/**",
+  "README.md"
+ ],
+ "state": "done",
+ "task_id": "py-date-filter",
+ "upstream": [],
+ "verifier_bindings": [
+  {
+   "attempt": "att-242215a7ff9649bc (verifier, completed)",
+   "bound": "launched by interlock"
+  }
+ ],
+ "workflow": "feature v1"
+}

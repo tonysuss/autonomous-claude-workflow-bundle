@@ -1,0 +1,9 @@
+Environment variable expansion now works in `Parse`, `Load`, `kvconf get` and `kvconf dump`. `go test ./...` and `checks/expand.sh` both pass.
+
+The interrupted session had finished most of the work. The one bug I fixed was in `cmd/kvconf/main.go`: `get` checked for one argument after the flags instead of two, so every `get` call printed the usage message.
+
+I also ran a quick manual check. An unset variable gives `kvconf: line 2: undefined variable "NOPE_Z"`, and `--no-expand` prints the value as `${NOPE_Z}`.
+
+I did not add new tests for `${NAME:-fallback}`, `$$` or the `--no-expand` path.
+
+STATUS: DONE
