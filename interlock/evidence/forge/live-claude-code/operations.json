@@ -1,9 +1,10 @@
 [
   {
-    "created_at": "2026-10-06T00:09:58.295871814Z",
-    "id": "op-8cca9647d3b84b73",
+    "created_at": "2026-10-06T01:06:56.064215198Z",
+    "id": "op-d6fe0144d2ef4298",
     "intent": {
-      "expected_head_sha": "72f74093c81719bcd1753280ac9b51bd3784a110",
+      "base": "main",
+      "expected_head_sha": "82ee5c1b7b66314d5e9b4450548e7acebda66aa1",
       "pull_request": 1
     },
     "kind": "merge",
@@ -13,7 +14,14 @@
         "observation": {
           "detail": {
             "auto_merge": false,
-            "head": "72f74093c81719bcd1753280ac9b51bd3784a110",
+            "base_branch": "main",
+            "head": "82ee5c1b7b66314d5e9b4450548e7acebda66aa1",
+            "landed": {
+              "on_base": true,
+              "onto": "e63e71665014f271b5f3ee56de63e6b4945b074b",
+              "tree": "9dac49361152c7b984c5f649d34a7fd59de3630e"
+            },
+            "merged_at": "2026-10-06T01:06:56.678468Z",
             "number": 1,
             "state": "merged"
           },
@@ -21,8 +29,9 @@
         }
       },
       "verdict": {
+        "merged_at": "2026-10-06T01:06:56.678468Z",
         "report": {
-          "head_sha": "72f74093c81719bcd1753280ac9b51bd3784a110",
+          "head_sha": "82ee5c1b7b66314d5e9b4450548e7acebda66aa1",
           "outcome": "merged"
         },
         "verdict": "land"
@@ -30,14 +39,14 @@
     },
     "state": "confirmed",
     "task_id": "export-retry",
-    "updated_at": "2026-10-06T00:09:58.771184355Z"
+    "updated_at": "2026-10-06T01:06:56.876116568Z"
   },
   {
-    "created_at": "2026-10-06T00:09:58.390042754Z",
-    "id": "op-5ce425db6b0a4395",
+    "created_at": "2026-10-06T01:06:56.189739695Z",
+    "id": "op-42b19848c7424281",
     "intent": {
       "base": "main",
-      "expected_head_sha": "72f74093c81719bcd1753280ac9b51bd3784a110"
+      "expected_head_sha": "82ee5c1b7b66314d5e9b4450548e7acebda66aa1"
     },
     "kind": "open_pr",
     "outcome": {
@@ -46,7 +55,10 @@
         "observation": {
           "detail": {
             "auto_merge": false,
-            "head": "72f74093c81719bcd1753280ac9b51bd3784a110",
+            "base_branch": "main",
+            "head": "82ee5c1b7b66314d5e9b4450548e7acebda66aa1",
+            "landed": null,
+            "merged_at": null,
             "number": 1,
             "state": "open"
           },
@@ -59,6 +71,6 @@
     },
     "state": "confirmed",
     "task_id": "export-retry",
-    "updated_at": "2026-10-06T00:09:58.560097892Z"
+    "updated_at": "2026-10-06T01:06:56.468244439Z"
   }
 ]

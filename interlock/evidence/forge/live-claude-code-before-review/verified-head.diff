@@ -1,0 +1,19 @@
+diff --git a/exporter.py b/exporter.py
+index 4fd5267..7acb454 100644
+--- a/exporter.py
++++ b/exporter.py
+@@ -20,10 +20,12 @@ class Sink:
+ 
+ def export(rows, sink, retries=1):
+     """Write every row to the sink. On a transient failure, retry the batch."""
++    written = 0
+     for attempt in range(retries + 1):
+         try:
+-            for row in rows:
+-                sink.write(row)
++            while written < len(rows):
++                sink.write(rows[written])
++                written += 1
+             return len(rows)
+         except TransientError:
+             if attempt == retries:

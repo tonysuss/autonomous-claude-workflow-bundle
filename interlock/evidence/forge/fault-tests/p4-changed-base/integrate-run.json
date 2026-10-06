@@ -1,16 +1,16 @@
 {
   "final_state": "awaiting_verification",
-  "head": "5c8afed4c2b5e150bb52c29de6eb15d76acee709",
+  "head": "d9fbb4eb3affbb47614d22503ccd6840cedbd853",
   "moves": [
     {
       "from": "verified",
-      "reason": "landing authorized (Operator)",
+      "reason": "landing authorized (Coordinator)",
       "signal": "G5",
       "to": "integrating"
     },
     {
       "from": "integrating",
-      "reason": "merge refused: the base main moved from 7a89a6d2ac2eb6ed8fa9ce40e778b4d21b4d1dba to b19372038e024209d98781b9de07ee9f41393b46; the evidence covers tree 7ac394c3a02f149443dab9d788856cd284dc2677, but ed76ecb372c99fad7dd41144a545689113032581 is what would land",
+      "reason": "merge refused: the base main moved from b2c49eef9cfe49ff186f14846adb9462b8a62453 to 06eaa7eeb08b76add1ac384ba30c6e16dc156333; the evidence covers tree 7ac394c3a02f149443dab9d788856cd284dc2677, but ed76ecb372c99fad7dd41144a545689113032581 is what would land",
       "signal": "R2",
       "to": "awaiting_verification"
     }
@@ -18,12 +18,12 @@
   "pull_request": 1,
   "reconciled": [],
   "steps": [
-    "G5: operation op-47a1b8480bca4187 will land only 5c8afed4c2b5e150bb52c29de6eb15d76acee709",
-    "pushing 5c8afed4c2b5e150bb52c29de6eb15d76acee709 to interlock/fix-add (operation op-351889ac93e54917)",
+    "G5: operation op-c18e25d9595e4c86 will land only d9fbb4eb3affbb47614d22503ccd6840cedbd853",
+    "pushing d9fbb4eb3affbb47614d22503ccd6840cedbd853 to interlock/fix-add (operation op-a9e0407d88ce4d9e)",
     "opening a pull request from interlock/fix-add into main",
-    "pull request #1 holds 5c8afed4c2b5e150bb52c29de6eb15d76acee709",
-    "the base main moved from 7a89a6d2ac2eb6ed8fa9ce40e778b4d21b4d1dba to b19372038e024209d98781b9de07ee9f41393b46; the evidence covers tree 7ac394c3a02f149443dab9d788856cd284dc2677, but ed76ecb372c99fad7dd41144a545689113032581 is what would land"
+    "pull request #1 holds d9fbb4eb3affbb47614d22503ccd6840cedbd853",
+    "the base main moved from b2c49eef9cfe49ff186f14846adb9462b8a62453 to 06eaa7eeb08b76add1ac384ba30c6e16dc156333; the evidence covers tree 7ac394c3a02f149443dab9d788856cd284dc2677, but ed76ecb372c99fad7dd41144a545689113032581 is what would land"
   ],
-  "stopped_because": "sent back for verification: merge refused: the base main moved from 7a89a6d2ac2eb6ed8fa9ce40e778b4d21b4d1dba to b19372038e024209d98781b9de07ee9f41393b46; the evidence covers tree 7ac394c3a02f149443dab9d788856cd284dc2677, but ed76ecb372c99fad7dd41144a545689113032581 is what would land",
+  "stopped_because": "sent back for verification: merge refused: the base main moved from b2c49eef9cfe49ff186f14846adb9462b8a62453 to 06eaa7eeb08b76add1ac384ba30c6e16dc156333; the evidence covers tree 7ac394c3a02f149443dab9d788856cd284dc2677, but ed76ecb372c99fad7dd41144a545689113032581 is what would land",
   "task_id": "fix-add"
 }

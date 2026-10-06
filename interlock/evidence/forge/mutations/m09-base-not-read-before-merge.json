@@ -1,0 +1,19 @@
+{
+  "id": "m09-base-not-read-before-merge",
+  "finding": "9: the base is not read with git right before the merge",
+  "undo": [
+    [
+      "crates/interlock-forge/src/deliver.rs",
+      "            Ok(Some(tip)) if same_sha(&tip, &base_commit) => {}",
+      "            Ok(Some(_)) if true => {}"
+    ]
+  ],
+  "results": [
+    {
+      "test": "-p interlock-forge --test regressions -- the_base_is_read_with_git_right_before_the_merge",
+      "exit": 101,
+      "failed": true,
+      "tail": "        \"pushing 7c29ba7daee7195ea4c3dc0780849d91ca39d498 to interlock/fix-add (operation op-642cae1e7a2a41a7)\",\n        \"opening a pull request from interlock/fix-add into main\",\n        \"pull request #1 holds 7c29ba7daee7195ea4c3dc0780849d91ca39d498\",\n        \"merging #1 pinned to 7c29ba7daee7195ea4c3dc0780849d91ca39d498 (operation op-3a8d25fbcb6c4d28 started)\",\n    ],\n}\n  left: Blocked\n right: AwaitingVerification\nstack backtrace:\n   0: __rustc::rust_begin_unwind\n   1: core::panicking::panic_fmt\n   2: core::panicking::assert_failed_inner\n   3: core::panicking::assert_failed::<interlock_schema::records::State, interlock_schema::records::State>\n   4: regressions::the_base_is_read_with_git_right_before_the_merge\n   5: regressions::the_base_is_read_with_git_right_before_the_merge::{closure#0}\n   6: <regressions::the_base_is_read_with_git_right_before_the_merge::{closure#0} as core::ops::function::FnOnce<()>>::call_once\nnote: Some details are omitted, run with `RUST_BACKTRACE=full` for a verbose backtrace.\n\n\nfailures:\n    the_base_is_read_with_git_right_before_the_merge\n\ntest result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 13 filtered out; finished in 1.05s\n\nerror: test failed, to rerun pass `-p interlock-forge --test regressions`"
+    }
+  ]
+}

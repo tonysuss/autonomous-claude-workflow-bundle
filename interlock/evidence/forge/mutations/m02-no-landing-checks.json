@@ -1,0 +1,31 @@
+{
+  "id": "m02-no-landing-checks",
+  "finding": "2 (major) and 3: a merge onto a moved base, or one git cannot see, lands the task",
+  "undo": [
+    [
+      "crates/interlock-core/src/delivery.rs",
+      "    let base_branch = pr.base_branch.as_deref().unwrap_or(\"its base branch\");\n    let Some(landed) = &pr.landed else {",
+      "    return Verdict::Land { report: MergeReport::Merged { head_sha: pr.head.clone() }, merged_at: pr.merged_at };\n    #[allow(unreachable_code)]\n    let base_branch = pr.base_branch.as_deref().unwrap_or(\"its base branch\");\n    let Some(landed) = &pr.landed else {"
+    ]
+  ],
+  "results": [
+    {
+      "test": "-p interlock-forge --test regressions -- an_armed_auto_merge_that_lands_on_a_moved_base_blocks_instead_of_g6",
+      "exit": 101,
+      "failed": true,
+      "tail": "   0: __rustc::rust_begin_unwind\n   1: core::panicking::panic_fmt\n   2: core::panicking::assert_failed_inner\n   3: core::panicking::assert_failed::<interlock_schema::records::State, interlock_schema::records::State>\n   4: regressions::an_armed_auto_merge_that_lands_on_a_moved_base_blocks_instead_of_g6\n   5: regressions::an_armed_auto_merge_that_lands_on_a_moved_base_blocks_instead_of_g6::{closure#0}\n   6: <regressions::an_armed_auto_merge_that_lands_on_a_moved_base_blocks_instead_of_g6::{closure#0} as core::ops::function::FnOnce<()>>::call_once\nnote: Some details are omitted, run with `RUST_BACKTRACE=full` for a verbose backtrace.\n\n\nfailures:\n    an_armed_auto_merge_that_lands_on_a_moved_base_blocks_instead_of_g6\n\ntest result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 13 filtered out; finished in 1.25s\n\nwarning: unused variable: `task`\n   --> crates/interlock-core/src/delivery.rs:293:45\n    |\n293 | fn landed(op: &Operation, pr: &PullRequest, task: &Task, retargeted: Option<(&str, &str)>) -> Verdict {\n    |                                             ^^^^ help: if this is intentional, prefix it with an underscore: `_task`\n    |\n    = note: `#[warn(unused_variables)]` (part of `#[warn(unused)]`) on by default\n\nwarning: `interlock-core` (lib) generated 1 warning (run `cargo fix --lib -p interlock-core` to apply 1 suggestion)\nerror: test failed, to rerun pass `-p interlock-forge --test regressions`"
+    },
+    {
+      "test": "-p interlock-forge --test regressions -- a_reported_merge_git_cannot_see_on_the_base_branch_never_lands",
+      "exit": 101,
+      "failed": true,
+      "tail": "   0: __rustc::rust_begin_unwind\n   1: core::panicking::panic_fmt\n   2: core::panicking::assert_failed_inner\n   3: core::panicking::assert_failed::<interlock_schema::records::State, interlock_schema::records::State>\n   4: regressions::a_reported_merge_git_cannot_see_on_the_base_branch_never_lands\n   5: regressions::a_reported_merge_git_cannot_see_on_the_base_branch_never_lands::{closure#0}\n   6: <regressions::a_reported_merge_git_cannot_see_on_the_base_branch_never_lands::{closure#0} as core::ops::function::FnOnce<()>>::call_once\nnote: Some details are omitted, run with `RUST_BACKTRACE=full` for a verbose backtrace.\n\n\nfailures:\n    a_reported_merge_git_cannot_see_on_the_base_branch_never_lands\n\ntest result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 13 filtered out; finished in 0.88s\n\nwarning: unused variable: `task`\n   --> crates/interlock-core/src/delivery.rs:293:45\n    |\n293 | fn landed(op: &Operation, pr: &PullRequest, task: &Task, retargeted: Option<(&str, &str)>) -> Verdict {\n    |                                             ^^^^ help: if this is intentional, prefix it with an underscore: `_task`\n    |\n    = note: `#[warn(unused_variables)]` (part of `#[warn(unused)]`) on by default\n\nwarning: `interlock-core` (lib) generated 1 warning (run `cargo fix --lib -p interlock-core` to apply 1 suggestion)\nerror: test failed, to rerun pass `-p interlock-forge --test regressions`"
+    },
+    {
+      "test": "-p interlock-forge --test regressions -- an_operator_merge_onto_a_moved_base_is_not_g6",
+      "exit": 101,
+      "failed": true,
+      "tail": "   0: __rustc::rust_begin_unwind\n   1: core::panicking::panic_fmt\n   2: core::panicking::assert_failed_inner\n   3: core::panicking::assert_failed::<interlock_schema::records::State, interlock_schema::records::State>\n   4: regressions::an_operator_merge_onto_a_moved_base_is_not_g6\n   5: regressions::an_operator_merge_onto_a_moved_base_is_not_g6::{closure#0}\n   6: <regressions::an_operator_merge_onto_a_moved_base_is_not_g6::{closure#0} as core::ops::function::FnOnce<()>>::call_once\nnote: Some details are omitted, run with `RUST_BACKTRACE=full` for a verbose backtrace.\n\n\nfailures:\n    an_operator_merge_onto_a_moved_base_is_not_g6\n\ntest result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 13 filtered out; finished in 0.90s\n\nwarning: unused variable: `task`\n   --> crates/interlock-core/src/delivery.rs:293:45\n    |\n293 | fn landed(op: &Operation, pr: &PullRequest, task: &Task, retargeted: Option<(&str, &str)>) -> Verdict {\n    |                                             ^^^^ help: if this is intentional, prefix it with an underscore: `_task`\n    |\n    = note: `#[warn(unused_variables)]` (part of `#[warn(unused)]`) on by default\n\nwarning: `interlock-core` (lib) generated 1 warning (run `cargo fix --lib -p interlock-core` to apply 1 suggestion)\nerror: test failed, to rerun pass `-p interlock-forge --test regressions`"
+    }
+  ]
+}

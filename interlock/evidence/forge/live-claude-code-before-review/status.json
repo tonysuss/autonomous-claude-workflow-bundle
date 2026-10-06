@@ -1,0 +1,63 @@
+{
+  "attempts": [
+    {
+      "epoch": 1,
+      "host": "claude-code",
+      "id": "att-3d9f0e38bb0847bf",
+      "role": "worker",
+      "status": "submitted"
+    },
+    {
+      "epoch": 1,
+      "host": "claude-code",
+      "id": "att-4416c4e89db8484b",
+      "role": "verifier",
+      "status": "completed"
+    }
+  ],
+  "evidence": {
+    "all_pass": true,
+    "any_fail": false,
+    "criteria": [
+      {
+        "criterion_id": "repro",
+        "current_assessments": 1,
+        "current_claims": 1,
+        "current_runs": 2,
+        "evidence_id": "asm-6bee81ec2cbb46c7",
+        "source": "assessment",
+        "stale": 0,
+        "strength": "observed",
+        "verdict": "pass"
+      },
+      {
+        "criterion_id": "regression",
+        "current_assessments": 1,
+        "current_claims": 1,
+        "current_runs": 2,
+        "evidence_id": "asm-931060dd758e465f",
+        "source": "assessment",
+        "stale": 0,
+        "strength": "tested",
+        "verdict": "pass"
+      }
+    ]
+  },
+  "next_moves": [],
+  "task": {
+    "attempts_used": 1,
+    "blocked_reason": null,
+    "current_attempt": "att-3d9f0e38bb0847bf",
+    "current_tree": "c41effba25c2973fb18514e886e2cda6288b4ea9",
+    "id": "export-retry",
+    "integration_required": true,
+    "intent": "Fix duplicate rows when an export retries: after a transient failure mid-batch, rows written before the failure are written again.",
+    "lease_epoch": 1,
+    "max_attempts": 3,
+    "state": "done",
+    "workflow": {
+      "name": "bug-fix",
+      "version": 1
+    }
+  }
+}

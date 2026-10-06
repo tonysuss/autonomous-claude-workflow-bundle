@@ -1,0 +1,19 @@
+{
+  "id": "m08b-signing-allowed",
+  "finding": "8: the verified head is signed when commit.gpgsign is set",
+  "undo": [
+    [
+      "crates/interlock-forge/src/git.rs",
+      "\"commit-tree\", \"--no-gpg-sign\", tree",
+      "\"commit-tree\", tree"
+    ]
+  ],
+  "results": [
+    {
+      "test": "-p interlock-forge --test deliver -- the_verified_head_is_the_same_commit_in_another_clone",
+      "exit": 0,
+      "failed": false,
+      "tail": "\nrunning 1 test\ntest the_verified_head_is_the_same_commit_in_another_clone_a_second_later_and_never_signed ... ok\n\ntest result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 15 filtered out; finished in 1.39s\n"
+    }
+  ]
+}

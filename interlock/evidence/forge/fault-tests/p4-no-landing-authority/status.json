@@ -3,14 +3,14 @@
     {
       "epoch": 1,
       "host": "test",
-      "id": "att-b605526731ac48ff",
+      "id": "att-c62b0f0e3239461f",
       "role": "worker",
       "status": "submitted"
     },
     {
       "epoch": 1,
       "host": "test",
-      "id": "att-90f28bfc54ec4dde",
+      "id": "att-44ecfed1b9524cc9",
       "role": "verifier",
       "status": "completed"
     }
@@ -24,7 +24,7 @@
         "current_assessments": 0,
         "current_claims": 1,
         "current_runs": 0,
-        "evidence_id": "clm-99ef54cd577d444e",
+        "evidence_id": "clm-f67eb29d719a42b7",
         "source": "claim",
         "stale": 0,
         "strength": "tested",
@@ -35,7 +35,7 @@
         "current_assessments": 1,
         "current_claims": 0,
         "current_runs": 0,
-        "evidence_id": "asm-3e762a4c43434cbb",
+        "evidence_id": "asm-649ff28e442e4b6e",
         "source": "assessment",
         "stale": 0,
         "strength": "observed",
@@ -56,7 +56,7 @@
   "task": {
     "attempts_used": 1,
     "blocked_reason": "no landing authority is granted for this task",
-    "current_attempt": "att-b605526731ac48ff",
+    "current_attempt": "att-c62b0f0e3239461f",
     "current_tree": "7ac394c3a02f149443dab9d788856cd284dc2677",
     "id": "fix-add",
     "integration_required": true,

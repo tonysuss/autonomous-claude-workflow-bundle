@@ -3,14 +3,14 @@
     {
       "epoch": 1,
       "host": "test",
-      "id": "att-da86c19e81e7496f",
+      "id": "att-14d3657d1fc94826",
       "role": "worker",
       "status": "submitted"
     },
     {
       "epoch": 1,
       "host": "test",
-      "id": "att-045c32eca0434225",
+      "id": "att-1244702f58f34af2",
       "role": "verifier",
       "status": "completed"
     }
@@ -53,7 +53,7 @@
   "task": {
     "attempts_used": 1,
     "blocked_reason": null,
-    "current_attempt": "att-da86c19e81e7496f",
+    "current_attempt": "att-14d3657d1fc94826",
     "current_tree": "ed76ecb372c99fad7dd41144a545689113032581",
     "id": "fix-add",
     "integration_required": true,

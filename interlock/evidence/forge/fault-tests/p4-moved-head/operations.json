@@ -1,19 +1,23 @@
 [
   {
-    "created_at": "2026-10-06T00:11:28.864059354Z",
-    "id": "op-e6a400c2f5e641e4",
+    "created_at": "2026-10-06T01:11:58.295901901Z",
+    "id": "op-cc2187e174d440b5",
     "intent": {
-      "expected_head_sha": "214a9d9140cf26014555313510209221a5dd32af",
+      "base": "main",
+      "expected_head_sha": "d9fbb4eb3affbb47614d22503ccd6840cedbd853",
       "pull_request": 1
     },
     "kind": "merge",
     "outcome": {
       "seen": {
-        "call": "/tmp/.tmpk9a9Az/gh/gh pr merge 1 --merge --match-head-commit 214a9d9140cf26014555313510209221a5dd32af exited 1: GraphQL: Head branch was modified. Review and try the merge again. (mergePullRequest)",
+        "call": "/tmp/.tmp1FznWS/gh/gh pr merge 1 --merge --match-head-commit d9fbb4eb3affbb47614d22503ccd6840cedbd853 exited 1: GraphQL: Head branch was modified. Review and try the merge again. (mergePullRequest)",
         "observation": {
           "detail": {
             "auto_merge": false,
-            "head": "75504fa4ad1effb722a1caf4987f6b66d6148ab6",
+            "base_branch": "main",
+            "head": "253304206352d8ffbf0257f4077b3de916bfae40",
+            "landed": null,
+            "merged_at": null,
             "number": 1,
             "state": "open"
           },
@@ -21,23 +25,24 @@
         }
       },
       "verdict": {
+        "merged_at": null,
         "report": {
           "outcome": "refused",
-          "reason": "the head of pull request #1 moved to 75504fa4ad1e before the merge was confirmed; it was pinned to 214a9d9140cf"
+          "reason": "the head of pull request #1 moved to 253304206352 before the merge was confirmed; it was pinned to d9fbb4eb3aff"
         },
         "verdict": "land"
       }
     },
     "state": "failed",
     "task_id": "fix-add",
-    "updated_at": "2026-10-06T00:11:29.439705010Z"
+    "updated_at": "2026-10-06T01:11:59.076604913Z"
   },
   {
-    "created_at": "2026-10-06T00:11:28.984758829Z",
-    "id": "op-08289b536b6844fb",
+    "created_at": "2026-10-06T01:11:58.441343780Z",
+    "id": "op-f987e323a19b458a",
     "intent": {
       "base": "main",
-      "expected_head_sha": "214a9d9140cf26014555313510209221a5dd32af"
+      "expected_head_sha": "d9fbb4eb3affbb47614d22503ccd6840cedbd853"
     },
     "kind": "open_pr",
     "outcome": {
@@ -46,7 +51,10 @@
         "observation": {
           "detail": {
             "auto_merge": false,
-            "head": "214a9d9140cf26014555313510209221a5dd32af",
+            "base_branch": "main",
+            "head": "d9fbb4eb3affbb47614d22503ccd6840cedbd853",
+            "landed": null,
+            "merged_at": null,
             "number": 1,
             "state": "open"
           },
@@ -59,6 +67,6 @@
     },
     "state": "confirmed",
     "task_id": "fix-add",
-    "updated_at": "2026-10-06T00:11:29.231887601Z"
+    "updated_at": "2026-10-06T01:11:58.714308953Z"
   }
 ]

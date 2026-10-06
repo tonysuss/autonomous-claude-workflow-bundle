@@ -9,7 +9,7 @@
     "--limit",
     "20",
     "--json",
-    "number,url,state,isDraft,headRefName,headRefOid,baseRefName,baseRefOid,mergeable,mergeStateStatus,statusCheckRollup,mergeCommit,autoMergeRequest"
+    "number,url,state,isDraft,headRefName,headRefOid,baseRefName,baseRefOid,mergeable,mergeStateStatus,statusCheckRollup,mergeCommit,mergedAt,autoMergeRequest"
   ],
   [
     "pr",
@@ -21,7 +21,7 @@
     "--title",
     "add() returns the difference instead of the sum",
     "--body",
-    "Verified by interlock. interlock merges this pull request only at `214a9d9140cf26014555313510209221a5dd32af` (`gh pr merge --match-head-commit`).\n\n- Task: `fix-add`\n- Verified tree: `7ac394c3a02f149443dab9d788856cd284dc2677`\n- Built on: `70638fc4355f3a25a88ea3c9008e163692a21e13`\n\nCriteria:\n- `fixed`: add(2, 3) returns 5\n- `verified`: An independent check passes\n"
+    "Verified by interlock. It may land only at `d9fbb4eb3affbb47614d22503ccd6840cedbd853` (`gh pr merge --match-head-commit`).\n\n- Task: `fix-add`\n- Verified tree: `7ac394c3a02f149443dab9d788856cd284dc2677`\n- Built on: `b2c49eef9cfe49ff186f14846adb9462b8a62453`\n\nCriteria:\n- `fixed`: add(2, 3) returns 5\n- `verified`: An independent check passes\n"
   ],
   [
     "pr",
@@ -33,14 +33,14 @@
     "--limit",
     "20",
     "--json",
-    "number,url,state,isDraft,headRefName,headRefOid,baseRefName,baseRefOid,mergeable,mergeStateStatus,statusCheckRollup,mergeCommit,autoMergeRequest"
+    "number,url,state,isDraft,headRefName,headRefOid,baseRefName,baseRefOid,mergeable,mergeStateStatus,statusCheckRollup,mergeCommit,mergedAt,autoMergeRequest"
   ],
   [
     "pr",
     "view",
     "1",
     "--json",
-    "number,url,state,isDraft,headRefName,headRefOid,baseRefName,baseRefOid,mergeable,mergeStateStatus,statusCheckRollup,mergeCommit,autoMergeRequest"
+    "number,url,state,isDraft,headRefName,headRefOid,baseRefName,baseRefOid,mergeable,mergeStateStatus,statusCheckRollup,mergeCommit,mergedAt,autoMergeRequest"
   ],
   [
     "pr",
@@ -48,13 +48,13 @@
     "1",
     "--merge",
     "--match-head-commit",
-    "214a9d9140cf26014555313510209221a5dd32af"
+    "d9fbb4eb3affbb47614d22503ccd6840cedbd853"
   ],
   [
     "pr",
     "view",
     "1",
     "--json",
-    "number,url,state,isDraft,headRefName,headRefOid,baseRefName,baseRefOid,mergeable,mergeStateStatus,statusCheckRollup,mergeCommit,autoMergeRequest"
+    "number,url,state,isDraft,headRefName,headRefOid,baseRefName,baseRefOid,mergeable,mergeStateStatus,statusCheckRollup,mergeCommit,mergedAt,autoMergeRequest"
   ]
 ]

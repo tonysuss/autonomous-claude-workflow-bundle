@@ -3,14 +3,14 @@
     {
       "epoch": 1,
       "host": "claude-code",
-      "id": "att-3d9f0e38bb0847bf",
+      "id": "att-1987506d5a3d47f5",
       "role": "worker",
       "status": "submitted"
     },
     {
       "epoch": 1,
       "host": "claude-code",
-      "id": "att-4416c4e89db8484b",
+      "id": "att-e256a1deaf334a0c",
       "role": "verifier",
       "status": "completed"
     }
@@ -24,7 +24,7 @@
         "current_assessments": 1,
         "current_claims": 1,
         "current_runs": 2,
-        "evidence_id": "asm-6bee81ec2cbb46c7",
+        "evidence_id": "asm-465ff89dd4694f91",
         "source": "assessment",
         "stale": 0,
         "strength": "observed",
@@ -35,7 +35,7 @@
         "current_assessments": 1,
         "current_claims": 1,
         "current_runs": 2,
-        "evidence_id": "asm-931060dd758e465f",
+        "evidence_id": "asm-e58574d85b7f484b",
         "source": "assessment",
         "stale": 0,
         "strength": "tested",
@@ -47,8 +47,8 @@
   "task": {
     "attempts_used": 1,
     "blocked_reason": null,
-    "current_attempt": "att-3d9f0e38bb0847bf",
-    "current_tree": "c41effba25c2973fb18514e886e2cda6288b4ea9",
+    "current_attempt": "att-1987506d5a3d47f5",
+    "current_tree": "9dac49361152c7b984c5f649d34a7fd59de3630e",
     "id": "export-retry",
     "integration_required": true,
     "intent": "Fix duplicate rows when an export retries: after a transient failure mid-batch, rows written before the failure are written again.",

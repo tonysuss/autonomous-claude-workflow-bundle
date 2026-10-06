@@ -4,14 +4,14 @@
       "criterion_id": "fixed",
       "exit_code": 1,
       "problem": null,
-      "run_id": "run-063958aadb814531",
+      "run_id": "run-52ba3a1569ba4c82",
       "vacuous": null
     },
     {
       "criterion_id": "verified",
       "exit_code": 1,
       "problem": null,
-      "run_id": "run-e5eb62ba5f19441e",
+      "run_id": "run-197224a94b1a4903",
       "vacuous": null
     }
   ],
@@ -20,9 +20,9 @@
   "reconciled": [],
   "sessions": [
     {
-      "attempt_id": "att-6032a4595923474d",
+      "attempt_id": "att-5b0c9252d5064cef",
       "denials": 0,
-      "duration_ms": 2312,
+      "duration_ms": 2413,
       "epoch": 1,
       "exit": {
         "exit": "completed"
@@ -30,19 +30,19 @@
       "moves": [
         {
           "from": "running",
-          "reason": "result accepted from attempt att-6032a4595923474d at epoch 1",
+          "reason": "result accepted from attempt att-5b0c9252d5064cef at epoch 1",
           "signal": "G3",
           "to": "awaiting_verification"
         }
       ],
       "role": "worker",
       "summary": "worker finished after 3 commands.",
-      "transcript": "/tmp/.tmppTZEOt/repo/.interlock/transcripts/att-6032a4595923474d.jsonl"
+      "transcript": "/tmp/.tmp3WKH9G/repo/.interlock/transcripts/att-5b0c9252d5064cef.jsonl"
     },
     {
-      "attempt_id": "att-68516e4d6e3d4440",
+      "attempt_id": "att-863055e2df0a49de",
       "denials": 0,
-      "duration_ms": 2409,
+      "duration_ms": 2612,
       "epoch": 1,
       "exit": {
         "exit": "completed"
@@ -57,7 +57,7 @@
       ],
       "role": "verifier",
       "summary": "verifier finished after 4 commands.",
-      "transcript": "/tmp/.tmppTZEOt/repo/.interlock/transcripts/att-68516e4d6e3d4440.jsonl"
+      "transcript": "/tmp/.tmp3WKH9G/repo/.interlock/transcripts/att-863055e2df0a49de.jsonl"
     }
   ],
   "stopped_because": "done",

@@ -1,27 +1,27 @@
 [
   {
-    "created_at": "2026-10-06T00:11:27.334438614Z",
-    "id": "op-47a1b8480bca4187",
+    "created_at": "2026-10-06T01:11:58.264947186Z",
+    "id": "op-c18e25d9595e4c86",
     "intent": {
-      "expected_head_sha": "5c8afed4c2b5e150bb52c29de6eb15d76acee709"
+      "expected_head_sha": "d9fbb4eb3affbb47614d22503ccd6840cedbd853"
     },
     "kind": "merge",
     "outcome": {
-      "base": "b19372038e024209d98781b9de07ee9f41393b46",
+      "base": "06eaa7eeb08b76add1ac384ba30c6e16dc156333",
       "called": false,
       "tree": "ed76ecb372c99fad7dd41144a545689113032581",
-      "withdrawn": "the base main moved from 7a89a6d2ac2eb6ed8fa9ce40e778b4d21b4d1dba to b19372038e024209d98781b9de07ee9f41393b46; the evidence covers tree 7ac394c3a02f149443dab9d788856cd284dc2677, but ed76ecb372c99fad7dd41144a545689113032581 is what would land"
+      "withdrawn": "the base main moved from b2c49eef9cfe49ff186f14846adb9462b8a62453 to 06eaa7eeb08b76add1ac384ba30c6e16dc156333; the evidence covers tree 7ac394c3a02f149443dab9d788856cd284dc2677, but ed76ecb372c99fad7dd41144a545689113032581 is what would land"
     },
     "state": "failed",
     "task_id": "fix-add",
-    "updated_at": "2026-10-06T00:11:27.812210431Z"
+    "updated_at": "2026-10-06T01:11:58.955251605Z"
   },
   {
-    "created_at": "2026-10-06T00:11:27.455992005Z",
-    "id": "op-351889ac93e54917",
+    "created_at": "2026-10-06T01:11:58.423261738Z",
+    "id": "op-a9e0407d88ce4d9e",
     "intent": {
       "base": "main",
-      "expected_head_sha": "5c8afed4c2b5e150bb52c29de6eb15d76acee709"
+      "expected_head_sha": "d9fbb4eb3affbb47614d22503ccd6840cedbd853"
     },
     "kind": "open_pr",
     "outcome": {
@@ -30,7 +30,10 @@
         "observation": {
           "detail": {
             "auto_merge": false,
-            "head": "5c8afed4c2b5e150bb52c29de6eb15d76acee709",
+            "base_branch": "main",
+            "head": "d9fbb4eb3affbb47614d22503ccd6840cedbd853",
+            "landed": null,
+            "merged_at": null,
             "number": 1,
             "state": "open"
           },
@@ -43,6 +46,6 @@
     },
     "state": "confirmed",
     "task_id": "fix-add",
-    "updated_at": "2026-10-06T00:11:27.667424717Z"
+    "updated_at": "2026-10-06T01:11:58.749965028Z"
   }
 ]

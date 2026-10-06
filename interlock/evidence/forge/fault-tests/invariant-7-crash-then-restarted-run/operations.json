@@ -1,9 +1,10 @@
 [
   {
-    "created_at": "2026-10-06T00:11:27.343632910Z",
-    "id": "op-5dbdeecf6f1b4b13",
+    "created_at": "2026-10-06T01:11:56.570146717Z",
+    "id": "op-3ca29094903540dd",
     "intent": {
-      "expected_head_sha": "5c8afed4c2b5e150bb52c29de6eb15d76acee709",
+      "base": "main",
+      "expected_head_sha": "b76ef6e302f4a52a6ceee68aa80094da6ff1c920",
       "pull_request": 1
     },
     "kind": "merge",
@@ -12,7 +13,14 @@
         "observation": {
           "detail": {
             "auto_merge": false,
-            "head": "5c8afed4c2b5e150bb52c29de6eb15d76acee709",
+            "base_branch": "main",
+            "head": "b76ef6e302f4a52a6ceee68aa80094da6ff1c920",
+            "landed": {
+              "on_base": true,
+              "onto": "c4975679de46756d924dada7b88acfab1885e527",
+              "tree": "7ac394c3a02f149443dab9d788856cd284dc2677"
+            },
+            "merged_at": "2026-10-06T01:11:57.077811Z",
             "number": 1,
             "state": "merged"
           },
@@ -21,8 +29,9 @@
         "reconciled": true
       },
       "verdict": {
+        "merged_at": "2026-10-06T01:11:57.077811Z",
         "report": {
-          "head_sha": "5c8afed4c2b5e150bb52c29de6eb15d76acee709",
+          "head_sha": "b76ef6e302f4a52a6ceee68aa80094da6ff1c920",
           "outcome": "merged"
         },
         "verdict": "land"
@@ -30,14 +39,14 @@
     },
     "state": "confirmed",
     "task_id": "fix-add",
-    "updated_at": "2026-10-06T00:11:28.208419338Z"
+    "updated_at": "2026-10-06T01:11:57.485433498Z"
   },
   {
-    "created_at": "2026-10-06T00:11:27.457322754Z",
-    "id": "op-0a32f05dabfd45aa",
+    "created_at": "2026-10-06T01:11:56.692299399Z",
+    "id": "op-90cc9b4ece3c4d94",
     "intent": {
       "base": "main",
-      "expected_head_sha": "5c8afed4c2b5e150bb52c29de6eb15d76acee709"
+      "expected_head_sha": "b76ef6e302f4a52a6ceee68aa80094da6ff1c920"
     },
     "kind": "open_pr",
     "outcome": {
@@ -46,7 +55,10 @@
         "observation": {
           "detail": {
             "auto_merge": false,
-            "head": "5c8afed4c2b5e150bb52c29de6eb15d76acee709",
+            "base_branch": "main",
+            "head": "b76ef6e302f4a52a6ceee68aa80094da6ff1c920",
+            "landed": null,
+            "merged_at": null,
             "number": 1,
             "state": "open"
           },
@@ -59,6 +71,6 @@
     },
     "state": "confirmed",
     "task_id": "fix-add",
-    "updated_at": "2026-10-06T00:11:27.707454210Z"
+    "updated_at": "2026-10-06T01:11:56.925986015Z"
   }
 ]

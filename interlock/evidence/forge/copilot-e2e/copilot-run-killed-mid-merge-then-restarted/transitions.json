@@ -1,6 +1,6 @@
 [
   {
-    "at": "2026-10-06T00:14:17.049238Z",
+    "at": "2026-10-06T01:12:17.212190Z",
     "attempt_id": null,
     "from": "pending",
     "reason": "dependencies done; input snapshot recorded",
@@ -9,25 +9,25 @@
     "to": "ready"
   },
   {
-    "at": "2026-10-06T00:14:18.357503Z",
-    "attempt_id": "att-05572069aa8c4160",
+    "at": "2026-10-06T01:12:18.609259Z",
+    "attempt_id": "att-1ae92067fc554408",
     "from": "ready",
-    "reason": "attempt att-05572069aa8c4160 opened at epoch 1",
+    "reason": "attempt att-1ae92067fc554408 opened at epoch 1",
     "seq": 2,
     "signal": "G2",
     "to": "running"
   },
   {
-    "at": "2026-10-06T00:14:20.700119Z",
-    "attempt_id": "att-05572069aa8c4160",
+    "at": "2026-10-06T01:12:20.850662Z",
+    "attempt_id": "att-1ae92067fc554408",
     "from": "running",
-    "reason": "result accepted from attempt att-05572069aa8c4160 at epoch 1",
+    "reason": "result accepted from attempt att-1ae92067fc554408 at epoch 1",
     "seq": 3,
     "signal": "G3",
     "to": "awaiting_verification"
   },
   {
-    "at": "2026-10-06T00:14:24.675417Z",
+    "at": "2026-10-06T01:12:24.525151Z",
     "attempt_id": null,
     "from": "awaiting_verification",
     "reason": "every required criterion has current passing evidence",
@@ -36,19 +36,19 @@
     "to": "verified"
   },
   {
-    "at": "2026-10-06T00:14:24.692156Z",
+    "at": "2026-10-06T01:12:24.536440Z",
     "attempt_id": null,
     "from": "verified",
-    "reason": "landing authorized (Operator)",
+    "reason": "landing authorized (Coordinator)",
     "seq": 5,
     "signal": "G5",
     "to": "integrating"
   },
   {
-    "at": "2026-10-06T00:14:33.511517Z",
+    "at": "2026-10-06T01:12:25.227830Z",
     "attempt_id": null,
     "from": "integrating",
-    "reason": "merged at 380c855ed38bb07552181b537ffd67bc4cf4cd47",
+    "reason": "merged at 99b1318094d72a1e9a68177e81643ba480dbb240",
     "seq": 6,
     "signal": "G6",
     "to": "done"
