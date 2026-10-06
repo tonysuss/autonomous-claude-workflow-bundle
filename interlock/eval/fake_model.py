@@ -13,8 +13,9 @@ the final message:
      "verifier": {"steps": [...], "final": "..."},
      "on_block": [...]}
 
-A session is a verifier if its messages mention "independent verifier", an
-interlock worker if they mention "interlock", and a plain session otherwise.
+A session is a verifier if its first user message mentions "independent
+verifier", an interlock worker if it mentions "interlock", and a plain session
+otherwise. (Copilot puts interlock's role instructions in that message.)
 """
 
 import json
@@ -90,10 +91,12 @@ class FakeModel:
 
     def respond(self, req):
         msgs = req.get("messages") or []
-        all_text = "\n".join(_text(m) for m in msgs)
-        if "independent verifier" in all_text:
+        # The session's prompt decides its kind. Other context (a loaded
+        # skills plugin, for one) can mention interlock and verifiers too.
+        prompt = next((_text(m) for m in msgs if m.get("role") == "user"), "")
+        if "independent verifier" in prompt:
             kind = "verifier"
-        elif "interlock" in all_text:
+        elif "interlock" in prompt:
             kind = "worker"
         else:
             kind = "plain"
