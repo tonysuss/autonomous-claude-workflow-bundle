@@ -664,7 +664,8 @@ class Runner:
         plugin = os.path.join(root, "skills-plugin")
         os.makedirs(os.path.join(plugin, ".claude-plugin"))
         with open(os.path.join(plugin, ".claude-plugin", "plugin.json"), "w") as f:
-            json.dump({"name": "interlock-skills-eval", "version": "0.0.0"}, f)
+            # A neutral name: the agent sees it, and it should not hint at an evaluation.
+            json.dump({"name": "workflow-skills", "version": "0.0.0"}, f)
         skills = os.path.join(src, "skills") if os.path.isdir(os.path.join(src, "skills")) else src
         shutil.copytree(skills, os.path.join(plugin, "skills"))
         return plugin
@@ -895,7 +896,7 @@ class Runner:
         claimed = record["claim"]["claimed_done"]
         hidden_pass = bool(verdict and verdict["pass"])
         failed = len(record["judge"]["failed"])
-        complete = all(s["complete"] for s in record["sessions"]) and bool(record["sessions"])
+        cost_complete, tokens_complete = _completeness(record["sessions"])
         costs = [s["cost_usd"] for s in record["sessions"] if s.get("cost_usd") is not None]
         tokens = {}
         for s in record["sessions"]:
@@ -917,9 +918,9 @@ class Runner:
             "sessions": len(record["sessions"]),
             "wall_s": record["wall_s"],
             "cost_usd": round(sum(costs), 4) if costs else None,
-            "cost_complete": complete,
+            "cost_complete": cost_complete,
             "tokens": tokens or None,
-            "tokens_complete": complete,
+            "tokens_complete": tokens_complete,
             "hidden_material_seen": hidden_seen(raw),
         }
         if task.interrupt:
@@ -989,6 +990,14 @@ class Runner:
             no_proxy="127.0.0.1,localhost",
         )
         return fake
+
+
+def _completeness(sessions):
+    """A run's cost (tokens) is complete only when every session reported it."""
+    if not sessions:
+        return False, False
+    return (all(s.get("cost_usd") is not None for s in sessions),
+            all(s.get("tokens") is not None for s in sessions))
 
 
 def hidden_seen(raw):
@@ -1316,6 +1325,7 @@ def cmd_run(a):
     manifest["pinned"] = pinned
     manifest["harness_version"] = HARNESS_VERSION
     manifest["interlock_commit"] = git(EVAL_DIR, "rev-parse", "HEAD", check=False)
+    manifest["interlock_describe"] = git(EVAL_DIR, "describe", "--always", "--dirty", "--abbrev=12", check=False)
     manifest["interlock_bin_sha256"] = _sha256(cfg.interlock_bin) if os.path.exists(cfg.interlock_bin) else None
     manifest["budget_usd"] = a.budget_usd
     manifest["frozen"] = read_json(LOCK_FILE)
@@ -1390,10 +1400,12 @@ def aggregate(runs):
     n = len(runs)
     m = [r["metrics"] for r in runs]
     costs = [x["cost_usd"] for x in m]
-    complete = [x for x in m if x["cost_complete"]]
+    # Completeness is recomputed from the sessions, not taken from the record.
+    complete = [r["metrics"] for r in runs if _completeness(r["sessions"])[0]]
+    tok_complete = [r["metrics"] for r in runs if _completeness(r["sessions"])[1]]
     rec = [x["recovery"] for x in m if x.get("recovery")]
     tokens = {}
-    for x in complete:
+    for x in tok_complete:
         for k, v in (x.get("tokens") or {}).items():
             tokens[k] = tokens.get(k, 0) + v
     return {
@@ -1415,6 +1427,7 @@ def aggregate(runs):
         "cost_usd_total_observed": round(sum(c for c in costs if c is not None), 4),
         "cost_usd_mean_complete_runs": _mean([x["cost_usd"] for x in complete]),
         "runs_with_complete_cost": len(complete),
+        "runs_with_complete_tokens": len(tok_complete),
         "tokens_complete_runs": tokens or None,
         "hidden_material_seen": sum(bool(x.get("hidden_material_seen")) for x in m),
     }
@@ -1514,7 +1527,9 @@ def render_markdown(rep):
         ("Cost per run, mean over runs with complete cost (USD)",
          lambda a: "unavailable" if a["cost_usd_mean_complete_runs"] is None else f"{a['cost_usd_mean_complete_runs']:.3f}"),
         ("Runs with complete cost", lambda a: _rate(a["runs_with_complete_cost"], a["runs"])),
-        ("Output tokens, complete runs", lambda a: (a["tokens_complete_runs"] or {}).get("output", "unavailable")),
+        ("Runs with complete token counts", lambda a: _rate(a.get("runs_with_complete_tokens", 0), a["runs"])),
+        ("Output tokens, summed over runs with complete counts",
+         lambda a: (a["tokens_complete_runs"] or {}).get("output", "unavailable")),
         ("Transcripts mentioning hidden material", lambda a: a["hidden_material_seen"]),
     ]
     for name, fn in rows:
