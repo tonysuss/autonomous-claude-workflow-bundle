@@ -104,6 +104,8 @@ G6 is applied only when all of these hold:
 
 "Merge recorded" means the operation is confirmed, because the forge did act, while the task is blocked with the reason for the operator. Nothing here undoes a merge on the forge.
 
+The pinned head and current passing evidence are also G6's own guard in the policy core, so `interlock integrate confirm --merged <head>`, the operator's hand-made report, is held to them too: a head shorter than seven characters is refused, and a merge confirmed after the evidence went stale or failed blocks the task.
+
 ## Reconcile
 
 `interlock reconcile [<task>]` runs automatically at the start of every `interlock run`, and at the start of every `interlock integrate run`. It asks the forge about each operation in `started` or `unknown` state. It also asks about each planned landing tied to a pull request, which is how the operator's merge is found. Then:
