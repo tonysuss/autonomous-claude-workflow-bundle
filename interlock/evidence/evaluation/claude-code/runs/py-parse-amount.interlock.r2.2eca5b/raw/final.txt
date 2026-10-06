@@ -1,0 +1,7 @@
+I fixed `parse_amount` in `tally/money.py`, and the repro and regression checks both pass on my files. The independent `spec` criterion is still open for the verifier.
+
+- **Change:** a leading `+` or `-` is now read first and applied to the whole amount, so `-0.50` is -50 and `-3.25` is -325. The fraction must be one or two digits and is padded to tenths, so `12.5` is 1250. A third decimal place raises `ValueError`.
+- **Edge case:** I made a doubled sign like `--5` raise `ValueError`, which I did on my own judgement since the brief doesn't mention it.
+- **Tests:** I added three tests to `tests/test_money.py` covering tenths, the signed fraction and the more-than-two-decimals error.
+- **Checks:** `interlock check run` passed for `repro` (it prints `ok: 12.5 is 1250 cents`) and for `regression` (22 unit tests pass). I recorded claims on all three criteria.
+- **Spec claim:** it is `tested`, based on the new tests plus the existing ones for separators, whole numbers, spaces and invalid text.

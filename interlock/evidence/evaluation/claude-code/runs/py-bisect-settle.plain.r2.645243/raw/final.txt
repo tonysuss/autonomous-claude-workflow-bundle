@@ -1,0 +1,7 @@
+I checked each commit by exporting its tree with `git archive` into the scratchpad and running `checks/settle-repro.sh` from `fa8265e` against it. That left the repo untouched. The script passes at `bfaaa8d`, `a1f4611`, `d4d6223`, `4c0c5ec` and `2efc4f9`. It fails from `6fb44a0` ("ledger: tidy settle loop") through `32e8cc5`. So the regression came in with `6fb44a0`, the first failing commit, and the commit just before it passes.
+
+I didn't read the diff of `6fb44a0` to find the exact line that causes the zero transfer.
+
+ANSWER: 6fb44a053405cf209422a5ba505fa0bb929b18d4
+
+STATUS: DONE

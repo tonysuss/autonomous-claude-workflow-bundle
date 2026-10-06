@@ -1,0 +1,6 @@
+frozen HEAD is the start commit: True
+working file: bug
+refs: ['refs/heads/main']
+remotes: []
+fix object present: False
+log --all mentions the fix: False

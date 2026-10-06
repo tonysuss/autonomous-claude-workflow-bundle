@@ -1,0 +1,9 @@
+The regression was introduced by commit 6fb44a0, "ledger: tidy settle loop".
+
+**How I confirmed it:** I ran `checks/settle-repro.sh` against each commit before the repro commit. I exported each one to a scratch directory, so the repo and its files are unchanged. The script passes on `2efc4f9` and every older commit. It fails on `6fb44a0` and every newer one, so `6fb44a0` is the first bad commit.
+
+The diff explains the failure. It removes the `if amount > 0` guard before `transfers.append`. It also changes the second `if creditors[j][0] == 0` into an `elif`. When a debtor and a creditor both reach zero in the same step, only the debtor index advances. The next pass then pairs a settled creditor with the next debtor and emits a 0.00 transfer.
+
+ANSWER: 6fb44a053405cf209422a5ba505fa0bb929b18d4
+
+STATUS: DONE

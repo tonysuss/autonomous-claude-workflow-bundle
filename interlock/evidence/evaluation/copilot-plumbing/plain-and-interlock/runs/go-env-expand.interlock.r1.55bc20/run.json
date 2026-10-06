@@ -1,0 +1,188 @@
+{
+ "run_id": "go-env-expand.interlock.r1.55bc20",
+ "label": "plumbing",
+ "task": "go-env-expand",
+ "kind": "interruption",
+ "language": "go",
+ "condition": "interlock",
+ "repeat": 1,
+ "host": "copilot",
+ "host_version": "1.0.91",
+ "model": null,
+ "effort": null,
+ "fake_model": true,
+ "started_at": "2026-10-06T00:02:42+00:00",
+ "workdir": "/tmp/claude-0/-home-user-autonomous-claude-workflow-bundle/<redacted>/scratchpad/work/ws/e871bd0610/kvconf",
+ "base_commit": "fe60b8503a1e92804dc7b1be782b7218c2e3d38d",
+ "sessions": [
+  {
+   "complete": false,
+   "final_text": null,
+   "is_error": true,
+   "cost_usd": null,
+   "tokens": null,
+   "turns": 2,
+   "models": [],
+   "denials": 0,
+   "events": 81,
+   "role": "worker",
+   "attempt": "att-c5fb453156d94ade",
+   "attempt_status": "failed",
+   "transcript": "raw/transcripts/att-c5fb453156d94ade.jsonl"
+  },
+  {
+   "complete": true,
+   "final_text": "Applied the scripted change.\n",
+   "is_error": false,
+   "cost_usd": null,
+   "tokens": null,
+   "turns": 6,
+   "models": [],
+   "denials": 0,
+   "events": 192,
+   "usage_reported": {
+    "premiumRequests": 0,
+    "totalApiDurationMs": 66,
+    "sessionDurationMs": 2046,
+    "codeChanges": {
+     "linesAdded": 0,
+     "linesRemoved": 0,
+     "filesModified": []
+    }
+   },
+   "role": "worker",
+   "attempt": "att-c0f42d5e29fc47d3",
+   "attempt_status": "submitted",
+   "transcript": "raw/transcripts/att-c0f42d5e29fc47d3.jsonl"
+  },
+  {
+   "complete": true,
+   "final_text": "Scripted verification finished.",
+   "is_error": false,
+   "cost_usd": null,
+   "tokens": null,
+   "turns": 6,
+   "models": [],
+   "denials": 0,
+   "events": 201,
+   "usage_reported": {
+    "premiumRequests": 0,
+    "totalApiDurationMs": 63,
+    "sessionDurationMs": 2623,
+    "codeChanges": {
+     "linesAdded": 0,
+     "linesRemoved": 0,
+     "filesModified": []
+    }
+   },
+   "role": "verifier",
+   "attempt": "att-8b2c582ec34743e3",
+   "attempt_status": "completed",
+   "transcript": "raw/transcripts/att-8b2c582ec34743e3.jsonl"
+  }
+ ],
+ "notes": [],
+ "interruption": {
+  "interrupted": true,
+  "trigger": "first-edit",
+  "after_s": 4.0,
+  "changes": [
+   "M config.go",
+   " M parser.go"
+  ],
+  "killed_processes": 4
+ },
+ "interlock": {
+  "final_state": "done",
+  "stopped_because": "done",
+  "blocked_reason": null,
+  "attempts_used": 2,
+  "signals": [
+   "G1",
+   "G2",
+   "R3",
+   "G2",
+   "G3",
+   "G4",
+   "G7"
+  ],
+  "invocations": [
+   {
+    "exit_code": -9,
+    "killed": "interrupted at the first edit",
+    "killed_pids": 4,
+    "wall_s": 4.0
+   },
+   {
+    "exit_code": 0,
+    "killed": null,
+    "killed_pids": 0,
+    "wall_s": 9.3
+   }
+  ],
+  "baseline": [
+   {
+    "criterion_id": "expand",
+    "run_id": "run-19dc4edcbc844732",
+    "exit_code": 1,
+    "vacuous": null,
+    "problem": null
+   },
+   {
+    "criterion_id": "regression",
+    "run_id": "run-07553760705349d7",
+    "exit_code": 0,
+    "vacuous": null,
+    "problem": null
+   }
+  ]
+ },
+ "claim": {
+  "claimed_done": true,
+  "source": "interlock-state",
+  "detail": "done"
+ },
+ "wall_s": 13.6,
+ "output": {
+  "tree": "3552fdac01d71073a100bf147740cd82a347576c",
+  "delivered": true,
+  "changed_paths": [
+   "cmd/kvconf/main.go",
+   "config.go",
+   "parser.go"
+  ],
+  "scope_violations": []
+ },
+ "judge": {
+  "anon_id": "747dcdaf0284",
+  "hidden_pass": true,
+  "cases": 11,
+  "failed": [],
+  "condition_words_in_judged_files": []
+ },
+ "metrics": {
+  "accepted": true,
+  "hidden_pass": true,
+  "claimed_done": true,
+  "unsupported_claim": false,
+  "missed_defects": 0,
+  "scope_violation": false,
+  "correct_but_not_claimed": false,
+  "recovery": {
+   "interrupted": true,
+   "trigger": "first-edit",
+   "recovered": true
+  },
+  "human_interventions": 0,
+  "operator_needed": false,
+  "restarts": 1,
+  "sessions": 3,
+  "wall_s": 13.6,
+  "cost_usd": null,
+  "cost_complete": false,
+  "tokens": null,
+  "tokens_complete": false,
+  "hidden_material_seen": false
+ },
+ "budget_charge_usd": 0.0
+}

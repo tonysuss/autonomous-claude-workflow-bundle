@@ -1,0 +1,25 @@
+{
+ "exit_code": 0,
+ "stderr_tail": "",
+ "event_types": [
+  "active_goal",
+  "assistant",
+  "autocompact_state",
+  "rate_limit_event",
+  "result",
+  "system"
+ ],
+ "plugin_dir": "skills-plugin",
+ "plugins": [
+  "interlock-skills-eval",
+  "cc-plugin-agents-md",
+  "cc-plugin-telemetry",
+  "cc-plugin-plugin-authoring"
+ ],
+ "eval_dummy_skill_listed": true,
+ "skills_matching": [
+  "interlock-skills-eval:eval-dummy"
+ ],
+ "result": "ok",
+ "cost_usd": 0.024725
+}

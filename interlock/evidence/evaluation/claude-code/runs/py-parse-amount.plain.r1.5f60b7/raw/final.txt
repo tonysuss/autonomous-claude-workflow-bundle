@@ -1,0 +1,11 @@
+I rewrote `parse_amount` in `tally/money.py`, and `"12.5"` now parses to 1250. `checks/parse-repro.sh` passes, as do the 19 tests.
+
+- **Fraction:** one decimal digit now means tenths, and a fraction of more than two digits raises `ValueError`.
+- **Sign:** the sign is read first and applied to the whole amount. `"-0.50"` is -50 and `"-3.25"` is -325.
+- **Unchanged inputs:** `"1,234.56"` is 123456, `"7"` is 700, surrounding spaces still work, and non-amounts such as `""`, `"abc"`, `"-"` and `"1."` raise `ValueError`.
+
+I checked those cases by hand, but I didn't add them to `tests/test_money.py`.
+
+The new parser accepts digits only, so text that Python's `int()` used to let through, such as `"1_000"`, now raises `ValueError`.
+
+STATUS: DONE

@@ -1,0 +1,5 @@
+I rewrote `split_evenly` in `tally/money.py` so the shares always add up to `total`. The earlier shares take the extra cents, so `split_evenly(100, 3)` now returns `[34, 33, 33]` and `split_evenly(-100, 3)` returns `[-34, -33, -33]`. A non-positive `n` raises `ValueError`.
+
+`checks/split-repro.sh` now passes, including the check that the ledger balances sum to zero. I added four tests to `tests/test_money.py`: remainder placement, negative totals, shares summing to the total across many totals and values of `n`, and the `ValueError` case. All 23 tests pass.
+
+STATUS: DONE

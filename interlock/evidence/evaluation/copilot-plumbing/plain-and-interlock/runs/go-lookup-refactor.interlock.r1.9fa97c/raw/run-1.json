@@ -1,0 +1,64 @@
+{
+  "task_id": "go-lookup-refactor",
+  "host": "copilot",
+  "final_state": "done",
+  "stopped_because": "done",
+  "reconciled": [],
+  "baseline": [
+    {
+      "criterion_id": "regression",
+      "run_id": "run-ff72448e48784418",
+      "exit_code": 0,
+      "vacuous": null,
+      "problem": null
+    }
+  ],
+  "sessions": [
+    {
+      "role": "worker",
+      "attempt_id": "att-8bc0bf274edf4b6a",
+      "epoch": 1,
+      "exit": {
+        "exit": "completed"
+      },
+      "duration_ms": 2809,
+      "summary": "Applied the scripted change.\n",
+      "denials": 0,
+      "transcript": "/tmp/claude-0/-home-user-autonomous-claude-workflow-bundle/<redacted>/scratchpad/work/ws/ee3dd26fcc/kvconf/.interlock/transcripts/att-8bc0bf274edf4b6a.jsonl",
+      "moves": [
+        {
+          "signal": "G3",
+          "from": "running",
+          "to": "awaiting_verification",
+          "reason": "result accepted from attempt att-8bc0bf274edf4b6a at epoch 1"
+        }
+      ]
+    },
+    {
+      "role": "verifier",
+      "attempt_id": "att-bded3aece29c4d73",
+      "epoch": 1,
+      "exit": {
+        "exit": "completed"
+      },
+      "duration_ms": 2812,
+      "summary": "Scripted verification finished.",
+      "denials": 0,
+      "transcript": "/tmp/claude-0/-home-user-autonomous-claude-workflow-bundle/<redacted>/scratchpad/work/ws/ee3dd26fcc/kvconf/.interlock/transcripts/att-bded3aece29c4d73.jsonl",
+      "moves": [
+        {
+          "signal": "G4",
+          "from": "awaiting_verification",
+          "to": "verified",
+          "reason": "every required criterion has current passing evidence"
+        },
+        {
+          "signal": "G7",
+          "from": "verified",
+          "to": "done",
+          "reason": "verified; the workflow needs no delivery"
+        }
+      ]
+    }
+  ]
+}

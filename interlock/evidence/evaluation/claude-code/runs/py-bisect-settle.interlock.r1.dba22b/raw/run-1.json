@@ -1,0 +1,56 @@
+{
+  "task_id": "py-bisect-settle",
+  "host": "claude-code",
+  "final_state": "done",
+  "stopped_because": "done",
+  "reconciled": [],
+  "baseline": [],
+  "sessions": [
+    {
+      "role": "worker",
+      "attempt_id": "att-44948df129794a32",
+      "epoch": 1,
+      "exit": {
+        "exit": "completed"
+      },
+      "duration_ms": 24058,
+      "summary": "The regression was introduced by `6fb44a0` (\"ledger: tidy settle loop\"). I didn't change any files.\n\nI exported every commit from `bfaaa8d` to `fa8265e` into a copy outside the tree. I ran `sh checks/settle-repro.sh` on each copy. It passes at `bfaaa8d`, `a1f4611`, `d4d6223`, `4c0c5ec` and `2efc4f9`. It fails at `6fb44a0` and at every later commit.\n\n`interlock check run --criterion answer` returned \"criterion answer has no check to run\", so interlock ran no check of its own. I recorded an `observed` claim with `interlock claim add`. The output I saw from that command was truncated, so I can't confirm it was accepted.\n\nANSWER: 6fb44a053405cf209422a5ba505fa0bb929b18d4",
+      "denials": 0,
+      "transcript": "/tmp/claude-0/-home-user-autonomous-claude-workflow-bundle/<redacted>/scratchpad/work/ws/3a036d63fc/tally/.interlock/transcripts/att-44948df129794a32.jsonl",
+      "moves": [
+        {
+          "signal": "G3",
+          "from": "running",
+          "to": "awaiting_verification",
+          "reason": "result accepted from attempt att-44948df129794a32 at epoch 1"
+        }
+      ]
+    },
+    {
+      "role": "verifier",
+      "attempt_id": "att-ab9fcb174d0c4746",
+      "epoch": 1,
+      "exit": {
+        "exit": "completed"
+      },
+      "duration_ms": 19437,
+      "summary": "answer: holds. I ran the repro script from `fa8265e` in a copy of each commit outside the tree, since it only exists from that commit on. It passes at `bfaaa8d`, `a1f4611`, `d4d6223`, `4c0c5ec` and `2efc4f9`. It fails at `6fb44a0` with `zero-amount transfers: [('Dan', 'Cal', 0)]`, and at every later commit. `2efc4f9` is the parent of `6fb44a0`, so that is the first failing commit. `interlock check run --criterion answer` reported \"no check to run\", so I examined the work myself and recorded an `observed` assessment. The tree was not modified.\n\nANSWER: 6fb44a053405cf209422a5ba505fa0bb929b18d4",
+      "denials": 0,
+      "transcript": "/tmp/claude-0/-home-user-autonomous-claude-workflow-bundle/<redacted>/scratchpad/work/ws/3a036d63fc/tally/.interlock/transcripts/att-ab9fcb174d0c4746.jsonl",
+      "moves": [
+        {
+          "signal": "G4",
+          "from": "awaiting_verification",
+          "to": "verified",
+          "reason": "every required criterion has current passing evidence"
+        },
+        {
+          "signal": "G7",
+          "from": "verified",
+          "to": "done",
+          "reason": "verified; the workflow needs no delivery"
+        }
+      ]
+    }
+  ]
+}

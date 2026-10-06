@@ -1,0 +1,147 @@
+{
+ "run_id": "go-lookup-refactor.interlock.r1.4fabc1",
+ "label": "main",
+ "task": "go-lookup-refactor",
+ "kind": "refactor",
+ "language": "go",
+ "condition": "interlock",
+ "repeat": 1,
+ "host": "claude-code",
+ "host_version": "2.1.289",
+ "model": "claude-sonnet-5-5",
+ "effort": "medium",
+ "fake_model": false,
+ "started_at": "2026-10-06T00:11:37+00:00",
+ "workdir": "/tmp/claude-0/-home-user-autonomous-claude-workflow-bundle/<redacted>/scratchpad/work/ws/b08a2c571c/kvconf",
+ "base_commit": "189ec434d47f205ff1af8be88e183dca8f6bc297",
+ "sessions": [
+  {
+   "complete": true,
+   "final_text": "I added `lookup(section, key string) (string, error)` to `getters.go`, and `Get`, `GetInt`, `GetBool` and `GetDuration` now all go through it. `lookup` is the only place that reads `c.sections`.\n\n`GetBool` words its missing-key error differently from the other three: it says `key %q not set`, where the others say `no key %q`. To keep every message identical, `lookup` returns a small unexported `missingKeyError` for a missing key, and `GetBool` detects it with `errors.As` and returns its original wording.\n\n`go test ./...` passes on the refactored tree (checked with `interlock check run --criterion regression`), and `go vet` and `gofmt` are clean. I recorded a `tested` claim for `regression`. The `structure` and `behaviour` criteria need the independent verifier, so I did not claim them.",
+   "is_error": false,
+   "cost_usd": 0.0842756,
+   "tokens": {
+    "input": 1683,
+    "output": 1842,
+    "cache_read": 128233,
+    "cache_write": 9647
+   },
+   "turns": 4,
+   "models": [
+    "claude-haiku-4-5-20251001",
+    "claude-sonnet-5-5"
+   ],
+   "model_requested": "claude-sonnet-5-5",
+   "denials": 0,
+   "events": 49,
+   "subtype": "success",
+   "role": "worker",
+   "attempt": "att-d677ae556b83431a",
+   "attempt_status": "submitted",
+   "transcript": "raw/transcripts/att-d677ae556b83431a.jsonl"
+  },
+  {
+   "complete": true,
+   "final_text": "- **structure**: holds (static). All four getters call `c.lookup(section, key)`. The only `c.sections` read in `getters.go` is inside `lookup`, at line 78.\n- **behaviour**: holds (tested). I ran the base and refactored `getters.go` against 18 section/key combinations per getter. Values and error strings were identical, including `GetBool`'s `key %q not set` wording and the `top level` label. Only `getters.go` changed against the base commit.\n- **regression**: holds (tested). `go test ./...` passes on tree 3632dd9 (run-658e0740).",
+   "is_error": false,
+   "cost_usd": 0.1016872,
+   "tokens": {
+    "input": 1915,
+    "output": 1677,
+    "cache_read": 166316,
+    "cache_write": 12451
+   },
+   "turns": 6,
+   "models": [
+    "claude-haiku-4-5-20251001",
+    "claude-sonnet-5-5"
+   ],
+   "model_requested": "claude-sonnet-5-5",
+   "denials": 0,
+   "events": 34,
+   "subtype": "success",
+   "role": "verifier",
+   "attempt": "att-9d7bb253074b48d7",
+   "attempt_status": "completed",
+   "transcript": "raw/transcripts/att-9d7bb253074b48d7.jsonl"
+  }
+ ],
+ "notes": [],
+ "interlock": {
+  "final_state": "done",
+  "stopped_because": "done",
+  "blocked_reason": null,
+  "attempts_used": 1,
+  "signals": [
+   "G1",
+   "G2",
+   "G3",
+   "G4",
+   "G7"
+  ],
+  "invocations": [
+   {
+    "exit_code": 0,
+    "killed": null,
+    "killed_pids": 0,
+    "wall_s": 39.1
+   }
+  ],
+  "baseline": [
+   {
+    "criterion_id": "regression",
+    "run_id": "run-171e750e92d34b18",
+    "exit_code": 0,
+    "vacuous": null,
+    "problem": null
+   }
+  ]
+ },
+ "claim": {
+  "claimed_done": true,
+  "source": "interlock-state",
+  "detail": "done"
+ },
+ "wall_s": 39.3,
+ "output": {
+  "tree": "3632dd958466eec28559824e38a39bda24ea9339",
+  "delivered": true,
+  "changed_paths": [
+   "getters.go"
+  ],
+  "scope_violations": []
+ },
+ "judge": {
+  "anon_id": "c2e4b7044dfc",
+  "hidden_pass": true,
+  "cases": 9,
+  "failed": [],
+  "condition_words_in_judged_files": []
+ },
+ "metrics": {
+  "accepted": true,
+  "hidden_pass": true,
+  "claimed_done": true,
+  "unsupported_claim": false,
+  "missed_defects": 0,
+  "scope_violation": false,
+  "correct_but_not_claimed": false,
+  "recovery": null,
+  "human_interventions": 0,
+  "operator_needed": false,
+  "restarts": 0,
+  "sessions": 2,
+  "wall_s": 39.3,
+  "cost_usd": 0.186,
+  "cost_complete": true,
+  "tokens": {
+   "input": 3598,
+   "output": 3519,
+   "cache_read": 294549,
+   "cache_write": 22098
+  },
+  "tokens_complete": true,
+  "hidden_material_seen": false
+ },
+ "budget_charge_usd": 0.186
+}

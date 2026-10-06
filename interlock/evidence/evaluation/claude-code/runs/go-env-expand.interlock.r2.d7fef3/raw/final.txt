@@ -1,0 +1,7 @@
+Values in unquoted and double-quoted settings now expand `${NAME}`, `${NAME:-fallback}` and `$$`. Other `$` stay as they are, and an unset variable with no fallback fails with `kvconf: line N: undefined variable "NAME"`.
+
+`ParseOptions`, `ParseWithOptions` and a `LoadWithOptions` helper are added, and `Parse` and `Load` expand by default. `kvconf get` and `kvconf dump` take `--no-expand` before the file name. I also added a short README section and a `TestExpand` test.
+
+`checks/expand.sh` passes (`/srv/data`) and `go test ./...` passes. I ran `get --no-expand` and `dump --no-expand` on `checks/expand.conf` and both print `${DATA_ROOT}/data` literally. I recorded claims for all three criteria. `spec` is only a worker-side `tested` claim backed by `TestExpand`; the independent verifier still has to confirm it.
+
+An unterminated `${` is also an error (`unterminated ${ in value`), which the brief doesn't cover.

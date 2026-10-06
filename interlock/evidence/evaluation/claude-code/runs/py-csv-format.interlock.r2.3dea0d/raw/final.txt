@@ -1,0 +1,5 @@
+I added `--format {text,csv}` to both `balances` and `settle`. `text` is the default and its output is unchanged. The change is in `tally/cli.py` and `tally/report.py`, with a README line and a new `tests/test_report_csv.py`.
+
+- **Checks:** `checks/csv-format.sh` passes through interlock. The unit tests pass (22). I ran `settle --format csv` on the trip example by hand, and `--format xml` is rejected with exit status 2.
+- **Covered only by unit tests:** quoting of a name with a comma and header-only output for an empty list. I did not run these from the command line.
+- **Claims:** I recorded one for each criterion. `balances-csv` and `spec` are `observed` and `regression` is `tested`. `balances-csv` and `spec` still need confirmation from the independent verifier.

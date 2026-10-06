@@ -1,0 +1,71 @@
+{
+  "task_id": "py-csv-format",
+  "host": "claude-code",
+  "final_state": "done",
+  "stopped_because": "done",
+  "reconciled": [],
+  "baseline": [
+    {
+      "criterion_id": "balances-csv",
+      "run_id": "run-6cc273211a374b5f",
+      "exit_code": 1,
+      "vacuous": null,
+      "problem": null
+    },
+    {
+      "criterion_id": "regression",
+      "run_id": "run-17faa345bcac47d5",
+      "exit_code": 0,
+      "vacuous": null,
+      "problem": null
+    }
+  ],
+  "sessions": [
+    {
+      "role": "worker",
+      "attempt_id": "att-1b4e01e8653b4874",
+      "epoch": 1,
+      "exit": {
+        "exit": "completed"
+      },
+      "duration_ms": 20718,
+      "summary": "I added `--format {text,csv}` to both `balances` and `settle`. `text` is the default and its output is unchanged. The change is in `tally/cli.py` and `tally/report.py`, with a README line and a new `tests/test_report_csv.py`.\n\n- **Checks:** `checks/csv-format.sh` passes through interlock. The unit tests pass (22). I ran `settle --format csv` on the trip example by hand, and `--format xml` is rejected with exit status 2.\n- **Covered only by unit tests:** quoting of a name with a comma and header-only output for an empty list. I did not run these from the command line.\n- **Claims:** I recorded one for each criterion. `balances-csv` and `spec` are `observed` and `regression` is `tested`. `balances-csv` and `spec` still need confirmation from the independent verifier.",
+      "denials": 0,
+      "transcript": "/tmp/claude-0/-home-user-autonomous-claude-workflow-bundle/<redacted>/scratchpad/work/ws/c61e4a3d03/tally/.interlock/transcripts/att-1b4e01e8653b4874.jsonl",
+      "moves": [
+        {
+          "signal": "G3",
+          "from": "running",
+          "to": "awaiting_verification",
+          "reason": "result accepted from attempt att-1b4e01e8653b4874 at epoch 1"
+        }
+      ]
+    },
+    {
+      "role": "verifier",
+      "attempt_id": "att-0573b95c293142a3",
+      "epoch": 1,
+      "exit": {
+        "exit": "completed"
+      },
+      "duration_ms": 17432,
+      "summary": "- **balances-csv**: pass, observed. `checks/csv-format.sh` passed on tree 0ab56d5 (run-cb986bc1d1df4ad6).\n- **spec**: pass, observed. On the command line, the `settle` CSV rows came out in the same order as the text output. A name with a comma was quoted, an empty ledger gave the header line alone, and every line ended with `\\n`. Text output stayed the default, and `--format xml` exited with status 2.\n- **regression**: pass, tested. All 22 unit tests passed (run-ec5bb83748d64752).",
+      "denials": 0,
+      "transcript": "/tmp/claude-0/-home-user-autonomous-claude-workflow-bundle/<redacted>/scratchpad/work/ws/c61e4a3d03/tally/.interlock/transcripts/att-0573b95c293142a3.jsonl",
+      "moves": [
+        {
+          "signal": "G4",
+          "from": "awaiting_verification",
+          "to": "verified",
+          "reason": "every required criterion has current passing evidence"
+        },
+        {
+          "signal": "G7",
+          "from": "verified",
+          "to": "done",
+          "reason": "verified; the workflow needs no delivery"
+        }
+      ]
+    }
+  ]
+}

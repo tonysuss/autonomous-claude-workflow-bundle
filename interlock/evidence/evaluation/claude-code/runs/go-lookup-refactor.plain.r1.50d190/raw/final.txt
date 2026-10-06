@@ -1,0 +1,7 @@
+`Get`, `GetInt`, `GetBool` and `GetDuration` in `getters.go` now all go through one `lookup(section, key)` method. Only `lookup` reads `c.sections` now. `gofmt` and `go vet` are clean, and `go test ./...` passes.
+
+`GetBool` words its missing-key error differently from the others: `key %q not set` instead of `no key %q`. To keep that message exactly as it was, `lookup` returns a small unexported `missingKeyError` type when the key is missing. `GetBool` recognises it and rebuilds its own message. The other three pass `lookup`'s error through unchanged.
+
+Messages, return values and the exported API are unchanged. I didn't add a test for `GetBool`'s missing-key message, so the existing tests are the only check on that wording.
+
+STATUS: DONE

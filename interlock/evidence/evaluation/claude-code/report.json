@@ -1,0 +1,2101 @@
+{
+ "generated_at": "2026-10-06T00:24:36+00:00",
+ "harness_version": "1",
+ "pinned": {
+  "host": "claude-code",
+  "host_version": "2.1.289",
+  "model": "claude-sonnet-5-5",
+  "effort": "medium",
+  "max_turns": 80,
+  "session_timeout_s": 900,
+  "max_sessions": 6,
+  "fake_model": false
+ },
+ "interlock_commit": "3f930eedf2ad21ccbc7b6a5ed61381c3d69596db",
+ "frozen_task_set": {
+  "go-env-expand": "fe60b8503a1e92804dc7b1be782b7218c2e3d38d",
+  "go-lookup-refactor": "189ec434d47f205ff1af8be88e183dca8f6bc297",
+  "go-quoted-hash": "a1f2289cc43c69d966338ebf30a7d70e3479f09e",
+  "py-bisect-settle": "fa8265ef7f533725d5021aa48437933a03d16638",
+  "py-csv-format": "7e5fdf199b18717ddc7a12e46c0b5b439ac6e61c",
+  "py-parse-amount": "b38a841619c174c4f4cb031875ff808cadbff88e",
+  "py-split-remainder": "3c69e6e826c8acd8e019c2082464a0d170d90b90"
+ },
+ "environment": {
+  "python": "3.11.15",
+  "go": "go version go1.24.7 linux/amd64",
+  "git": "git version 2.43.0"
+ },
+ "budget_usd": 14.88,
+ "spend": {
+  "observed_usd": 3.9449,
+  "budget_charged_usd": 6.9449
+ },
+ "stopped": [],
+ "conditions": {
+  "plain": {
+   "runs": 14,
+   "accepted": 14,
+   "hidden_pass": 14,
+   "claimed_done": 14,
+   "unsupported_claims": 0,
+   "missed_defects": 0,
+   "scope_violation_runs": 0,
+   "correct_but_not_claimed": 0,
+   "recovery": {
+    "interrupted": 2,
+    "recovered": 2
+   },
+   "human_interventions": 0,
+   "operator_needed": 0,
+   "sessions_mean": 1.143,
+   "wall_s_mean": 22.043,
+   "wall_s_median": 19.4,
+   "cost_usd_total_observed": 1.072,
+   "cost_usd_mean_complete_runs": 0.076,
+   "runs_with_complete_cost": 12,
+   "runs_with_complete_tokens": 12,
+   "tokens_complete_runs": {
+    "input": 13764,
+    "output": 18751,
+    "cache_read": 1582817,
+    "cache_write": 97701
+   },
+   "hidden_material_seen": 0
+  },
+  "interlock": {
+   "runs": 14,
+   "accepted": 14,
+   "hidden_pass": 14,
+   "claimed_done": 14,
+   "unsupported_claims": 0,
+   "missed_defects": 0,
+   "scope_violation_runs": 0,
+   "correct_but_not_claimed": 0,
+   "recovery": {
+    "interrupted": 2,
+    "recovered": 2
+   },
+   "human_interventions": 0,
+   "operator_needed": 0,
+   "sessions_mean": 2.143,
+   "wall_s_mean": 46.064,
+   "wall_s_median": 39.4,
+   "cost_usd_total_observed": 2.8729,
+   "cost_usd_mean_complete_runs": 0.198,
+   "runs_with_complete_cost": 12,
+   "runs_with_complete_tokens": 12,
+   "tokens_complete_runs": {
+    "input": 46397,
+    "output": 34945,
+    "cache_read": 3716454,
+    "cache_write": 308636
+   },
+   "hidden_material_seen": 0
+  }
+ },
+ "tasks": {
+  "go-env-expand": {
+   "plain": {
+    "runs": 2,
+    "accepted": 2,
+    "hidden_pass": 2,
+    "claimed_done": 2,
+    "unsupported_claims": 0,
+    "missed_defects": 0,
+    "scope_violation_runs": 0,
+    "correct_but_not_claimed": 0,
+    "recovery": {
+     "interrupted": 2,
+     "recovered": 2
+    },
+    "human_interventions": 0,
+    "operator_needed": 0,
+    "sessions_mean": 2,
+    "wall_s_mean": 39.15,
+    "wall_s_median": 39.15,
+    "cost_usd_total_observed": 0.1644,
+    "cost_usd_mean_complete_runs": null,
+    "runs_with_complete_cost": 0,
+    "runs_with_complete_tokens": 0,
+    "tokens_complete_runs": null,
+    "hidden_material_seen": 0
+   },
+   "interlock": {
+    "runs": 2,
+    "accepted": 2,
+    "hidden_pass": 2,
+    "claimed_done": 2,
+    "unsupported_claims": 0,
+    "missed_defects": 0,
+    "scope_violation_runs": 0,
+    "correct_but_not_claimed": 0,
+    "recovery": {
+     "interrupted": 2,
+     "recovered": 2
+    },
+    "human_interventions": 0,
+    "operator_needed": 0,
+    "sessions_mean": 3,
+    "wall_s_mean": 94.85,
+    "wall_s_median": 94.85,
+    "cost_usd_total_observed": 0.5009,
+    "cost_usd_mean_complete_runs": null,
+    "runs_with_complete_cost": 0,
+    "runs_with_complete_tokens": 0,
+    "tokens_complete_runs": null,
+    "hidden_material_seen": 0
+   }
+  },
+  "go-lookup-refactor": {
+   "plain": {
+    "runs": 2,
+    "accepted": 2,
+    "hidden_pass": 2,
+    "claimed_done": 2,
+    "unsupported_claims": 0,
+    "missed_defects": 0,
+    "scope_violation_runs": 0,
+    "correct_but_not_claimed": 0,
+    "recovery": null,
+    "human_interventions": 0,
+    "operator_needed": 0,
+    "sessions_mean": 1,
+    "wall_s_mean": 16.4,
+    "wall_s_median": 16.4,
+    "cost_usd_total_observed": 0.1511,
+    "cost_usd_mean_complete_runs": 0.076,
+    "runs_with_complete_cost": 2,
+    "runs_with_complete_tokens": 2,
+    "tokens_complete_runs": {
+     "input": 2142,
+     "output": 3541,
+     "cache_read": 248256,
+     "cache_write": 16018
+    },
+    "hidden_material_seen": 0
+   },
+   "interlock": {
+    "runs": 2,
+    "accepted": 2,
+    "hidden_pass": 2,
+    "claimed_done": 2,
+    "unsupported_claims": 0,
+    "missed_defects": 0,
+    "scope_violation_runs": 0,
+    "correct_but_not_claimed": 0,
+    "recovery": null,
+    "human_interventions": 0,
+    "operator_needed": 0,
+    "sessions_mean": 2,
+    "wall_s_mean": 44.95,
+    "wall_s_median": 44.95,
+    "cost_usd_total_observed": 0.4044,
+    "cost_usd_mean_complete_runs": 0.202,
+    "runs_with_complete_cost": 2,
+    "runs_with_complete_tokens": 2,
+    "tokens_complete_runs": {
+     "input": 7227,
+     "output": 7611,
+     "cache_read": 663141,
+     "cache_write": 47172
+    },
+    "hidden_material_seen": 0
+   }
+  },
+  "go-quoted-hash": {
+   "plain": {
+    "runs": 2,
+    "accepted": 2,
+    "hidden_pass": 2,
+    "claimed_done": 2,
+    "unsupported_claims": 0,
+    "missed_defects": 0,
+    "scope_violation_runs": 0,
+    "correct_but_not_claimed": 0,
+    "recovery": null,
+    "human_interventions": 0,
+    "operator_needed": 0,
+    "sessions_mean": 1,
+    "wall_s_mean": 26.8,
+    "wall_s_median": 26.8,
+    "cost_usd_total_observed": 0.1707,
+    "cost_usd_mean_complete_runs": 0.085,
+    "runs_with_complete_cost": 2,
+    "runs_with_complete_tokens": 2,
+    "tokens_complete_runs": {
+     "input": 2354,
+     "output": 3499,
+     "cache_read": 344414,
+     "cache_write": 16152
+    },
+    "hidden_material_seen": 0
+   },
+   "interlock": {
+    "runs": 2,
+    "accepted": 2,
+    "hidden_pass": 2,
+    "claimed_done": 2,
+    "unsupported_claims": 0,
+    "missed_defects": 0,
+    "scope_violation_runs": 0,
+    "correct_but_not_claimed": 0,
+    "recovery": null,
+    "human_interventions": 0,
+    "operator_needed": 0,
+    "sessions_mean": 2,
+    "wall_s_mean": 38.65,
+    "wall_s_median": 38.65,
+    "cost_usd_total_observed": 0.3475,
+    "cost_usd_mean_complete_runs": 0.174,
+    "runs_with_complete_cost": 2,
+    "runs_with_complete_tokens": 2,
+    "tokens_complete_runs": {
+     "input": 8058,
+     "output": 5665,
+     "cache_read": 580743,
+     "cache_write": 41743
+    },
+    "hidden_material_seen": 0
+   }
+  },
+  "py-bisect-settle": {
+   "plain": {
+    "runs": 2,
+    "accepted": 2,
+    "hidden_pass": 2,
+    "claimed_done": 2,
+    "unsupported_claims": 0,
+    "missed_defects": 0,
+    "scope_violation_runs": 0,
+    "correct_but_not_claimed": 0,
+    "recovery": null,
+    "human_interventions": 0,
+    "operator_needed": 0,
+    "sessions_mean": 1,
+    "wall_s_mean": 18.75,
+    "wall_s_median": 18.75,
+    "cost_usd_total_observed": 0.131,
+    "cost_usd_mean_complete_runs": 0.066,
+    "runs_with_complete_cost": 2,
+    "runs_with_complete_tokens": 2,
+    "tokens_complete_runs": {
+     "input": 2172,
+     "output": 1903,
+     "cache_read": 276448,
+     "cache_write": 13684
+    },
+    "hidden_material_seen": 0
+   },
+   "interlock": {
+    "runs": 2,
+    "accepted": 2,
+    "hidden_pass": 2,
+    "claimed_done": 2,
+    "unsupported_claims": 0,
+    "missed_defects": 0,
+    "scope_violation_runs": 0,
+    "correct_but_not_claimed": 0,
+    "recovery": null,
+    "human_interventions": 0,
+    "operator_needed": 0,
+    "sessions_mean": 2,
+    "wall_s_mean": 38.35,
+    "wall_s_median": 38.35,
+    "cost_usd_total_observed": 0.303,
+    "cost_usd_mean_complete_runs": 0.152,
+    "runs_with_complete_cost": 2,
+    "runs_with_complete_tokens": 2,
+    "tokens_complete_runs": {
+     "input": 6600,
+     "output": 3882,
+     "cache_read": 627756,
+     "cache_write": 33078
+    },
+    "hidden_material_seen": 0
+   }
+  },
+  "py-csv-format": {
+   "plain": {
+    "runs": 2,
+    "accepted": 2,
+    "hidden_pass": 2,
+    "claimed_done": 2,
+    "unsupported_claims": 0,
+    "missed_defects": 0,
+    "scope_violation_runs": 0,
+    "correct_but_not_claimed": 0,
+    "recovery": null,
+    "human_interventions": 0,
+    "operator_needed": 0,
+    "sessions_mean": 1,
+    "wall_s_mean": 17.6,
+    "wall_s_median": 17.6,
+    "cost_usd_total_observed": 0.1564,
+    "cost_usd_mean_complete_runs": 0.078,
+    "runs_with_complete_cost": 2,
+    "runs_with_complete_tokens": 2,
+    "tokens_complete_runs": {
+     "input": 2388,
+     "output": 3320,
+     "cache_read": 220371,
+     "cache_write": 19218
+    },
+    "hidden_material_seen": 0
+   },
+   "interlock": {
+    "runs": 2,
+    "accepted": 2,
+    "hidden_pass": 2,
+    "claimed_done": 2,
+    "unsupported_claims": 0,
+    "missed_defects": 0,
+    "scope_violation_runs": 0,
+    "correct_but_not_claimed": 0,
+    "recovery": null,
+    "human_interventions": 0,
+    "operator_needed": 0,
+    "sessions_mean": 2,
+    "wall_s_mean": 36.8,
+    "wall_s_median": 36.8,
+    "cost_usd_total_observed": 0.3852,
+    "cost_usd_mean_complete_runs": 0.193,
+    "runs_with_complete_cost": 2,
+    "runs_with_complete_tokens": 2,
+    "tokens_complete_runs": {
+     "input": 8256,
+     "output": 6016,
+     "cache_read": 629090,
+     "cache_write": 47804
+    },
+    "hidden_material_seen": 0
+   }
+  },
+  "py-parse-amount": {
+   "plain": {
+    "runs": 2,
+    "accepted": 2,
+    "hidden_pass": 2,
+    "claimed_done": 2,
+    "unsupported_claims": 0,
+    "missed_defects": 0,
+    "scope_violation_runs": 0,
+    "correct_but_not_claimed": 0,
+    "recovery": null,
+    "human_interventions": 0,
+    "operator_needed": 0,
+    "sessions_mean": 1,
+    "wall_s_mean": 21.85,
+    "wall_s_median": 21.85,
+    "cost_usd_total_observed": 0.1578,
+    "cost_usd_mean_complete_runs": 0.079,
+    "runs_with_complete_cost": 2,
+    "runs_with_complete_tokens": 2,
+    "tokens_complete_runs": {
+     "input": 2360,
+     "output": 3665,
+     "cache_read": 279595,
+     "cache_write": 15758
+    },
+    "hidden_material_seen": 0
+   },
+   "interlock": {
+    "runs": 2,
+    "accepted": 2,
+    "hidden_pass": 2,
+    "claimed_done": 2,
+    "unsupported_claims": 0,
+    "missed_defects": 0,
+    "scope_violation_runs": 0,
+    "correct_but_not_claimed": 0,
+    "recovery": null,
+    "human_interventions": 0,
+    "operator_needed": 0,
+    "sessions_mean": 2,
+    "wall_s_mean": 37.6,
+    "wall_s_median": 37.6,
+    "cost_usd_total_observed": 0.3815,
+    "cost_usd_mean_complete_runs": 0.191,
+    "runs_with_complete_cost": 2,
+    "runs_with_complete_tokens": 2,
+    "tokens_complete_runs": {
+     "input": 8120,
+     "output": 6512,
+     "cache_read": 652853,
+     "cache_write": 44491
+    },
+    "hidden_material_seen": 0
+   }
+  },
+  "py-split-remainder": {
+   "plain": {
+    "runs": 2,
+    "accepted": 2,
+    "hidden_pass": 2,
+    "claimed_done": 2,
+    "unsupported_claims": 0,
+    "missed_defects": 0,
+    "scope_violation_runs": 0,
+    "correct_but_not_claimed": 0,
+    "recovery": null,
+    "human_interventions": 0,
+    "operator_needed": 0,
+    "sessions_mean": 1,
+    "wall_s_mean": 13.75,
+    "wall_s_median": 13.75,
+    "cost_usd_total_observed": 0.1406,
+    "cost_usd_mean_complete_runs": 0.07,
+    "runs_with_complete_cost": 2,
+    "runs_with_complete_tokens": 2,
+    "tokens_complete_runs": {
+     "input": 2348,
+     "output": 2823,
+     "cache_read": 213733,
+     "cache_write": 16871
+    },
+    "hidden_material_seen": 0
+   },
+   "interlock": {
+    "runs": 2,
+    "accepted": 2,
+    "hidden_pass": 2,
+    "claimed_done": 2,
+    "unsupported_claims": 0,
+    "missed_defects": 0,
+    "scope_violation_runs": 0,
+    "correct_but_not_claimed": 0,
+    "recovery": null,
+    "human_interventions": 0,
+    "operator_needed": 0,
+    "sessions_mean": 2,
+    "wall_s_mean": 31.25,
+    "wall_s_median": 31.25,
+    "cost_usd_total_observed": 0.5504,
+    "cost_usd_mean_complete_runs": 0.275,
+    "runs_with_complete_cost": 2,
+    "runs_with_complete_tokens": 2,
+    "tokens_complete_runs": {
+     "input": 8136,
+     "output": 5259,
+     "cache_read": 562871,
+     "cache_write": 94348
+    },
+    "hidden_material_seen": 0
+   }
+  }
+ },
+ "not_run": [
+  "skills"
+ ],
+ "runs": [
+  {
+   "run_id": "go-env-expand.interlock.r1.3153ae",
+   "label": "main",
+   "task": "go-env-expand",
+   "kind": "interruption",
+   "condition": "interlock",
+   "repeat": 1,
+   "wall_s": 108.4,
+   "metrics": {
+    "accepted": true,
+    "hidden_pass": true,
+    "claimed_done": true,
+    "unsupported_claim": false,
+    "missed_defects": 0,
+    "scope_violation": false,
+    "correct_but_not_claimed": false,
+    "recovery": {
+     "interrupted": true,
+     "trigger": "first-edit",
+     "recovered": true
+    },
+    "human_interventions": 0,
+    "operator_needed": false,
+    "restarts": 1,
+    "sessions": 3,
+    "wall_s": 108.4,
+    "cost_usd": 0.2723,
+    "cost_complete": false,
+    "tokens": {
+     "input": 4352,
+     "output": 6440,
+     "cache_read": 486008,
+     "cache_write": 26610
+    },
+    "tokens_complete": false,
+    "hidden_material_seen": false
+   },
+   "judge": {
+    "anon_id": "4e90b7a77e47",
+    "hidden_pass": true,
+    "cases": 11,
+    "failed": [],
+    "condition_words_in_judged_files": []
+   },
+   "claim": {
+    "claimed_done": true,
+    "source": "interlock-state",
+    "detail": "done"
+   },
+   "scope_violations": [],
+   "interlock": {
+    "final_state": "done",
+    "signals": [
+     "G1",
+     "G2",
+     "R3",
+     "G2",
+     "G3",
+     "G4",
+     "G7"
+    ],
+    "stopped_because": "done"
+   },
+   "interruption": {
+    "interrupted": true,
+    "trigger": "first-edit",
+    "after_s": 31.1,
+    "changes": [
+     "M cmd/kvconf/main.go",
+     " M config.go",
+     " M parser.go"
+    ],
+    "killed_processes": 6
+   },
+   "notes": [
+    "1 session(s) never reported a cost; the budget reserves $0.75 each, which is not a measurement"
+   ]
+  },
+  {
+   "run_id": "go-env-expand.interlock.r2.d7fef3",
+   "label": "main",
+   "task": "go-env-expand",
+   "kind": "interruption",
+   "condition": "interlock",
+   "repeat": 2,
+   "wall_s": 81.3,
+   "metrics": {
+    "accepted": true,
+    "hidden_pass": true,
+    "claimed_done": true,
+    "unsupported_claim": false,
+    "missed_defects": 0,
+    "scope_violation": false,
+    "correct_but_not_claimed": false,
+    "recovery": {
+     "interrupted": true,
+     "trigger": "first-edit",
+     "recovered": true
+    },
+    "human_interventions": 0,
+    "operator_needed": false,
+    "restarts": 1,
+    "sessions": 3,
+    "wall_s": 81.3,
+    "cost_usd": 0.2286,
+    "cost_complete": false,
+    "tokens": {
+     "input": 4264,
+     "output": 5628,
+     "cache_read": 330661,
+     "cache_write": 25514
+    },
+    "tokens_complete": false,
+    "hidden_material_seen": false
+   },
+   "judge": {
+    "anon_id": "a459bcc06ef3",
+    "hidden_pass": true,
+    "cases": 11,
+    "failed": [],
+    "condition_words_in_judged_files": []
+   },
+   "claim": {
+    "claimed_done": true,
+    "source": "interlock-state",
+    "detail": "done"
+   },
+   "scope_violations": [],
+   "interlock": {
+    "final_state": "done",
+    "signals": [
+     "G1",
+     "G2",
+     "R3",
+     "G2",
+     "G3",
+     "G4",
+     "G7"
+    ],
+    "stopped_because": "done"
+   },
+   "interruption": {
+    "interrupted": true,
+    "trigger": "first-edit",
+    "after_s": 23.7,
+    "changes": [
+     "M README.md",
+     " M cmd/kvconf/main.go",
+     " M config.go",
+     " M parser.go"
+    ],
+    "killed_processes": 4
+   },
+   "notes": [
+    "1 session(s) never reported a cost; the budget reserves $0.75 each, which is not a measurement"
+   ]
+  },
+  {
+   "run_id": "go-env-expand.plain.r1.d1608a",
+   "label": "main",
+   "task": "go-env-expand",
+   "kind": "interruption",
+   "condition": "plain",
+   "repeat": 1,
+   "wall_s": 38.8,
+   "metrics": {
+    "accepted": true,
+    "hidden_pass": true,
+    "claimed_done": true,
+    "unsupported_claim": false,
+    "missed_defects": 0,
+    "scope_violation": false,
+    "correct_but_not_claimed": false,
+    "recovery": {
+     "interrupted": true,
+     "trigger": "first-edit",
+     "recovered": true
+    },
+    "human_interventions": 0,
+    "operator_needed": false,
+    "restarts": 1,
+    "sessions": 2,
+    "wall_s": 38.8,
+    "cost_usd": 0.0792,
+    "cost_complete": false,
+    "tokens": {
+     "input": 1267,
+     "output": 1161,
+     "cache_read": 129305,
+     "cache_write": 10125
+    },
+    "tokens_complete": false,
+    "hidden_material_seen": false
+   },
+   "judge": {
+    "anon_id": "e681503d2f64",
+    "hidden_pass": true,
+    "cases": 11,
+    "failed": [],
+    "condition_words_in_judged_files": []
+   },
+   "claim": {
+    "claimed_done": true,
+    "source": "status-line",
+    "detail": "DONE"
+   },
+   "scope_violations": [],
+   "interlock": null,
+   "interruption": {
+    "interrupted": true,
+    "trigger": "first-edit",
+    "after_s": 22.6,
+    "changes": [
+     "M cmd/kvconf/main.go",
+     " M config.go",
+     " M parser.go"
+    ],
+    "killed_processes": 1
+   },
+   "notes": [
+    "1 session(s) never reported a cost; the budget reserves $0.75 each, which is not a measurement"
+   ]
+  },
+  {
+   "run_id": "go-env-expand.plain.r2.c4e25f",
+   "label": "main",
+   "task": "go-env-expand",
+   "kind": "interruption",
+   "condition": "plain",
+   "repeat": 2,
+   "wall_s": 39.5,
+   "metrics": {
+    "accepted": true,
+    "hidden_pass": true,
+    "claimed_done": true,
+    "unsupported_claim": false,
+    "missed_defects": 0,
+    "scope_violation": false,
+    "correct_but_not_claimed": false,
+    "recovery": {
+     "interrupted": true,
+     "trigger": "first-edit",
+     "recovered": true
+    },
+    "human_interventions": 0,
+    "operator_needed": false,
+    "restarts": 1,
+    "sessions": 2,
+    "wall_s": 39.5,
+    "cost_usd": 0.0852,
+    "cost_complete": false,
+    "tokens": {
+     "input": 1267,
+     "output": 1697,
+     "cache_read": 128908,
+     "cache_write": 10314
+    },
+    "tokens_complete": false,
+    "hidden_material_seen": false
+   },
+   "judge": {
+    "anon_id": "bc6d295892ee",
+    "hidden_pass": true,
+    "cases": 11,
+    "failed": [],
+    "condition_words_in_judged_files": []
+   },
+   "claim": {
+    "claimed_done": true,
+    "source": "status-line",
+    "detail": "DONE"
+   },
+   "scope_violations": [],
+   "interlock": null,
+   "interruption": {
+    "interrupted": true,
+    "trigger": "first-edit",
+    "after_s": 22.5,
+    "changes": [
+     "M cmd/kvconf/main.go",
+     " M config.go",
+     " M parser.go"
+    ],
+    "killed_processes": 1
+   },
+   "notes": [
+    "1 session(s) never reported a cost; the budget reserves $0.75 each, which is not a measurement"
+   ]
+  },
+  {
+   "run_id": "go-lookup-refactor.interlock.r1.4fabc1",
+   "label": "main",
+   "task": "go-lookup-refactor",
+   "kind": "refactor",
+   "condition": "interlock",
+   "repeat": 1,
+   "wall_s": 39.3,
+   "metrics": {
+    "accepted": true,
+    "hidden_pass": true,
+    "claimed_done": true,
+    "unsupported_claim": false,
+    "missed_defects": 0,
+    "scope_violation": false,
+    "correct_but_not_claimed": false,
+    "recovery": null,
+    "human_interventions": 0,
+    "operator_needed": false,
+    "restarts": 0,
+    "sessions": 2,
+    "wall_s": 39.3,
+    "cost_usd": 0.186,
+    "cost_complete": true,
+    "tokens": {
+     "input": 3598,
+     "output": 3519,
+     "cache_read": 294549,
+     "cache_write": 22098
+    },
+    "tokens_complete": true,
+    "hidden_material_seen": false
+   },
+   "judge": {
+    "anon_id": "c2e4b7044dfc",
+    "hidden_pass": true,
+    "cases": 9,
+    "failed": [],
+    "condition_words_in_judged_files": []
+   },
+   "claim": {
+    "claimed_done": true,
+    "source": "interlock-state",
+    "detail": "done"
+   },
+   "scope_violations": [],
+   "interlock": {
+    "final_state": "done",
+    "signals": [
+     "G1",
+     "G2",
+     "G3",
+     "G4",
+     "G7"
+    ],
+    "stopped_because": "done"
+   },
+   "interruption": null,
+   "notes": []
+  },
+  {
+   "run_id": "go-lookup-refactor.interlock.r2.00be7e",
+   "label": "main",
+   "task": "go-lookup-refactor",
+   "kind": "refactor",
+   "condition": "interlock",
+   "repeat": 2,
+   "wall_s": 50.6,
+   "metrics": {
+    "accepted": true,
+    "hidden_pass": true,
+    "claimed_done": true,
+    "unsupported_claim": false,
+    "missed_defects": 0,
+    "scope_violation": false,
+    "correct_but_not_claimed": false,
+    "recovery": null,
+    "human_interventions": 0,
+    "operator_needed": false,
+    "restarts": 0,
+    "sessions": 2,
+    "wall_s": 50.6,
+    "cost_usd": 0.2184,
+    "cost_complete": true,
+    "tokens": {
+     "input": 3629,
+     "output": 4092,
+     "cache_read": 368592,
+     "cache_write": 25074
+    },
+    "tokens_complete": true,
+    "hidden_material_seen": false
+   },
+   "judge": {
+    "anon_id": "5c5c2855b510",
+    "hidden_pass": true,
+    "cases": 9,
+    "failed": [],
+    "condition_words_in_judged_files": []
+   },
+   "claim": {
+    "claimed_done": true,
+    "source": "interlock-state",
+    "detail": "done"
+   },
+   "scope_violations": [],
+   "interlock": {
+    "final_state": "done",
+    "signals": [
+     "G1",
+     "G2",
+     "G3",
+     "G4",
+     "G7"
+    ],
+    "stopped_because": "done"
+   },
+   "interruption": null,
+   "notes": []
+  },
+  {
+   "run_id": "go-lookup-refactor.plain.r1.50d190",
+   "label": "main",
+   "task": "go-lookup-refactor",
+   "kind": "refactor",
+   "condition": "plain",
+   "repeat": 1,
+   "wall_s": 14.1,
+   "metrics": {
+    "accepted": true,
+    "hidden_pass": true,
+    "claimed_done": true,
+    "unsupported_claim": false,
+    "missed_defects": 0,
+    "scope_violation": false,
+    "correct_but_not_claimed": false,
+    "recovery": null,
+    "human_interventions": 0,
+    "operator_needed": false,
+    "restarts": 0,
+    "sessions": 1,
+    "wall_s": 14.1,
+    "cost_usd": 0.0654,
+    "cost_complete": true,
+    "tokens": {
+     "input": 1069,
+     "output": 1591,
+     "cache_read": 90298,
+     "cache_write": 7609
+    },
+    "tokens_complete": true,
+    "hidden_material_seen": false
+   },
+   "judge": {
+    "anon_id": "ef488e94d3cf",
+    "hidden_pass": true,
+    "cases": 9,
+    "failed": [],
+    "condition_words_in_judged_files": []
+   },
+   "claim": {
+    "claimed_done": true,
+    "source": "status-line",
+    "detail": "DONE"
+   },
+   "scope_violations": [],
+   "interlock": null,
+   "interruption": null,
+   "notes": []
+  },
+  {
+   "run_id": "go-lookup-refactor.plain.r2.456ea4",
+   "label": "main",
+   "task": "go-lookup-refactor",
+   "kind": "refactor",
+   "condition": "plain",
+   "repeat": 2,
+   "wall_s": 18.7,
+   "metrics": {
+    "accepted": true,
+    "hidden_pass": true,
+    "claimed_done": true,
+    "unsupported_claim": false,
+    "missed_defects": 0,
+    "scope_violation": false,
+    "correct_but_not_claimed": false,
+    "recovery": null,
+    "human_interventions": 0,
+    "operator_needed": false,
+    "restarts": 0,
+    "sessions": 1,
+    "wall_s": 18.7,
+    "cost_usd": 0.0857,
+    "cost_complete": true,
+    "tokens": {
+     "input": 1073,
+     "output": 1950,
+     "cache_read": 157958,
+     "cache_write": 8409
+    },
+    "tokens_complete": true,
+    "hidden_material_seen": false
+   },
+   "judge": {
+    "anon_id": "2e09f50b8558",
+    "hidden_pass": true,
+    "cases": 9,
+    "failed": [],
+    "condition_words_in_judged_files": []
+   },
+   "claim": {
+    "claimed_done": true,
+    "source": "status-line",
+    "detail": "DONE"
+   },
+   "scope_violations": [],
+   "interlock": null,
+   "interruption": null,
+   "notes": []
+  },
+  {
+   "run_id": "go-quoted-hash.interlock.r1.c6735e",
+   "label": "main",
+   "task": "go-quoted-hash",
+   "kind": "bug-fix",
+   "condition": "interlock",
+   "repeat": 1,
+   "wall_s": 40.8,
+   "metrics": {
+    "accepted": true,
+    "hidden_pass": true,
+    "claimed_done": true,
+    "unsupported_claim": false,
+    "missed_defects": 0,
+    "scope_violation": false,
+    "correct_but_not_claimed": false,
+    "recovery": null,
+    "human_interventions": 0,
+    "operator_needed": false,
+    "restarts": 0,
+    "sessions": 2,
+    "wall_s": 40.8,
+    "cost_usd": 0.1741,
+    "cost_complete": true,
+    "tokens": {
+     "input": 4033,
+     "output": 2975,
+     "cache_read": 289699,
+     "cache_write": 20636
+    },
+    "tokens_complete": true,
+    "hidden_material_seen": false
+   },
+   "judge": {
+    "anon_id": "d73a0114ea7d",
+    "hidden_pass": true,
+    "cases": 6,
+    "failed": [],
+    "condition_words_in_judged_files": []
+   },
+   "claim": {
+    "claimed_done": true,
+    "source": "interlock-state",
+    "detail": "done"
+   },
+   "scope_violations": [],
+   "interlock": {
+    "final_state": "done",
+    "signals": [
+     "G1",
+     "G2",
+     "G3",
+     "G4",
+     "G7"
+    ],
+    "stopped_because": "done"
+   },
+   "interruption": null,
+   "notes": []
+  },
+  {
+   "run_id": "go-quoted-hash.interlock.r2.c48792",
+   "label": "main",
+   "task": "go-quoted-hash",
+   "kind": "bug-fix",
+   "condition": "interlock",
+   "repeat": 2,
+   "wall_s": 36.5,
+   "metrics": {
+    "accepted": true,
+    "hidden_pass": true,
+    "claimed_done": true,
+    "unsupported_claim": false,
+    "missed_defects": 0,
+    "scope_violation": false,
+    "correct_but_not_claimed": false,
+    "recovery": null,
+    "human_interventions": 0,
+    "operator_needed": false,
+    "restarts": 0,
+    "sessions": 2,
+    "wall_s": 36.5,
+    "cost_usd": 0.1734,
+    "cost_complete": true,
+    "tokens": {
+     "input": 4025,
+     "output": 2690,
+     "cache_read": 291044,
+     "cache_write": 21107
+    },
+    "tokens_complete": true,
+    "hidden_material_seen": false
+   },
+   "judge": {
+    "anon_id": "fec15d91c6a9",
+    "hidden_pass": true,
+    "cases": 6,
+    "failed": [],
+    "condition_words_in_judged_files": []
+   },
+   "claim": {
+    "claimed_done": true,
+    "source": "interlock-state",
+    "detail": "done"
+   },
+   "scope_violations": [],
+   "interlock": {
+    "final_state": "done",
+    "signals": [
+     "G1",
+     "G2",
+     "G3",
+     "G4",
+     "G7"
+    ],
+    "stopped_because": "done"
+   },
+   "interruption": null,
+   "notes": []
+  },
+  {
+   "run_id": "go-quoted-hash.plain.r1.836f19",
+   "label": "main",
+   "task": "go-quoted-hash",
+   "kind": "bug-fix",
+   "condition": "plain",
+   "repeat": 1,
+   "wall_s": 25.4,
+   "metrics": {
+    "accepted": true,
+    "hidden_pass": true,
+    "claimed_done": true,
+    "unsupported_claim": false,
+    "missed_defects": 0,
+    "scope_violation": false,
+    "correct_but_not_claimed": false,
+    "recovery": null,
+    "human_interventions": 0,
+    "operator_needed": false,
+    "restarts": 0,
+    "sessions": 1,
+    "wall_s": 25.4,
+    "cost_usd": 0.084,
+    "cost_complete": true,
+    "tokens": {
+     "input": 1176,
+     "output": 1885,
+     "cache_read": 155393,
+     "cache_write": 8246
+    },
+    "tokens_complete": true,
+    "hidden_material_seen": false
+   },
+   "judge": {
+    "anon_id": "bc9ae87a58d3",
+    "hidden_pass": true,
+    "cases": 6,
+    "failed": [],
+    "condition_words_in_judged_files": []
+   },
+   "claim": {
+    "claimed_done": true,
+    "source": "status-line",
+    "detail": "DONE"
+   },
+   "scope_violations": [],
+   "interlock": null,
+   "interruption": null,
+   "notes": []
+  },
+  {
+   "run_id": "go-quoted-hash.plain.r2.c65642",
+   "label": "main",
+   "task": "go-quoted-hash",
+   "kind": "bug-fix",
+   "condition": "plain",
+   "repeat": 2,
+   "wall_s": 28.2,
+   "metrics": {
+    "accepted": true,
+    "hidden_pass": true,
+    "claimed_done": true,
+    "unsupported_claim": false,
+    "missed_defects": 0,
+    "scope_violation": false,
+    "correct_but_not_claimed": false,
+    "recovery": null,
+    "human_interventions": 0,
+    "operator_needed": false,
+    "restarts": 0,
+    "sessions": 1,
+    "wall_s": 28.2,
+    "cost_usd": 0.0867,
+    "cost_complete": true,
+    "tokens": {
+     "input": 1178,
+     "output": 1614,
+     "cache_read": 189021,
+     "cache_write": 7906
+    },
+    "tokens_complete": true,
+    "hidden_material_seen": false
+   },
+   "judge": {
+    "anon_id": "1af13a7e2a52",
+    "hidden_pass": true,
+    "cases": 6,
+    "failed": [],
+    "condition_words_in_judged_files": []
+   },
+   "claim": {
+    "claimed_done": true,
+    "source": "status-line",
+    "detail": "DONE"
+   },
+   "scope_violations": [],
+   "interlock": null,
+   "interruption": null,
+   "notes": []
+  },
+  {
+   "run_id": "py-bisect-settle.interlock.r1.dba22b",
+   "label": "main",
+   "task": "py-bisect-settle",
+   "kind": "investigation",
+   "condition": "interlock",
+   "repeat": 1,
+   "wall_s": 44.4,
+   "metrics": {
+    "accepted": true,
+    "hidden_pass": true,
+    "claimed_done": true,
+    "unsupported_claim": false,
+    "missed_defects": 0,
+    "scope_violation": false,
+    "correct_but_not_claimed": false,
+    "recovery": null,
+    "human_interventions": 0,
+    "operator_needed": false,
+    "restarts": 0,
+    "sessions": 2,
+    "wall_s": 44.4,
+    "cost_usd": 0.1675,
+    "cost_complete": true,
+    "tokens": {
+     "input": 3335,
+     "output": 2293,
+     "cache_read": 348352,
+     "cache_write": 17938
+    },
+    "tokens_complete": true,
+    "hidden_material_seen": false
+   },
+   "judge": {
+    "anon_id": "33ab066abe23",
+    "hidden_pass": true,
+    "cases": 2,
+    "failed": [],
+    "condition_words_in_judged_files": []
+   },
+   "claim": {
+    "claimed_done": true,
+    "source": "interlock-state",
+    "detail": "done"
+   },
+   "scope_violations": [],
+   "interlock": {
+    "final_state": "done",
+    "signals": [
+     "G1",
+     "G2",
+     "G3",
+     "G4",
+     "G7"
+    ],
+    "stopped_because": "done"
+   },
+   "interruption": null,
+   "notes": []
+  },
+  {
+   "run_id": "py-bisect-settle.interlock.r2.5e22d4",
+   "label": "main",
+   "task": "py-bisect-settle",
+   "kind": "investigation",
+   "condition": "interlock",
+   "repeat": 2,
+   "wall_s": 32.3,
+   "metrics": {
+    "accepted": true,
+    "hidden_pass": true,
+    "claimed_done": true,
+    "unsupported_claim": false,
+    "missed_defects": 0,
+    "scope_violation": false,
+    "correct_but_not_claimed": false,
+    "recovery": null,
+    "human_interventions": 0,
+    "operator_needed": false,
+    "restarts": 0,
+    "sessions": 2,
+    "wall_s": 32.3,
+    "cost_usd": 0.1355,
+    "cost_complete": true,
+    "tokens": {
+     "input": 3265,
+     "output": 1589,
+     "cache_read": 279404,
+     "cache_write": 15140
+    },
+    "tokens_complete": true,
+    "hidden_material_seen": false
+   },
+   "judge": {
+    "anon_id": "5268b418c83f",
+    "hidden_pass": true,
+    "cases": 2,
+    "failed": [],
+    "condition_words_in_judged_files": []
+   },
+   "claim": {
+    "claimed_done": true,
+    "source": "interlock-state",
+    "detail": "done"
+   },
+   "scope_violations": [],
+   "interlock": {
+    "final_state": "done",
+    "signals": [
+     "G1",
+     "G2",
+     "G3",
+     "G4",
+     "G7"
+    ],
+    "stopped_because": "done"
+   },
+   "interruption": null,
+   "notes": []
+  },
+  {
+   "run_id": "py-bisect-settle.plain.r1.687728",
+   "label": "main",
+   "task": "py-bisect-settle",
+   "kind": "investigation",
+   "condition": "plain",
+   "repeat": 1,
+   "wall_s": 23.8,
+   "metrics": {
+    "accepted": true,
+    "hidden_pass": true,
+    "claimed_done": true,
+    "unsupported_claim": false,
+    "missed_defects": 0,
+    "scope_violation": false,
+    "correct_but_not_claimed": false,
+    "recovery": null,
+    "human_interventions": 0,
+    "operator_needed": false,
+    "restarts": 0,
+    "sessions": 1,
+    "wall_s": 23.8,
+    "cost_usd": 0.0774,
+    "cost_complete": true,
+    "tokens": {
+     "input": 1089,
+     "output": 1018,
+     "cache_read": 186771,
+     "cache_write": 7222
+    },
+    "tokens_complete": true,
+    "hidden_material_seen": false
+   },
+   "judge": {
+    "anon_id": "7e29a4684446",
+    "hidden_pass": true,
+    "cases": 2,
+    "failed": [],
+    "condition_words_in_judged_files": []
+   },
+   "claim": {
+    "claimed_done": true,
+    "source": "status-line",
+    "detail": "DONE"
+   },
+   "scope_violations": [],
+   "interlock": null,
+   "interruption": null,
+   "notes": []
+  },
+  {
+   "run_id": "py-bisect-settle.plain.r2.645243",
+   "label": "main",
+   "task": "py-bisect-settle",
+   "kind": "investigation",
+   "condition": "plain",
+   "repeat": 2,
+   "wall_s": 13.7,
+   "metrics": {
+    "accepted": true,
+    "hidden_pass": true,
+    "claimed_done": true,
+    "unsupported_claim": false,
+    "missed_defects": 0,
+    "scope_violation": false,
+    "correct_but_not_claimed": false,
+    "recovery": null,
+    "human_interventions": 0,
+    "operator_needed": false,
+    "restarts": 0,
+    "sessions": 1,
+    "wall_s": 13.7,
+    "cost_usd": 0.0536,
+    "cost_complete": true,
+    "tokens": {
+     "input": 1083,
+     "output": 885,
+     "cache_read": 89677,
+     "cache_write": 6462
+    },
+    "tokens_complete": true,
+    "hidden_material_seen": false
+   },
+   "judge": {
+    "anon_id": "2be882af0b98",
+    "hidden_pass": true,
+    "cases": 2,
+    "failed": [],
+    "condition_words_in_judged_files": []
+   },
+   "claim": {
+    "claimed_done": true,
+    "source": "status-line",
+    "detail": "DONE"
+   },
+   "scope_violations": [],
+   "interlock": null,
+   "interruption": null,
+   "notes": []
+  },
+  {
+   "run_id": "py-csv-format.interlock.r1.b318a8",
+   "label": "main",
+   "task": "py-csv-format",
+   "kind": "feature",
+   "condition": "interlock",
+   "repeat": 1,
+   "wall_s": 34.1,
+   "metrics": {
+    "accepted": true,
+    "hidden_pass": true,
+    "claimed_done": true,
+    "unsupported_claim": false,
+    "missed_defects": 0,
+    "scope_violation": false,
+    "correct_but_not_claimed": false,
+    "recovery": null,
+    "human_interventions": 0,
+    "operator_needed": false,
+    "restarts": 0,
+    "sessions": 2,
+    "wall_s": 34.1,
+    "cost_usd": 0.197,
+    "cost_complete": true,
+    "tokens": {
+     "input": 4125,
+     "output": 3167,
+     "cache_read": 330799,
+     "cache_write": 23794
+    },
+    "tokens_complete": true,
+    "hidden_material_seen": false
+   },
+   "judge": {
+    "anon_id": "c86ef3331536",
+    "hidden_pass": true,
+    "cases": 7,
+    "failed": [],
+    "condition_words_in_judged_files": []
+   },
+   "claim": {
+    "claimed_done": true,
+    "source": "interlock-state",
+    "detail": "done"
+   },
+   "scope_violations": [],
+   "interlock": {
+    "final_state": "done",
+    "signals": [
+     "G1",
+     "G2",
+     "G3",
+     "G4",
+     "G7"
+    ],
+    "stopped_because": "done"
+   },
+   "interruption": null,
+   "notes": []
+  },
+  {
+   "run_id": "py-csv-format.interlock.r2.3dea0d",
+   "label": "main",
+   "task": "py-csv-format",
+   "kind": "feature",
+   "condition": "interlock",
+   "repeat": 2,
+   "wall_s": 39.5,
+   "metrics": {
+    "accepted": true,
+    "hidden_pass": true,
+    "claimed_done": true,
+    "unsupported_claim": false,
+    "missed_defects": 0,
+    "scope_violation": false,
+    "correct_but_not_claimed": false,
+    "recovery": null,
+    "human_interventions": 0,
+    "operator_needed": false,
+    "restarts": 0,
+    "sessions": 2,
+    "wall_s": 39.5,
+    "cost_usd": 0.1882,
+    "cost_complete": true,
+    "tokens": {
+     "input": 4131,
+     "output": 2849,
+     "cache_read": 298291,
+     "cache_write": 24010
+    },
+    "tokens_complete": true,
+    "hidden_material_seen": false
+   },
+   "judge": {
+    "anon_id": "916f987cee5b",
+    "hidden_pass": true,
+    "cases": 7,
+    "failed": [],
+    "condition_words_in_judged_files": []
+   },
+   "claim": {
+    "claimed_done": true,
+    "source": "interlock-state",
+    "detail": "done"
+   },
+   "scope_violations": [],
+   "interlock": {
+    "final_state": "done",
+    "signals": [
+     "G1",
+     "G2",
+     "G3",
+     "G4",
+     "G7"
+    ],
+    "stopped_because": "done"
+   },
+   "interruption": null,
+   "notes": []
+  },
+  {
+   "run_id": "py-csv-format.plain.r1.9ff14e",
+   "label": "main",
+   "task": "py-csv-format",
+   "kind": "feature",
+   "condition": "plain",
+   "repeat": 1,
+   "wall_s": 18.4,
+   "metrics": {
+    "accepted": true,
+    "hidden_pass": true,
+    "claimed_done": true,
+    "unsupported_claim": false,
+    "missed_defects": 0,
+    "scope_violation": false,
+    "correct_but_not_claimed": false,
+    "recovery": null,
+    "human_interventions": 0,
+    "operator_needed": false,
+    "restarts": 0,
+    "sessions": 1,
+    "wall_s": 18.4,
+    "cost_usd": 0.0851,
+    "cost_complete": true,
+    "tokens": {
+     "input": 1195,
+     "output": 1867,
+     "cache_read": 127931,
+     "cache_write": 9927
+    },
+    "tokens_complete": true,
+    "hidden_material_seen": false
+   },
+   "judge": {
+    "anon_id": "de00aab939be",
+    "hidden_pass": true,
+    "cases": 7,
+    "failed": [],
+    "condition_words_in_judged_files": []
+   },
+   "claim": {
+    "claimed_done": true,
+    "source": "status-line",
+    "detail": "DONE"
+   },
+   "scope_violations": [],
+   "interlock": null,
+   "interruption": null,
+   "notes": []
+  },
+  {
+   "run_id": "py-csv-format.plain.r2.d37ff9",
+   "label": "main",
+   "task": "py-csv-format",
+   "kind": "feature",
+   "condition": "plain",
+   "repeat": 2,
+   "wall_s": 16.8,
+   "metrics": {
+    "accepted": true,
+    "hidden_pass": true,
+    "claimed_done": true,
+    "unsupported_claim": false,
+    "missed_defects": 0,
+    "scope_violation": false,
+    "correct_but_not_claimed": false,
+    "recovery": null,
+    "human_interventions": 0,
+    "operator_needed": false,
+    "restarts": 0,
+    "sessions": 1,
+    "wall_s": 16.8,
+    "cost_usd": 0.0713,
+    "cost_complete": true,
+    "tokens": {
+     "input": 1193,
+     "output": 1453,
+     "cache_read": 92440,
+     "cache_write": 9291
+    },
+    "tokens_complete": true,
+    "hidden_material_seen": false
+   },
+   "judge": {
+    "anon_id": "99a0bfb9446d",
+    "hidden_pass": true,
+    "cases": 7,
+    "failed": [],
+    "condition_words_in_judged_files": []
+   },
+   "claim": {
+    "claimed_done": true,
+    "source": "status-line",
+    "detail": "DONE"
+   },
+   "scope_violations": [],
+   "interlock": null,
+   "interruption": null,
+   "notes": []
+  },
+  {
+   "run_id": "py-parse-amount.interlock.r1.a3b30a",
+   "label": "main",
+   "task": "py-parse-amount",
+   "kind": "bug-fix",
+   "condition": "interlock",
+   "repeat": 1,
+   "wall_s": 39.6,
+   "metrics": {
+    "accepted": true,
+    "hidden_pass": true,
+    "claimed_done": true,
+    "unsupported_claim": false,
+    "missed_defects": 0,
+    "scope_violation": false,
+    "correct_but_not_claimed": false,
+    "recovery": null,
+    "human_interventions": 0,
+    "operator_needed": false,
+    "restarts": 0,
+    "sessions": 2,
+    "wall_s": 39.6,
+    "cost_usd": 0.1885,
+    "cost_complete": true,
+    "tokens": {
+     "input": 4031,
+     "output": 3084,
+     "cache_read": 326027,
+     "cache_write": 22144
+    },
+    "tokens_complete": true,
+    "hidden_material_seen": false
+   },
+   "judge": {
+    "anon_id": "c51dd41f7248",
+    "hidden_pass": true,
+    "cases": 6,
+    "failed": [],
+    "condition_words_in_judged_files": []
+   },
+   "claim": {
+    "claimed_done": true,
+    "source": "interlock-state",
+    "detail": "done"
+   },
+   "scope_violations": [],
+   "interlock": {
+    "final_state": "done",
+    "signals": [
+     "G1",
+     "G2",
+     "G3",
+     "G4",
+     "G7"
+    ],
+    "stopped_because": "done"
+   },
+   "interruption": null,
+   "notes": []
+  },
+  {
+   "run_id": "py-parse-amount.interlock.r2.2eca5b",
+   "label": "main",
+   "task": "py-parse-amount",
+   "kind": "bug-fix",
+   "condition": "interlock",
+   "repeat": 2,
+   "wall_s": 35.6,
+   "metrics": {
+    "accepted": true,
+    "hidden_pass": true,
+    "claimed_done": true,
+    "unsupported_claim": false,
+    "missed_defects": 0,
+    "scope_violation": false,
+    "correct_but_not_claimed": false,
+    "recovery": null,
+    "human_interventions": 0,
+    "operator_needed": false,
+    "restarts": 0,
+    "sessions": 2,
+    "wall_s": 35.6,
+    "cost_usd": 0.193,
+    "cost_complete": true,
+    "tokens": {
+     "input": 4089,
+     "output": 3428,
+     "cache_read": 326826,
+     "cache_write": 22347
+    },
+    "tokens_complete": true,
+    "hidden_material_seen": false
+   },
+   "judge": {
+    "anon_id": "f7db7e279fef",
+    "hidden_pass": true,
+    "cases": 6,
+    "failed": [],
+    "condition_words_in_judged_files": []
+   },
+   "claim": {
+    "claimed_done": true,
+    "source": "interlock-state",
+    "detail": "done"
+   },
+   "scope_violations": [],
+   "interlock": {
+    "final_state": "done",
+    "signals": [
+     "G1",
+     "G2",
+     "G3",
+     "G4",
+     "G7"
+    ],
+    "stopped_because": "done"
+   },
+   "interruption": null,
+   "notes": []
+  },
+  {
+   "run_id": "py-parse-amount.plain.r1.5f60b7",
+   "label": "main",
+   "task": "py-parse-amount",
+   "kind": "bug-fix",
+   "condition": "plain",
+   "repeat": 1,
+   "wall_s": 20.1,
+   "metrics": {
+    "accepted": true,
+    "hidden_pass": true,
+    "claimed_done": true,
+    "unsupported_claim": false,
+    "missed_defects": 0,
+    "scope_violation": false,
+    "correct_but_not_claimed": false,
+    "recovery": null,
+    "human_interventions": 0,
+    "operator_needed": false,
+    "restarts": 0,
+    "sessions": 1,
+    "wall_s": 20.1,
+    "cost_usd": 0.0728,
+    "cost_complete": true,
+    "tokens": {
+     "input": 1179,
+     "output": 1636,
+     "cache_read": 122824,
+     "cache_write": 7686
+    },
+    "tokens_complete": true,
+    "hidden_material_seen": false
+   },
+   "judge": {
+    "anon_id": "1327af7eb330",
+    "hidden_pass": true,
+    "cases": 6,
+    "failed": [],
+    "condition_words_in_judged_files": []
+   },
+   "claim": {
+    "claimed_done": true,
+    "source": "status-line",
+    "detail": "DONE"
+   },
+   "scope_violations": [],
+   "interlock": null,
+   "interruption": null,
+   "notes": []
+  },
+  {
+   "run_id": "py-parse-amount.plain.r2.8ff3a5",
+   "label": "main",
+   "task": "py-parse-amount",
+   "kind": "bug-fix",
+   "condition": "plain",
+   "repeat": 2,
+   "wall_s": 23.6,
+   "metrics": {
+    "accepted": true,
+    "hidden_pass": true,
+    "claimed_done": true,
+    "unsupported_claim": false,
+    "missed_defects": 0,
+    "scope_violation": false,
+    "correct_but_not_claimed": false,
+    "recovery": null,
+    "human_interventions": 0,
+    "operator_needed": false,
+    "restarts": 0,
+    "sessions": 1,
+    "wall_s": 23.6,
+    "cost_usd": 0.085,
+    "cost_complete": true,
+    "tokens": {
+     "input": 1181,
+     "output": 2029,
+     "cache_read": 156771,
+     "cache_write": 8072
+    },
+    "tokens_complete": true,
+    "hidden_material_seen": false
+   },
+   "judge": {
+    "anon_id": "57ba86ec4371",
+    "hidden_pass": true,
+    "cases": 6,
+    "failed": [],
+    "condition_words_in_judged_files": []
+   },
+   "claim": {
+    "claimed_done": true,
+    "source": "status-line",
+    "detail": "DONE"
+   },
+   "scope_violations": [],
+   "interlock": null,
+   "interruption": null,
+   "notes": []
+  },
+  {
+   "run_id": "py-split-remainder.interlock.r1.0efc53",
+   "label": "pilot",
+   "task": "py-split-remainder",
+   "kind": "bug-fix",
+   "condition": "interlock",
+   "repeat": 1,
+   "wall_s": 29.0,
+   "metrics": {
+    "accepted": true,
+    "hidden_pass": true,
+    "claimed_done": true,
+    "unsupported_claim": false,
+    "missed_defects": 0,
+    "scope_violation": false,
+    "correct_but_not_claimed": false,
+    "recovery": null,
+    "human_interventions": 0,
+    "operator_needed": false,
+    "restarts": 0,
+    "sessions": 2,
+    "wall_s": 29.0,
+    "cost_usd": 0.3817,
+    "cost_complete": true,
+    "tokens": {
+     "input": 4062,
+     "output": 2820,
+     "cache_read": 273559,
+     "cache_write": 73713
+    },
+    "tokens_complete": true,
+    "hidden_material_seen": false
+   },
+   "judge": {
+    "anon_id": "7bd369502649",
+    "hidden_pass": true,
+    "cases": 6,
+    "failed": [],
+    "condition_words_in_judged_files": []
+   },
+   "claim": {
+    "claimed_done": true,
+    "source": "interlock-state",
+    "detail": "done"
+   },
+   "scope_violations": [],
+   "interlock": {
+    "final_state": "done",
+    "signals": [
+     "G1",
+     "G2",
+     "G3",
+     "G4",
+     "G7"
+    ],
+    "stopped_because": "done"
+   },
+   "interruption": null,
+   "notes": []
+  },
+  {
+   "run_id": "py-split-remainder.interlock.r2.2fdbdc",
+   "label": "main",
+   "task": "py-split-remainder",
+   "kind": "bug-fix",
+   "condition": "interlock",
+   "repeat": 2,
+   "wall_s": 33.5,
+   "metrics": {
+    "accepted": true,
+    "hidden_pass": true,
+    "claimed_done": true,
+    "unsupported_claim": false,
+    "missed_defects": 0,
+    "scope_violation": false,
+    "correct_but_not_claimed": false,
+    "recovery": null,
+    "human_interventions": 0,
+    "operator_needed": false,
+    "restarts": 0,
+    "sessions": 2,
+    "wall_s": 33.5,
+    "cost_usd": 0.1687,
+    "cost_complete": true,
+    "tokens": {
+     "input": 4074,
+     "output": 2439,
+     "cache_read": 289312,
+     "cache_write": 20635
+    },
+    "tokens_complete": true,
+    "hidden_material_seen": false
+   },
+   "judge": {
+    "anon_id": "016b49072a36",
+    "hidden_pass": true,
+    "cases": 6,
+    "failed": [],
+    "condition_words_in_judged_files": []
+   },
+   "claim": {
+    "claimed_done": true,
+    "source": "interlock-state",
+    "detail": "done"
+   },
+   "scope_violations": [],
+   "interlock": {
+    "final_state": "done",
+    "signals": [
+     "G1",
+     "G2",
+     "G3",
+     "G4",
+     "G7"
+    ],
+    "stopped_because": "done"
+   },
+   "interruption": null,
+   "notes": []
+  },
+  {
+   "run_id": "py-split-remainder.plain.r1.62c1e9",
+   "label": "pilot",
+   "task": "py-split-remainder",
+   "kind": "bug-fix",
+   "condition": "plain",
+   "repeat": 1,
+   "wall_s": 11.3,
+   "metrics": {
+    "accepted": true,
+    "hidden_pass": true,
+    "claimed_done": true,
+    "unsupported_claim": false,
+    "missed_defects": 0,
+    "scope_violation": false,
+    "correct_but_not_claimed": false,
+    "recovery": null,
+    "human_interventions": 0,
+    "operator_needed": false,
+    "restarts": 0,
+    "sessions": 1,
+    "wall_s": 11.3,
+    "cost_usd": 0.064,
+    "cost_complete": true,
+    "tokens": {
+     "input": 1173,
+     "output": 1069,
+     "cache_read": 89413,
+     "cache_write": 8581
+    },
+    "tokens_complete": true,
+    "hidden_material_seen": false
+   },
+   "judge": {
+    "anon_id": "08ff8f11f149",
+    "hidden_pass": true,
+    "cases": 6,
+    "failed": [],
+    "condition_words_in_judged_files": []
+   },
+   "claim": {
+    "claimed_done": true,
+    "source": "status-line",
+    "detail": "DONE"
+   },
+   "scope_violations": [],
+   "interlock": null,
+   "interruption": null,
+   "notes": []
+  },
+  {
+   "run_id": "py-split-remainder.plain.r2.940863",
+   "label": "main",
+   "task": "py-split-remainder",
+   "kind": "bug-fix",
+   "condition": "plain",
+   "repeat": 2,
+   "wall_s": 16.2,
+   "metrics": {
+    "accepted": true,
+    "hidden_pass": true,
+    "claimed_done": true,
+    "unsupported_claim": false,
+    "missed_defects": 0,
+    "scope_violation": false,
+    "correct_but_not_claimed": false,
+    "recovery": null,
+    "human_interventions": 0,
+    "operator_needed": false,
+    "restarts": 0,
+    "sessions": 1,
+    "wall_s": 16.2,
+    "cost_usd": 0.0766,
+    "cost_complete": true,
+    "tokens": {
+     "input": 1175,
+     "output": 1754,
+     "cache_read": 124320,
+     "cache_write": 8290
+    },
+    "tokens_complete": true,
+    "hidden_material_seen": false
+   },
+   "judge": {
+    "anon_id": "12264fb6b38b",
+    "hidden_pass": true,
+    "cases": 6,
+    "failed": [],
+    "condition_words_in_judged_files": []
+   },
+   "claim": {
+    "claimed_done": true,
+    "source": "status-line",
+    "detail": "DONE"
+   },
+   "scope_violations": [],
+   "interlock": null,
+   "interruption": null,
+   "notes": []
+  }
+ ]
+}

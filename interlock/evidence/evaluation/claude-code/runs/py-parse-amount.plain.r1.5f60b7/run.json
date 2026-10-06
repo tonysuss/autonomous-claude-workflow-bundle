@@ -1,0 +1,93 @@
+{
+ "run_id": "py-parse-amount.plain.r1.5f60b7",
+ "label": "main",
+ "task": "py-parse-amount",
+ "kind": "bug-fix",
+ "language": "python",
+ "condition": "plain",
+ "repeat": 1,
+ "host": "claude-code",
+ "host_version": "2.1.289",
+ "model": "claude-sonnet-5-5",
+ "effort": "medium",
+ "fake_model": false,
+ "started_at": "2026-10-06T00:16:08+00:00",
+ "workdir": "/tmp/claude-0/-home-user-autonomous-claude-workflow-bundle/<redacted>/scratchpad/work/ws/c1d10a989f/tally",
+ "base_commit": "b38a841619c174c4f4cb031875ff808cadbff88e",
+ "sessions": [
+  {
+   "complete": true,
+   "final_text": "I rewrote `parse_amount` in `tally/money.py`, and `\"12.5\"` now parses to 1250. `checks/parse-repro.sh` passes, as do the 19 tests.\n\n- **Fraction:** one decimal digit now means tenths, and a fraction of more than two digits raises `ValueError`.\n- **Sign:** the sign is read first and applied to the whole amount. `\"-0.50\"` is -50 and `\"-3.25\"` is -325.\n- **Unchanged inputs:** `\"1,234.56\"` is 123456, `\"7\"` is 700, surrounding spaces still work, and non-amounts such as `\"\"`, `\"abc\"`, `\"-\"` and `\"1.\"` raise `ValueError`.\n\nI checked those cases by hand, but I didn't add them to `tests/test_money.py`.\n\nThe new parser accepts digits only, so text that Python's `int()` used to let through, such as `\"1_000\"`, now raises `ValueError`.\n\nSTATUS: DONE",
+   "is_error": false,
+   "cost_usd": 0.0727758,
+   "tokens": {
+    "input": 1179,
+    "output": 1636,
+    "cache_read": 122824,
+    "cache_write": 7686
+   },
+   "turns": 6,
+   "models": [
+    "claude-haiku-4-5-20251001",
+    "claude-sonnet-5-5"
+   ],
+   "model_requested": "claude-sonnet-5-5",
+   "denials": 0,
+   "events": 23,
+   "subtype": "success",
+   "role": "plain",
+   "exit_code": 0,
+   "killed": null,
+   "wall_s": 20.1,
+   "transcript": "raw/session-1.jsonl"
+  }
+ ],
+ "notes": [],
+ "claim": {
+  "claimed_done": true,
+  "source": "status-line",
+  "detail": "DONE"
+ },
+ "wall_s": 20.1,
+ "output": {
+  "tree": "f945fd359c3dc40d7a83db5d7c58b7f2c32b523f",
+  "delivered": true,
+  "changed_paths": [
+   "tally/money.py"
+  ],
+  "scope_violations": []
+ },
+ "judge": {
+  "anon_id": "1327af7eb330",
+  "hidden_pass": true,
+  "cases": 6,
+  "failed": [],
+  "condition_words_in_judged_files": []
+ },
+ "metrics": {
+  "accepted": true,
+  "hidden_pass": true,
+  "claimed_done": true,
+  "unsupported_claim": false,
+  "missed_defects": 0,
+  "scope_violation": false,
+  "correct_but_not_claimed": false,
+  "recovery": null,
+  "human_interventions": 0,
+  "operator_needed": false,
+  "restarts": 0,
+  "sessions": 1,
+  "wall_s": 20.1,
+  "cost_usd": 0.0728,
+  "cost_complete": true,
+  "tokens": {
+   "input": 1179,
+   "output": 1636,
+   "cache_read": 122824,
+   "cache_write": 7686
+  },
+  "tokens_complete": true,
+  "hidden_material_seen": false
+ },
+ "budget_charge_usd": 0.0728
+}

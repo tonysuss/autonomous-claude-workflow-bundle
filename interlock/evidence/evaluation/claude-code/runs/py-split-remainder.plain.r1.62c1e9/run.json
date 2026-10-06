@@ -1,0 +1,93 @@
+{
+ "run_id": "py-split-remainder.plain.r1.62c1e9",
+ "label": "pilot",
+ "task": "py-split-remainder",
+ "kind": "bug-fix",
+ "language": "python",
+ "condition": "plain",
+ "repeat": 1,
+ "host": "claude-code",
+ "host_version": "2.1.289",
+ "model": "claude-sonnet-5-5",
+ "effort": "medium",
+ "fake_model": false,
+ "started_at": "2026-10-06T00:07:17+00:00",
+ "workdir": "/tmp/claude-0/-home-user-autonomous-claude-workflow-bundle/<redacted>/scratchpad/work/ws/dd38f750a5/tally",
+ "base_commit": "3c69e6e826c8acd8e019c2082464a0d170d90b90",
+ "sessions": [
+  {
+   "complete": true,
+   "final_text": "I rewrote `split_evenly` in `tally/money.py`. It now gives the first `total mod n` participants one extra cent each, so `split_evenly(100, 3)` returns `[34, 33, 33]`. A negative total mirrors the positive case (`-100` gives `[-34, -33, -33]`), and `n <= 0` raises `ValueError`.\n\n`checks/split-repro.sh` now passes, and the 19 existing tests pass. I didn't add new tests for the negative-total or `n <= 0` cases.\n\nSTATUS: DONE",
+   "is_error": false,
+   "cost_usd": 0.06396560000000001,
+   "tokens": {
+    "input": 1173,
+    "output": 1069,
+    "cache_read": 89413,
+    "cache_write": 8581
+   },
+   "turns": 5,
+   "models": [
+    "claude-haiku-4-5-20251001",
+    "claude-sonnet-5-5"
+   ],
+   "model_requested": "claude-sonnet-5-5",
+   "denials": 0,
+   "events": 17,
+   "subtype": "success",
+   "role": "plain",
+   "exit_code": 0,
+   "killed": null,
+   "wall_s": 11.3,
+   "transcript": "raw/session-1.jsonl"
+  }
+ ],
+ "notes": [],
+ "claim": {
+  "claimed_done": true,
+  "source": "status-line",
+  "detail": "DONE"
+ },
+ "wall_s": 11.3,
+ "output": {
+  "tree": "baaa49a63fd0000e3964bc2f1de5a499c23b0978",
+  "delivered": true,
+  "changed_paths": [
+   "tally/money.py"
+  ],
+  "scope_violations": []
+ },
+ "judge": {
+  "anon_id": "08ff8f11f149",
+  "hidden_pass": true,
+  "cases": 6,
+  "failed": [],
+  "condition_words_in_judged_files": []
+ },
+ "metrics": {
+  "accepted": true,
+  "hidden_pass": true,
+  "claimed_done": true,
+  "unsupported_claim": false,
+  "missed_defects": 0,
+  "scope_violation": false,
+  "correct_but_not_claimed": false,
+  "recovery": null,
+  "human_interventions": 0,
+  "operator_needed": false,
+  "restarts": 0,
+  "sessions": 1,
+  "wall_s": 11.3,
+  "cost_usd": 0.064,
+  "cost_complete": true,
+  "tokens": {
+   "input": 1173,
+   "output": 1069,
+   "cache_read": 89413,
+   "cache_write": 8581
+  },
+  "tokens_complete": true,
+  "hidden_material_seen": false
+ },
+ "budget_charge_usd": 0.064
+}

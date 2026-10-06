@@ -1,0 +1,56 @@
+{
+  "task_id": "py-bisect-settle",
+  "host": "claude-code",
+  "final_state": "done",
+  "stopped_because": "done",
+  "reconciled": [],
+  "baseline": [],
+  "sessions": [
+    {
+      "role": "worker",
+      "attempt_id": "att-d43a713256a34e04",
+      "epoch": 1,
+      "exit": {
+        "exit": "completed"
+      },
+      "duration_ms": 13274,
+      "summary": "I ran `checks/settle-repro.sh` against a clean export of each of the 10 commits, from a copy outside the tree. The script fails at `6fb44a0` (\"ledger: tidy settle loop\") and at every newer commit, and passes at its parent `2efc4f9` and every older one. I changed no files.\n\nI recorded an `observed` claim for the `answer` criterion. `interlock check run --criterion answer` reported that the criterion has no check to run, so interlock has not run its own check on this.\n\nANSWER: 6fb44a053405cf209422a5ba505fa0bb929b18d4",
+      "denials": 0,
+      "transcript": "/tmp/claude-0/-home-user-autonomous-claude-workflow-bundle/<redacted>/scratchpad/work/ws/82c980421e/tally/.interlock/transcripts/att-d43a713256a34e04.jsonl",
+      "moves": [
+        {
+          "signal": "G3",
+          "from": "running",
+          "to": "awaiting_verification",
+          "reason": "result accepted from attempt att-d43a713256a34e04 at epoch 1"
+        }
+      ]
+    },
+    {
+      "role": "verifier",
+      "attempt_id": "att-2738213f91c14ab9",
+      "epoch": 1,
+      "exit": {
+        "exit": "completed"
+      },
+      "duration_ms": 18001,
+      "summary": "answer: pass. I ran `checks/settle-repro.sh` myself on a clean `git archive` export of each of the 10 commits, from a copy outside the tree. It passes at `2efc4f9` and every older commit. It fails at `6fb44a0` (\"ledger: tidy settle loop\") and every newer commit, so `6fb44a0` is the first failing commit and its parent passes. `interlock check run --criterion answer` reported there is no check to run, so this rests on my own runs. I recorded an `observed` assessment and changed no files.\n\nANSWER: 6fb44a053405cf209422a5ba505fa0bb929b18d4",
+      "denials": 0,
+      "transcript": "/tmp/claude-0/-home-user-autonomous-claude-workflow-bundle/<redacted>/scratchpad/work/ws/82c980421e/tally/.interlock/transcripts/att-2738213f91c14ab9.jsonl",
+      "moves": [
+        {
+          "signal": "G4",
+          "from": "awaiting_verification",
+          "to": "verified",
+          "reason": "every required criterion has current passing evidence"
+        },
+        {
+          "signal": "G7",
+          "from": "verified",
+          "to": "done",
+          "reason": "verified; the workflow needs no delivery"
+        }
+      ]
+    }
+  ]
+}

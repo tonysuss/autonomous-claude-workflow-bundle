@@ -1,0 +1,68 @@
+{
+ "created_at": "2026-10-06T00:11:19+00:00",
+ "invocations": [
+  {
+   "at": "2026-10-06T00:11:19+00:00",
+   "argv": [
+    "run",
+    "--host",
+    "copilot",
+    "--fake-model",
+    "--conditions",
+    "skills",
+    "--tasks",
+    "py-parse-amount",
+    "--repeats",
+    "1",
+    "--budget-usd",
+    "1",
+    "--session-timeout-min",
+    "3",
+    "--skills-dir",
+    "/tmp/claude-0/-home-user-autonomous-claude-workflow-bundle/<redacted>/scratchpad/dummy-skills",
+    "--copilot-bin",
+    "/tmp/claude-0/-home-user-autonomous-claude-workflow-bundle/<redacted>/scratchpad/cop/node_modules/.bin/copilot",
+    "--work-dir",
+    "/tmp/claude-0/-home-user-autonomous-claude-workflow-bundle/<redacted>/scratchpad/work",
+    "--results",
+    "/tmp/claude-0/-home-user-autonomous-claude-workflow-bundle/<redacted>/scratchpad/results-copilot-skills-plumbing",
+    "--label",
+    "plumbing"
+   ],
+   "label": "plumbing",
+   "runs": [
+    "py-parse-amount.skills.r1.8feab4"
+   ],
+   "stopped": null
+  }
+ ],
+ "pinned": {
+  "host": "copilot",
+  "host_version": "1.0.91",
+  "model": null,
+  "effort": null,
+  "max_turns": 80,
+  "session_timeout_s": 180,
+  "max_sessions": 6,
+  "fake_model": true
+ },
+ "harness_version": "1",
+ "interlock_commit": "3f930eedf2ad21ccbc7b6a5ed61381c3d69596db",
+ "interlock_describe": "3f930eedf2ad-dirty",
+ "interlock_bin_sha256": "e5353fc6268e69b6ff2a851b3e31f1830a22261204c83d6280a968903b0f953d",
+ "budget_usd": 1.0,
+ "frozen": {
+  "go-env-expand": "fe60b8503a1e92804dc7b1be782b7218c2e3d38d",
+  "go-lookup-refactor": "189ec434d47f205ff1af8be88e183dca8f6bc297",
+  "go-quoted-hash": "a1f2289cc43c69d966338ebf30a7d70e3479f09e",
+  "py-bisect-settle": "fa8265ef7f533725d5021aa48437933a03d16638",
+  "py-csv-format": "7e5fdf199b18717ddc7a12e46c0b5b439ac6e61c",
+  "py-parse-amount": "b38a841619c174c4f4cb031875ff808cadbff88e",
+  "py-split-remainder": "3c69e6e826c8acd8e019c2082464a0d170d90b90"
+ },
+ "environment": {
+  "python": "3.11.15",
+  "go": "go version go1.24.7 linux/amd64",
+  "git": "git version 2.43.0"
+ }
+}

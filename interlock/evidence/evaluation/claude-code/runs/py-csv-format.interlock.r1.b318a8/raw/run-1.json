@@ -1,0 +1,71 @@
+{
+  "task_id": "py-csv-format",
+  "host": "claude-code",
+  "final_state": "done",
+  "stopped_because": "done",
+  "reconciled": [],
+  "baseline": [
+    {
+      "criterion_id": "balances-csv",
+      "run_id": "run-15361b24ffa6497d",
+      "exit_code": 1,
+      "vacuous": null,
+      "problem": null
+    },
+    {
+      "criterion_id": "regression",
+      "run_id": "run-4573a954352d4c72",
+      "exit_code": 0,
+      "vacuous": null,
+      "problem": null
+    }
+  ],
+  "sessions": [
+    {
+      "role": "worker",
+      "attempt_id": "att-efdfc22edad54ca7",
+      "epoch": 1,
+      "exit": {
+        "exit": "completed"
+      },
+      "duration_ms": 18143,
+      "summary": "I added `--format {text,csv}` (default `text`) to both `balances` and `settle`. The changes are in `tally/cli.py` and `tally/report.py`, plus new tests in `tests/test_cli.py`. I did not touch `README.md`.\n\nThe CSV is written with Python's `csv` module using `\\n` line endings. It prints only the header when there is nothing to list. The argument parser rejects an unknown format with status 2.\n\n- **`balances-csv`:** `interlock check run --criterion balances-csv` passes.\n- **`regression`:** the full suite passes, 23 tests including the new ones.\n- **`spec`:** I recorded this one as `tested`, since the new tests cover the settle CSV, quoting, header-only output and the exit status 2. I also ran `settle --format csv` on the trip example by hand. It needs an independent verifier to observe it.",
+      "denials": 0,
+      "transcript": "/tmp/claude-0/-home-user-autonomous-claude-workflow-bundle/<redacted>/scratchpad/work/ws/d84ca3c284/tally/.interlock/transcripts/att-efdfc22edad54ca7.jsonl",
+      "moves": [
+        {
+          "signal": "G3",
+          "from": "running",
+          "to": "awaiting_verification",
+          "reason": "result accepted from attempt att-efdfc22edad54ca7 at epoch 1"
+        }
+      ]
+    },
+    {
+      "role": "verifier",
+      "attempt_id": "att-9c53cf6133d24569",
+      "epoch": 1,
+      "exit": {
+        "exit": "completed"
+      },
+      "duration_ms": 14639,
+      "summary": "- **balances-csv:** holds (observed). `interlock check run --criterion balances-csv` passed on tree e70026….\n- **spec:** holds (observed). On the command line I saw the following:\n  - `settle --format csv` prints the `from,to,amount` header and the rows in text order, with `\\n` line endings.\n  - A name containing a comma is quoted.\n  - Empty input gives the header line alone, for both `balances` and `settle`.\n  - The default text output is unchanged.\n  - `--format xml` is rejected by the parser with exit status 2.\n- **regression:** holds (tested). All 23 tests pass.",
+      "denials": 0,
+      "transcript": "/tmp/claude-0/-home-user-autonomous-claude-workflow-bundle/<redacted>/scratchpad/work/ws/d84ca3c284/tally/.interlock/transcripts/att-9c53cf6133d24569.jsonl",
+      "moves": [
+        {
+          "signal": "G4",
+          "from": "awaiting_verification",
+          "to": "verified",
+          "reason": "every required criterion has current passing evidence"
+        },
+        {
+          "signal": "G7",
+          "from": "verified",
+          "to": "done",
+          "reason": "verified; the workflow needs no delivery"
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,262 @@
+{
+ "harness_version": "1",
+ "at": "2026-10-06T00:26:03+00:00",
+ "tasks": {
+  "go-env-expand": {
+   "baseline": {
+    "expand": 1,
+    "regression": 0
+   },
+   "hidden_on_start": {
+    "existing_tests": true,
+    "TestHiddenBraceReferences": false,
+    "TestHiddenFallbacks": false,
+    "TestHiddenDollarRules": false,
+    "TestHiddenUndefinedVariableError": false,
+    "TestHiddenNoExpandOption": false,
+    "TestHiddenLoadExpands": false,
+    "cli_get_expands": false,
+    "cli_get_no_expand": false,
+    "cli_dump_no_expand": false,
+    "cli_undefined_variable_fails": false
+   },
+   "hidden_on_solution": {
+    "existing_tests": true,
+    "TestHiddenBraceReferences": true,
+    "TestHiddenFallbacks": true,
+    "TestHiddenDollarRules": true,
+    "TestHiddenUndefinedVariableError": true,
+    "TestHiddenNoExpandOption": true,
+    "TestHiddenLoadExpands": true,
+    "cli_get_expands": true,
+    "cli_get_no_expand": true,
+    "cli_dump_no_expand": true,
+    "cli_undefined_variable_fails": true
+   },
+   "solution_changes": [
+    "cmd/kvconf/main.go",
+    "config.go",
+    "parser.go"
+   ],
+   "interlock_task_create": {
+    "expand": {
+     "passed": false,
+     "failed": true,
+     "checked_nothing": null
+    },
+    "regression": {
+     "passed": true,
+     "failed": false,
+     "checked_nothing": null
+    }
+   }
+  },
+  "go-lookup-refactor": {
+   "baseline": {
+    "regression": 0
+   },
+   "hidden_on_start": {
+    "existing_tests": true,
+    "TestHiddenMissingSectionMessages": true,
+    "TestHiddenMissingKeyMessages": true,
+    "TestHiddenGetBoolMissingKeyMessage": true,
+    "TestHiddenBadValueMessages": true,
+    "TestHiddenValues": true,
+    "lookup_helper_signature": false,
+    "getters_call_lookup": false,
+    "getters_do_not_read_sections": false
+   },
+   "hidden_on_solution": {
+    "existing_tests": true,
+    "TestHiddenMissingSectionMessages": true,
+    "TestHiddenMissingKeyMessages": true,
+    "TestHiddenGetBoolMissingKeyMessage": true,
+    "TestHiddenBadValueMessages": true,
+    "TestHiddenValues": true,
+    "lookup_helper_signature": true,
+    "getters_call_lookup": true,
+    "getters_do_not_read_sections": true
+   },
+   "solution_changes": [
+    "getters.go"
+   ],
+   "interlock_task_create": {
+    "regression": {
+     "passed": true,
+     "failed": false,
+     "checked_nothing": null
+    }
+   }
+  },
+  "go-quoted-hash": {
+   "baseline": {
+    "repro": 1,
+    "regression": 0
+   },
+   "hidden_on_start": {
+    "existing_tests": true,
+    "TestHiddenHashInsideQuotes": false,
+    "TestHiddenUnquotedValueEndsAtHash": true,
+    "TestHiddenCommentAfterClosingQuote": false,
+    "TestHiddenEscapes": false,
+    "cli_get_reported_value": false
+   },
+   "hidden_on_solution": {
+    "existing_tests": true,
+    "TestHiddenHashInsideQuotes": true,
+    "TestHiddenUnquotedValueEndsAtHash": true,
+    "TestHiddenCommentAfterClosingQuote": true,
+    "TestHiddenEscapes": true,
+    "cli_get_reported_value": true
+   },
+   "solution_changes": [
+    "parser.go"
+   ],
+   "interlock_task_create": {
+    "repro": {
+     "passed": false,
+     "failed": true,
+     "checked_nothing": null
+    },
+    "regression": {
+     "passed": true,
+     "failed": false,
+     "checked_nothing": null
+    }
+   }
+  },
+  "py-bisect-settle": {
+   "baseline": {},
+   "hidden_on_start": {
+    "answer_given": true,
+    "answer_names_culprit": false
+   },
+   "hidden_on_solution": {
+    "answer_given": true,
+    "answer_names_culprit": true
+   },
+   "solution_changes": [],
+   "culprit": "6fb44a053405cf209422a5ba505fa0bb929b18d4",
+   "repro_at_culprit_parent": true,
+   "repro_at_culprit": false,
+   "repro_at_head": false,
+   "visible_criteria_with_checks": 0,
+   "interlock_task_create": {}
+  },
+  "py-csv-format": {
+   "baseline": {
+    "balances-csv": 1,
+    "regression": 0
+   },
+   "hidden_on_start": {
+    "existing_tests": true,
+    "test_balances_csv": false,
+    "test_names_with_commas_are_quoted": false,
+    "test_nothing_to_list_is_header_only": false,
+    "test_settle_csv": false,
+    "test_text_is_default_and_unchanged": false,
+    "test_unknown_format_exits_2": true
+   },
+   "hidden_on_solution": {
+    "existing_tests": true,
+    "test_balances_csv": true,
+    "test_names_with_commas_are_quoted": true,
+    "test_nothing_to_list_is_header_only": true,
+    "test_settle_csv": true,
+    "test_text_is_default_and_unchanged": true,
+    "test_unknown_format_exits_2": true
+   },
+   "solution_changes": [
+    "tally/cli.py",
+    "tally/report.py"
+   ],
+   "interlock_task_create": {
+    "balances-csv": {
+     "passed": false,
+     "failed": true,
+     "checked_nothing": null
+    },
+    "regression": {
+     "passed": true,
+     "failed": false,
+     "checked_nothing": null
+    }
+   }
+  },
+  "py-parse-amount": {
+   "baseline": {
+    "repro": 1,
+    "regression": 0
+   },
+   "hidden_on_start": {
+    "existing_tests": true,
+    "test_csv_rows_use_the_fixed_parser": false,
+    "test_existing_behaviour_kept": true,
+    "test_more_than_two_places_is_an_error": false,
+    "test_one_decimal_digit_is_tenths": false,
+    "test_sign_covers_the_fraction": false
+   },
+   "hidden_on_solution": {
+    "existing_tests": true,
+    "test_csv_rows_use_the_fixed_parser": true,
+    "test_existing_behaviour_kept": true,
+    "test_more_than_two_places_is_an_error": true,
+    "test_one_decimal_digit_is_tenths": true,
+    "test_sign_covers_the_fraction": true
+   },
+   "solution_changes": [
+    "tally/money.py"
+   ],
+   "interlock_task_create": {
+    "repro": {
+     "passed": false,
+     "failed": true,
+     "checked_nothing": null
+    },
+    "regression": {
+     "passed": true,
+     "failed": false,
+     "checked_nothing": null
+    }
+   }
+  },
+  "py-split-remainder": {
+   "baseline": {
+    "repro": 1,
+    "regression": 0
+   },
+   "hidden_on_start": {
+    "existing_tests": true,
+    "test_ledger_balances_sum_to_zero": false,
+    "test_negative_total_mirrors": false,
+    "test_rejects_non_positive_n": false,
+    "test_reported_case": false,
+    "test_sum_spread_and_order": false
+   },
+   "hidden_on_solution": {
+    "existing_tests": true,
+    "test_ledger_balances_sum_to_zero": true,
+    "test_negative_total_mirrors": true,
+    "test_rejects_non_positive_n": true,
+    "test_reported_case": true,
+    "test_sum_spread_and_order": true
+   },
+   "solution_changes": [
+    "tally/money.py"
+   ],
+   "interlock_task_create": {
+    "repro": {
+     "passed": false,
+     "failed": true,
+     "checked_nothing": null
+    },
+    "regression": {
+     "passed": true,
+     "failed": false,
+     "checked_nothing": null
+    }
+   }
+  }
+ },
+ "failures": []
+}

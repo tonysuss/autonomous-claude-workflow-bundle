@@ -1,0 +1,156 @@
+{
+ "run_id": "py-csv-format.interlock.r1.b318a8",
+ "label": "main",
+ "task": "py-csv-format",
+ "kind": "feature",
+ "language": "python",
+ "condition": "interlock",
+ "repeat": 1,
+ "host": "claude-code",
+ "host_version": "2.1.289",
+ "model": "claude-sonnet-5-5",
+ "effort": "medium",
+ "fake_model": false,
+ "started_at": "2026-10-06T00:14:33+00:00",
+ "workdir": "/tmp/claude-0/-home-user-autonomous-claude-workflow-bundle/<redacted>/scratchpad/work/ws/d84ca3c284/tally",
+ "base_commit": "7e5fdf199b18717ddc7a12e46c0b5b439ac6e61c",
+ "sessions": [
+  {
+   "complete": true,
+   "final_text": "I added `--format {text,csv}` (default `text`) to both `balances` and `settle`. The changes are in `tally/cli.py` and `tally/report.py`, plus new tests in `tests/test_cli.py`. I did not touch `README.md`.\n\nThe CSV is written with Python's `csv` module using `\\n` line endings. It prints only the header when there is nothing to list. The argument parser rejects an unknown format with status 2.\n\n- **`balances-csv`:** `interlock check run --criterion balances-csv` passes.\n- **`regression`:** the full suite passes, 23 tests including the new ones.\n- **`spec`:** I recorded this one as `tested`, since the new tests cover the settle CSV, quoting, header-only output and the exit status 2. I also ran `settle --format csv` on the trip example by hand. It needs an independent verifier to observe it.",
+   "is_error": false,
+   "cost_usd": 0.1092764,
+   "tokens": {
+    "input": 1908,
+    "output": 2053,
+    "cache_read": 169932,
+    "cache_write": 13228
+   },
+   "turns": 5,
+   "models": [
+    "claude-haiku-4-5-20251001",
+    "claude-sonnet-5-5"
+   ],
+   "model_requested": "claude-sonnet-5-5",
+   "denials": 0,
+   "events": 29,
+   "subtype": "success",
+   "role": "worker",
+   "attempt": "att-efdfc22edad54ca7",
+   "attempt_status": "submitted",
+   "transcript": "raw/transcripts/att-efdfc22edad54ca7.jsonl"
+  },
+  {
+   "complete": true,
+   "final_text": "- **balances-csv:** holds (observed). `interlock check run --criterion balances-csv` passed on tree e70026\u2026.\n- **spec:** holds (observed). On the command line I saw the following:\n  - `settle --format csv` prints the `from,to,amount` header and the rows in text order, with `\\n` line endings.\n  - A name containing a comma is quoted.\n  - Empty input gives the header line alone, for both `balances` and `settle`.\n  - The default text output is unchanged.\n  - `--format xml` is rejected by the parser with exit status 2.\n- **regression:** holds (tested). All 23 tests pass.",
+   "is_error": false,
+   "cost_usd": 0.08773940000000001,
+   "tokens": {
+    "input": 2217,
+    "output": 1114,
+    "cache_read": 160867,
+    "cache_write": 10566
+   },
+   "turns": 5,
+   "models": [
+    "claude-haiku-4-5-20251001",
+    "claude-sonnet-5-5"
+   ],
+   "model_requested": "claude-sonnet-5-5",
+   "denials": 0,
+   "events": 30,
+   "subtype": "success",
+   "role": "verifier",
+   "attempt": "att-9c53cf6133d24569",
+   "attempt_status": "completed",
+   "transcript": "raw/transcripts/att-9c53cf6133d24569.jsonl"
+  }
+ ],
+ "notes": [],
+ "interlock": {
+  "final_state": "done",
+  "stopped_because": "done",
+  "blocked_reason": null,
+  "attempts_used": 1,
+  "signals": [
+   "G1",
+   "G2",
+   "G3",
+   "G4",
+   "G7"
+  ],
+  "invocations": [
+   {
+    "exit_code": 0,
+    "killed": null,
+    "killed_pids": 0,
+    "wall_s": 33.8
+   }
+  ],
+  "baseline": [
+   {
+    "criterion_id": "balances-csv",
+    "run_id": "run-15361b24ffa6497d",
+    "exit_code": 1,
+    "vacuous": null,
+    "problem": null
+   },
+   {
+    "criterion_id": "regression",
+    "run_id": "run-4573a954352d4c72",
+    "exit_code": 0,
+    "vacuous": null,
+    "problem": null
+   }
+  ]
+ },
+ "claim": {
+  "claimed_done": true,
+  "source": "interlock-state",
+  "detail": "done"
+ },
+ "wall_s": 34.1,
+ "output": {
+  "tree": "e70026649d7c997d1fd6fcd9a37006925fd616e2",
+  "delivered": true,
+  "changed_paths": [
+   "tally/cli.py",
+   "tally/report.py",
+   "tests/test_cli.py"
+  ],
+  "scope_violations": []
+ },
+ "judge": {
+  "anon_id": "c86ef3331536",
+  "hidden_pass": true,
+  "cases": 7,
+  "failed": [],
+  "condition_words_in_judged_files": []
+ },
+ "metrics": {
+  "accepted": true,
+  "hidden_pass": true,
+  "claimed_done": true,
+  "unsupported_claim": false,
+  "missed_defects": 0,
+  "scope_violation": false,
+  "correct_but_not_claimed": false,
+  "recovery": null,
+  "human_interventions": 0,
+  "operator_needed": false,
+  "restarts": 0,
+  "sessions": 2,
+  "wall_s": 34.1,
+  "cost_usd": 0.197,
+  "cost_complete": true,
+  "tokens": {
+   "input": 4125,
+   "output": 3167,
+   "cache_read": 330799,
+   "cache_write": 23794
+  },
+  "tokens_complete": true,
+  "hidden_material_seen": false
+ },
+ "budget_charge_usd": 0.197
+}

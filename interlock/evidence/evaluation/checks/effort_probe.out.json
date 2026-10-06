@@ -1,0 +1,10 @@
+{
+ "None": {
+  "result": "effort=medium",
+  "cost": 0.031106600000000005
+ },
+ "medium": {
+  "result": "effort=medium",
+  "cost": 0.031098200000000003
+ }
+}

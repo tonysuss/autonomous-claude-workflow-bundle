@@ -1,0 +1,73 @@
+{
+  "task_id": "go-env-expand",
+  "host": "copilot",
+  "final_state": "done",
+  "stopped_because": "done",
+  "reconciled": [
+    "att-5419a3baff4c41d2"
+  ],
+  "baseline": [
+    {
+      "criterion_id": "expand",
+      "run_id": "run-3a886f879e5045ce",
+      "exit_code": 1,
+      "vacuous": null,
+      "problem": null
+    },
+    {
+      "criterion_id": "regression",
+      "run_id": "run-3d76ac317ace459e",
+      "exit_code": 0,
+      "vacuous": null,
+      "problem": null
+    }
+  ],
+  "sessions": [
+    {
+      "role": "worker",
+      "attempt_id": "att-f378f30da5334e4c",
+      "epoch": 2,
+      "exit": {
+        "exit": "completed"
+      },
+      "duration_ms": 6729,
+      "summary": "Applied the scripted change.\n",
+      "denials": 0,
+      "transcript": "/tmp/claude-0/-home-user-autonomous-claude-workflow-bundle/<redacted>/scratchpad/work/ws/a330023fff/kvconf/.interlock/transcripts/att-f378f30da5334e4c.jsonl",
+      "moves": [
+        {
+          "signal": "G3",
+          "from": "running",
+          "to": "awaiting_verification",
+          "reason": "result accepted from attempt att-f378f30da5334e4c at epoch 2"
+        }
+      ]
+    },
+    {
+      "role": "verifier",
+      "attempt_id": "att-d0d0eb9a64114adb",
+      "epoch": 2,
+      "exit": {
+        "exit": "completed"
+      },
+      "duration_ms": 3822,
+      "summary": "Scripted verification finished.",
+      "denials": 0,
+      "transcript": "/tmp/claude-0/-home-user-autonomous-claude-workflow-bundle/<redacted>/scratchpad/work/ws/a330023fff/kvconf/.interlock/transcripts/att-d0d0eb9a64114adb.jsonl",
+      "moves": [
+        {
+          "signal": "G4",
+          "from": "awaiting_verification",
+          "to": "verified",
+          "reason": "every required criterion has current passing evidence"
+        },
+        {
+          "signal": "G7",
+          "from": "verified",
+          "to": "done",
+          "reason": "verified; the workflow needs no delivery"
+        }
+      ]
+    }
+  ]
+}

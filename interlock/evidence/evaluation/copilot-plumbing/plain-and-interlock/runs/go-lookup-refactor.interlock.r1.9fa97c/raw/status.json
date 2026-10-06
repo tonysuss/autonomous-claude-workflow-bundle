@@ -1,0 +1,74 @@
+{
+ "attempts": [
+  {
+   "epoch": 1,
+   "host": "copilot",
+   "id": "att-8bc0bf274edf4b6a",
+   "role": "worker",
+   "status": "submitted"
+  },
+  {
+   "epoch": 1,
+   "host": "copilot",
+   "id": "att-bded3aece29c4d73",
+   "role": "verifier",
+   "status": "completed"
+  }
+ ],
+ "evidence": {
+  "all_pass": true,
+  "any_fail": false,
+  "criteria": [
+   {
+    "criterion_id": "structure",
+    "current_assessments": 1,
+    "current_claims": 0,
+    "current_runs": 0,
+    "evidence_id": "asm-7bc31e28b0f1430a",
+    "source": "assessment",
+    "stale": 0,
+    "strength": "static",
+    "verdict": "pass"
+   },
+   {
+    "criterion_id": "behaviour",
+    "current_assessments": 1,
+    "current_claims": 0,
+    "current_runs": 0,
+    "evidence_id": "asm-e7741566ca28464a",
+    "source": "assessment",
+    "stale": 0,
+    "strength": "tested",
+    "verdict": "pass"
+   },
+   {
+    "criterion_id": "regression",
+    "current_assessments": 1,
+    "current_claims": 1,
+    "current_runs": 2,
+    "evidence_id": "asm-c748daa1246a4bf9",
+    "source": "assessment",
+    "stale": 0,
+    "strength": "tested",
+    "verdict": "pass"
+   }
+  ]
+ },
+ "next_moves": [],
+ "task": {
+  "attempts_used": 1,
+  "blocked_reason": null,
+  "current_attempt": "att-8bc0bf274edf4b6a",
+  "current_tree": "a3f6911120e6bb6baa0679f3097792233fbda361",
+  "id": "go-lookup-refactor",
+  "integration_required": false,
+  "intent": "`getters.go` repeats the same section-and-key lookup in `Get`, `GetInt`, `GetBool` and `GetDuration`. Move it into one unexported method,\n\n```go\nfunc (c *Config) lookup(section, key string) (string, error)\n```\n\nand make all four getters use it, so that none of them reads `c.sections` directly any more.\n\nThis is a pure refactor. The exported API, every returned value and every error message must stay exactly as they are now. The tests run with `go test ./...`.\n",
+  "lease_epoch": 1,
+  "max_attempts": 3,
+  "state": "done",
+  "workflow": {
+   "name": "refactor",
+   "version": 1
+  }
+ }
+}

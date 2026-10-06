@@ -1,0 +1,6 @@
+go-quoted-hash visible check exit codes: {'repro': 0, 'regression': 0}
+   hidden failing: ['TestHiddenCommentAfterClosingQuote', 'TestHiddenEscapes']
+py-parse-amount visible check exit codes: {'repro': 0, 'regression': 0}
+   hidden failing: ['test_csv_rows_use_the_fixed_parser', 'test_more_than_two_places_is_an_error', 'test_sign_covers_the_fraction']
+py-split-remainder visible check exit codes: {'repro': 0, 'regression': 0}
+   hidden failing: ['test_ledger_balances_sum_to_zero', 'test_negative_total_mirrors', 'test_rejects_non_positive_n', 'test_sum_spread_and_order']

@@ -1,0 +1,71 @@
+{
+  "task_id": "py-parse-amount",
+  "host": "claude-code",
+  "final_state": "done",
+  "stopped_because": "done",
+  "reconciled": [],
+  "baseline": [
+    {
+      "criterion_id": "repro",
+      "run_id": "run-019c77fbe91f4cab",
+      "exit_code": 1,
+      "vacuous": null,
+      "problem": null
+    },
+    {
+      "criterion_id": "regression",
+      "run_id": "run-9d44ed24eb5c48c9",
+      "exit_code": 0,
+      "vacuous": null,
+      "problem": null
+    }
+  ],
+  "sessions": [
+    {
+      "role": "worker",
+      "attempt_id": "att-8d3a062a07f644a9",
+      "epoch": 1,
+      "exit": {
+        "exit": "completed"
+      },
+      "duration_ms": 21053,
+      "summary": "I fixed `parse_amount` in `tally/money.py`, and the repro and regression checks both pass on my files. The independent `spec` criterion is still open for the verifier.\n\n- **Change:** a leading `+` or `-` is now read first and applied to the whole amount, so `-0.50` is -50 and `-3.25` is -325. The fraction must be one or two digits and is padded to tenths, so `12.5` is 1250. A third decimal place raises `ValueError`.\n- **Edge case:** I made a doubled sign like `--5` raise `ValueError`, which I did on my own judgement since the brief doesn't mention it.\n- **Tests:** I added three tests to `tests/test_money.py` covering tenths, the signed fraction and the more-than-two-decimals error.\n- **Checks:** `interlock check run` passed for `repro` (it prints `ok: 12.5 is 1250 cents`) and for `regression` (22 unit tests pass). I recorded claims on all three criteria.\n- **Spec claim:** it is `tested`, based on the new tests plus the existing ones for separators, whole numbers, spaces and invalid text.",
+      "denials": 0,
+      "transcript": "/tmp/claude-0/-home-user-autonomous-claude-workflow-bundle/<redacted>/scratchpad/work/ws/7437e034dd/tally/.interlock/transcripts/att-8d3a062a07f644a9.jsonl",
+      "moves": [
+        {
+          "signal": "G3",
+          "from": "running",
+          "to": "awaiting_verification",
+          "reason": "result accepted from attempt att-8d3a062a07f644a9 at epoch 1"
+        }
+      ]
+    },
+    {
+      "role": "verifier",
+      "attempt_id": "att-1bb3acf2e63b499f",
+      "epoch": 1,
+      "exit": {
+        "exit": "completed"
+      },
+      "duration_ms": 13326,
+      "summary": "- **repro**: passes (observed). `interlock check run --criterion repro` on tree b0ec724 printed `ok: 12.5 is 1250 cents`.\n- **spec**: passes (tested). My own probes of `parse_amount` gave 12.5 → 1250, -0.50 → -50, -3.25 → -325, and a `ValueError` for 1.234. 1,234.56 → 123456, 7 → 700 and spaces around a number still work, and non-amounts like `abc`, an empty string and `1.2.3` still raise `ValueError`.\n- **regression**: passes (tested). The 22 unit tests pass on this tree.\n\nI changed nothing in the worktree. The three probe scripts and assessments are recorded through `interlock`.",
+      "denials": 0,
+      "transcript": "/tmp/claude-0/-home-user-autonomous-claude-workflow-bundle/<redacted>/scratchpad/work/ws/7437e034dd/tally/.interlock/transcripts/att-1bb3acf2e63b499f.jsonl",
+      "moves": [
+        {
+          "signal": "G4",
+          "from": "awaiting_verification",
+          "to": "verified",
+          "reason": "every required criterion has current passing evidence"
+        },
+        {
+          "signal": "G7",
+          "from": "verified",
+          "to": "done",
+          "reason": "verified; the workflow needs no delivery"
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,109 @@
+{
+ "created_at": "2026-10-06T00:02:38+00:00",
+ "invocations": [
+  {
+   "at": "2026-10-06T00:02:39+00:00",
+   "argv": [
+    "run",
+    "--host",
+    "copilot",
+    "--fake-model",
+    "--conditions",
+    "plain,interlock",
+    "--repeats",
+    "1",
+    "--budget-usd",
+    "1",
+    "--session-timeout-min",
+    "3",
+    "--copilot-bin",
+    "/tmp/claude-0/-home-user-autonomous-claude-workflow-bundle/<redacted>/scratchpad/cop/node_modules/.bin/copilot",
+    "--work-dir",
+    "/tmp/claude-0/-home-user-autonomous-claude-workflow-bundle/<redacted>/scratchpad/work",
+    "--results",
+    "/tmp/claude-0/-home-user-autonomous-claude-workflow-bundle/<redacted>/scratchpad/results-copilot-fake",
+    "--label",
+    "plumbing"
+   ],
+   "label": "plumbing",
+   "runs": [
+    "go-env-expand.plain.r1.f328f1",
+    "go-env-expand.interlock.r1.55bc20",
+    "go-lookup-refactor.plain.r1.38ace7",
+    "go-lookup-refactor.interlock.r1.9fa97c",
+    "go-quoted-hash.interlock.r1.5d84ee",
+    "go-quoted-hash.plain.r1.2a50ef",
+    "py-bisect-settle.interlock.r1.feb78e",
+    "py-bisect-settle.plain.r1.1601ed",
+    "py-csv-format.interlock.r1.09869d",
+    "py-csv-format.plain.r1.41ea9a",
+    "py-parse-amount.interlock.r1.3930e4",
+    "py-parse-amount.plain.r1.ae7166",
+    "py-split-remainder.interlock.r1.7d6ab9",
+    "py-split-remainder.plain.r1.ff47b3"
+   ],
+   "stopped": null
+  },
+  {
+   "at": "2026-10-06T00:04:36+00:00",
+   "argv": [
+    "run",
+    "--host",
+    "copilot",
+    "--fake-model",
+    "--conditions",
+    "plain,interlock",
+    "--tasks",
+    "go-env-expand",
+    "--repeats",
+    "2",
+    "--budget-usd",
+    "1",
+    "--session-timeout-min",
+    "3",
+    "--copilot-bin",
+    "/tmp/claude-0/-home-user-autonomous-claude-workflow-bundle/<redacted>/scratchpad/cop/node_modules/.bin/copilot",
+    "--work-dir",
+    "/tmp/claude-0/-home-user-autonomous-claude-workflow-bundle/<redacted>/scratchpad/work",
+    "--results",
+    "/tmp/claude-0/-home-user-autonomous-claude-workflow-bundle/<redacted>/scratchpad/results-copilot-fake",
+    "--label",
+    "plumbing"
+   ],
+   "label": "plumbing",
+   "runs": [
+    "go-env-expand.plain.r2.ee56ab",
+    "go-env-expand.interlock.r2.2ac396"
+   ],
+   "stopped": null
+  }
+ ],
+ "pinned": {
+  "host": "copilot",
+  "host_version": "1.0.91",
+  "model": null,
+  "effort": null,
+  "max_turns": 80,
+  "session_timeout_s": 180,
+  "max_sessions": 6,
+  "fake_model": true
+ },
+ "harness_version": "1",
+ "interlock_commit": "d65d750ed5b5f7dc88d615f65fa2cdaf015269be",
+ "interlock_bin_sha256": "e5353fc6268e69b6ff2a851b3e31f1830a22261204c83d6280a968903b0f953d",
+ "budget_usd": 1.0,
+ "frozen": {
+  "go-env-expand": "fe60b8503a1e92804dc7b1be782b7218c2e3d38d",
+  "go-lookup-refactor": "189ec434d47f205ff1af8be88e183dca8f6bc297",
+  "go-quoted-hash": "a1f2289cc43c69d966338ebf30a7d70e3479f09e",
+  "py-bisect-settle": "fa8265ef7f533725d5021aa48437933a03d16638",
+  "py-csv-format": "7e5fdf199b18717ddc7a12e46c0b5b439ac6e61c",
+  "py-parse-amount": "b38a841619c174c4f4cb031875ff808cadbff88e",
+  "py-split-remainder": "3c69e6e826c8acd8e019c2082464a0d170d90b90"
+ },
+ "environment": {
+  "python": "3.11.15",
+  "go": "go version go1.24.7 linux/amd64",
+  "git": "git version 2.43.0"
+ }
+}

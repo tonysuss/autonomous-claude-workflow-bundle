@@ -1,0 +1,43 @@
+{
+ "anon_id": "707f4f8f192c",
+ "task": "py-csv-format",
+ "cases": [
+  {
+   "id": "existing_tests",
+   "pass": true,
+   "detail": "19 passed"
+  },
+  {
+   "id": "test_balances_csv",
+   "pass": true,
+   "detail": ""
+  },
+  {
+   "id": "test_names_with_commas_are_quoted",
+   "pass": true,
+   "detail": ""
+  },
+  {
+   "id": "test_nothing_to_list_is_header_only",
+   "pass": true,
+   "detail": ""
+  },
+  {
+   "id": "test_settle_csv",
+   "pass": true,
+   "detail": ""
+  },
+  {
+   "id": "test_text_is_default_and_unchanged",
+   "pass": true,
+   "detail": ""
+  },
+  {
+   "id": "test_unknown_format_exits_2",
+   "pass": true,
+   "detail": ""
+  }
+ ],
+ "pass": true,
+ "condition_words": []
+}

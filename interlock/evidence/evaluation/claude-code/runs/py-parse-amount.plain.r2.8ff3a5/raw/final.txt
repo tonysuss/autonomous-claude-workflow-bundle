@@ -1,0 +1,15 @@
+I fixed `parse_amount` in `tally/money.py`, and `parse_amount("12.5")` now returns 1250. `checks/parse-repro.sh` passes, and so do the 19 unit tests.
+
+The old code read the digits after the decimal point as a plain number, so `5` meant 5 cents. The new code pads that part to two digits first. It also takes the sign off before parsing and applies it to the whole amount, so `-0.50` gives -50 and `-3.25` gives -325.
+
+I ran these by hand and they behave as specified:
+- `"12.5"` gives 1250 and `"-0.5"` gives -50.
+- `"1,234.56"` gives 123456, `"7"` gives 700, and `" 7 "` gives 700.
+- `"1.234"` raises `ValueError`.
+- `""`, `"abc"`, `"-"` and `"1.-5"` raise `ValueError`.
+
+Two inputs that were already rejected stay rejected: `"1."` and `".5"` still raise `ValueError`.
+
+I didn't add new tests to `tests/test_money.py`.
+
+STATUS: DONE
