@@ -13,7 +13,7 @@ cargo clippy --workspace --all-targets
 cargo test --workspace
 ```
 
-Outcome: formatting clean, clippy with no warnings, 141 tests passed and none failed. The Copilot suites took 44 s (`run_copilot`, 6 tests) and 115 s (`run_robustness`, 10 tests), so they ran on the real CLI rather than skipping. Raw output: [`cargo-test-workspace.txt`](cargo-test-workspace.txt).
+Outcome: formatting clean, clippy with no warnings, 141 tests passed and none failed. The Copilot suites took 45 s (`run_copilot`, 6 tests) and 120 s (`run_robustness`, 10 tests), so they ran on the real CLI rather than skipping. Raw output: [`cargo-test-workspace.txt`](cargo-test-workspace.txt).
 
 The tests this work added, by file:
 

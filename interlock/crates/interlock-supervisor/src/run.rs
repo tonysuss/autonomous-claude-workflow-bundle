@@ -262,7 +262,9 @@ impl Supervisor {
             if self.cancel.load(Ordering::SeqCst) {
                 report.interrupted = true;
                 let state = self.store.task(task_id)?.state;
-                break format!("interrupted; the running session was stopped and the task can resume from {state}");
+                break format!(
+                    "interrupted by a signal; any running session was stopped and the task can resume from {state}"
+                );
             }
             let mut task = self.store.task(task_id)?;
             if matches!(task.state, State::Ready | State::AwaitingVerification)
@@ -590,13 +592,17 @@ impl Supervisor {
             Err(outcome) => return *outcome,
         };
         let now = Utc::now();
+        let deadline = chrono::Duration::from_std(spec.timeout)
+            .ok()
+            .and_then(|d| now.checked_add_signed(d))
+            .unwrap_or_else(|| now + chrono::Duration::days(365));
         let handoff = Handoff {
             host: self.host.name().into(),
             pid: spawned.pid,
             pgid: spawned.pgid,
             process_start: spawned.process_start,
             started_at: now,
-            deadline: now + chrono::Duration::from_std(spec.timeout).unwrap_or(chrono::Duration::MAX),
+            deadline,
             budget_deadline,
             transcript: spec.transcript.display().to_string(),
             host_session_id: spec.session_id.clone(),

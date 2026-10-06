@@ -1009,12 +1009,11 @@ fn run_task(
         capabilities: capabilities.as_deref().map(parse_capabilities).transpose()?,
     };
     let mut supervisor = interlock_supervisor::Supervisor::new(repo, db, host_by_name(host)?, Probe::from_env(), cfg)?;
-    // SIGINT or SIGTERM stops the running session, cancels its attempt and
-    // leaves the task to resume.
     use signal_hook::consts::{SIGINT, SIGTERM};
-    // There is no exit on a second signal: the host runs in its own process
-    // group, so exiting early would leave it running unseen. Stopping it takes
-    // at most a few seconds.
+    // SIGINT or SIGTERM stops the running session, cancels its attempt and
+    // leaves the task to resume. A second signal does nothing more: the host
+    // runs in its own process group, so exiting early would leave it running
+    // unseen, and stopping it takes at most a few seconds.
     let signal = std::sync::Arc::new(std::sync::atomic::AtomicUsize::new(0));
     for sig in [SIGINT, SIGTERM] {
         signal_hook::flag::register_usize(sig, signal.clone(), sig as usize)?;
