@@ -1,6 +1,6 @@
 # Verify
 
-An independent verifier checks the result on exactly the files that were submitted, with read and test tools only, and records its own evidence. interlock then decides. The agent that did the work never verifies it: a second pass by the same agent is not independent, and interlock does not count a worker's evidence for independent criteria. Read `references/interlock-basics.md` once per session.
+An independent verifier checks the result on exactly the files that were submitted, with read and test tools only, and records its own evidence. interlock then decides. The agent that did the work never verifies it, and interlock enforces that: the hooks refuse a verifier attempt from the session that holds the work, a verifier's credentials work only for the verifier they are bound to, and where a criterion has no check, an assessment counts only from a verifier interlock could bind. Read `references/interlock-basics.md` once per session.
 
 ## 1. Check the task is ready for it
 
@@ -12,13 +12,9 @@ The state must be `awaiting_verification`, with `current_tree` set. If it is `re
 
 ## 2. Hand off to the verifier
 
-To hand off, {{handoff:verifier}}. Give it this prompt, filled in:
+{{handoff:verifier}}
 
-> Verify interlock task `<id>` in the repository at `<absolute path of the repository root>`. Host: `{{host}}`. Open your own verifier attempt, have interlock run every check on the submitted files, record one assessment per criterion, end your attempt, and reply with your attempt id and one line per criterion. If a review of this task listed findings to act on, check each one: `<findings, or "none">`.
-
-The verifier opens its own attempt, so its token never passes through you. Wait for its reply. Do not record assessments yourself, and do not edit files while it works: the hooks hold you to the verifier's read-only grant until its attempt ends.
-
-If your host cannot start an isolated custom agent, stop here. The task stays `awaiting_verification` with its work kept; tell the person it needs an independent verifier.
+Wait for it to finish. Do not record assessments yourself, and do not try to open a verifier attempt: the hooks refuse it from the session that did the work.
 
 ## 3. Let interlock decide
 
@@ -29,11 +25,12 @@ interlock status <id>
 
 | State after `advance` | Meaning | Next |
 | --- | --- | --- |
-| `done` | Every criterion has current passing evidence from allowed producers (G4), and the workflow needs no delivery (G7) | Report to the person |
+| `done` | Every criterion has current passing evidence from allowed producers (G4), and the workflow needs no delivery (G7). interlock closed the task's attempts and removed their worktrees | Report to the person |
 | `verified` | Verified; delivery needs landing authority | Tell the person; landing is theirs |
 | `ready` | An independent check failed (R1); the brief now starts with the failure | Back to {{skill:implement}} with the task id |
+| `blocked` | interlock stopped the task: `blocked_reason` says why, for example no independent verifier is available on this host | Tell the person the reason; the work is kept, and `interlock task unblock` (the person's call) resumes it |
 | `failed` | It failed and the attempt budget is spent | Report what failed |
-| `awaiting_verification` | Evidence is still missing; `next_moves[0].needs` says what | Hand off once more with that list. If it is still missing, leave the task waiting and tell the person why |
+| `awaiting_verification` | Evidence is still missing; `next_moves[0].needs` says what. Each attempt in `attempts` shows how it was bound: an `unbound` verifier's assessments count only where interlock ran the check | Hand off once more with that list. If it is still missing, leave the task waiting and tell the person why |
 
 ## 4. Report
 

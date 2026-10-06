@@ -7,6 +7,7 @@
 //! plain Agent Skills, and `validate` checks what it wrote.
 
 mod frontmatter;
+pub mod safe_write;
 pub mod setup;
 pub mod validate;
 
@@ -335,13 +336,19 @@ impl Target {
         Target::ALL.into_iter().find(|t| t.name() == s)
     }
 
+    /// A skill's emitted name. On Copilot, project skills share one namespace
+    /// with a repository's own, so interlock's carry an `interlock-` prefix;
+    /// Claude Code's plugin namespace does the same job.
+    pub fn skill_name(self, name: &str) -> String {
+        match self {
+            Target::Copilot => format!("{PLUGIN}-{name}"),
+            _ => name.to_string(),
+        }
+    }
+
     /// The folder holding one skill, relative to the output directory.
     pub fn skill_dir(self, name: &str) -> PathBuf {
-        match self {
-            Target::Copilot => PathBuf::from(".github/skills").join(name),
-            Target::ClaudeCode => PathBuf::from("skills").join(name),
-            Target::AgentSkills => PathBuf::from(name),
-        }
+        self.skills_root().join(self.skill_name(name))
     }
 
     /// The folder holding every skill, relative to the output directory.
@@ -357,7 +364,7 @@ impl Target {
     pub fn skill_ref(self, name: &str) -> String {
         match self {
             Target::ClaudeCode => format!("{PLUGIN}:{name}"),
-            _ => name.to_string(),
+            _ => self.skill_name(name),
         }
     }
 
@@ -381,18 +388,20 @@ pub struct Output {
 }
 
 impl Output {
-    /// Writes every file under `dir` and returns their paths.
-    pub fn write(&self, dir: &Path) -> Result<Vec<PathBuf>> {
-        let mut written = Vec::new();
+    /// Writes every file under `dir`: never through a symlink, never outside
+    /// `dir`, and never over a file that holds something else.
+    pub fn write(&self, dir: &Path) -> Result<safe_write::WriteReport> {
+        let mut writer = safe_write::SafeWriter::new(dir, None, false)?;
+        self.write_with(&mut writer, Path::new(""))?;
+        writer.finish()
+    }
+
+    /// Writes every file through `writer`, under `prefix` within its root.
+    pub fn write_with(&self, writer: &mut safe_write::SafeWriter, prefix: &Path) -> Result<()> {
         for (rel, text) in &self.files {
-            let path = dir.join(rel);
-            if let Some(parent) = path.parent() {
-                std::fs::create_dir_all(parent)?;
-            }
-            std::fs::write(&path, text)?;
-            written.push(path);
+            writer.write(&prefix.join(rel), text)?;
         }
-        Ok(written)
+        Ok(())
     }
 
     /// The names of the standalone skills this output holds.
@@ -436,33 +445,56 @@ fn expand(var: &str, target: Target, catalog: &Catalog) -> std::result::Result<S
             None => Err(format!("no skill named {name}")),
         },
         Some(("agent", name)) => agent(name).map(|()| target.agent_ref(name)),
-        Some(("handoff", name)) => agent(name).map(|()| match target {
-            Target::Copilot => {
-                format!("call the `task` tool with `agent_type: \"{}\"` and `mode: \"sync\"`", target.agent_ref(name))
-            }
-            Target::ClaudeCode => format!("call the Agent tool with `subagent_type: \"{}\"`", target.agent_ref(name)),
-            Target::AgentSkills => format!(
-                "start a sub-agent that has read and shell tools only, with `references/{name}-agent.md` as its \
-                 instructions"
-            ),
-        }),
+        Some(("handoff", name)) => agent(name).map(|()| handoff(target, name)),
         _ => Err(format!("unknown template {{{{{var}}}}}")),
     }
 }
 
+/// How the verify skill hands work to an agent, per host. Independence must be
+/// something interlock can see: Claude Code's hooks name the subagent that is
+/// calling, so the verifier subagent's attempt is bound to it. Copilot's hooks
+/// do not name a subagent's type, so interlock launches the verifier itself.
+fn handoff(target: Target, name: &str) -> String {
+    const PROMPT: &str = "> Verify interlock task `<id>` in the repository at `<absolute path of the repository root>`. \
+Host: `{host}`. Open your own verifier attempt, have interlock run every check on the submitted files, record one \
+assessment per criterion, end your attempt, and reply with your attempt id and one line per criterion. If a review \
+of this task listed findings to act on, check each one: `<findings, or \"none\">`.";
+    match target {
+        Target::Copilot => {
+            "Run `interlock verify <id> --host copilot` from the repository root. Copilot does not tell \
+interlock's hooks which subagent is calling, so interlock launches the independent verifier itself: a separate \
+session with read and test tools only, on exactly the submitted files, which records its own evidence; interlock then \
+applies what the evidence allows. Do not open a verifier attempt yourself: this session did the work, and the hooks \
+refuse it."
+                .into()
+        }
+        Target::ClaudeCode => format!(
+            "Call the Agent tool with `subagent_type: \"{}\"` and this prompt, filled in:\n\n{}\n\nThe hooks see the \
+verifier subagent's own identity and bind its attempt to it, so only it can use the attempt's credentials, and its \
+assessments count. A verifier attempt opened any other way is unbound, and this session, which did the work, may not \
+open one at all.",
+            target.agent_ref(name),
+            PROMPT.replace("{host}", "claude-code")
+        ),
+        Target::AgentSkills => format!(
+            "Where interlock knows your host (`copilot` or `claude-code`), run `interlock verify <id> --host <host>`: \
+interlock launches the independent verifier itself. Otherwise start a sub-agent that has read and shell tools only, \
+with `references/{name}-agent.md` as its instructions and this prompt, filled in:\n\n{}\n\nA verifier interlock \
+cannot bind is unbound: its assessments count only where interlock ran the criterion's check.",
+            PROMPT.replace("{host}", "<host>")
+        ),
+    }
+}
+
 /// Host tool names for an agent's host-neutral tools.
-fn agent_tools(target: Target, tools: &[String]) -> Vec<String> {
+fn agent_tools(tools: &[String]) -> Vec<String> {
     let mut out: Vec<String> = Vec::new();
     for t in tools {
-        let names: &[&str] = match (target, t.as_str()) {
-            (Target::Copilot, "read") => &["read", "search"],
-            (Target::Copilot, "shell") => &["execute"],
-            (Target::Copilot, "edit") => &["edit"],
-            (Target::Copilot, "web") => &["web"],
-            (_, "read") => &["Read", "Grep", "Glob"],
-            (_, "shell") => &["Bash"],
-            (_, "edit") => &["Edit", "Write"],
-            (_, _) => &["WebFetch"],
+        let names: &[&str] = match t.as_str() {
+            "read" => &["Read", "Grep", "Glob"],
+            "shell" => &["Bash"],
+            "edit" => &["Edit", "Write"],
+            _ => &["WebFetch"],
         };
         for n in names {
             if !out.iter().any(|o| o == n) {
@@ -481,7 +513,7 @@ pub fn generate(catalog: &Catalog, target: Target) -> Result<Output> {
         let ctx = format!("skills/{}", m.name);
         let dir = target.skill_dir(&m.name);
         let mut fm = Frontmatter::default();
-        fm.push("name", Value::Str(m.name.clone()));
+        fm.push("name", Value::Str(target.skill_name(&m.name)));
         fm.push("description", Value::Str(m.description.clone()));
         match target {
             Target::AgentSkills => {
@@ -527,16 +559,10 @@ pub fn generate(catalog: &Catalog, target: Target) -> Result<Output> {
     for agent in &catalog.agents {
         let m = &agent.meta;
         let body = render(&agent.body, target, catalog, &format!("agents/{}/AGENT.md", m.name))?;
-        let tools = agent_tools(target, &m.tools);
+        let tools = agent_tools(&m.tools);
         match target {
-            Target::Copilot => {
-                let mut fm = Frontmatter::default();
-                fm.push("name", Value::Str(target.agent_ref(&m.name)));
-                fm.push("description", Value::Str(m.description.clone()));
-                fm.push("tools", Value::List(tools));
-                let path = PathBuf::from(".github/agents").join(format!("{}.agent.md", target.agent_ref(&m.name)));
-                files.insert(path, format!("{}\n{}", fm.render(), body));
-            }
+            // Copilot verifies through `interlock verify`, so it gets no custom agent.
+            Target::Copilot => {}
             Target::ClaudeCode => {
                 let mut fm = Frontmatter::default();
                 fm.push("name", Value::Str(m.name.clone()));

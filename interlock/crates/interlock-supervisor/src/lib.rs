@@ -7,5 +7,6 @@ pub mod guided;
 pub mod hook;
 pub mod prompts;
 mod run;
+pub mod state_paths;
 
 pub use run::{RunConfig, RunError, RunReport, SessionReport, Supervisor};

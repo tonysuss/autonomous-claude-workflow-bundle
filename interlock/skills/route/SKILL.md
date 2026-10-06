@@ -15,24 +15,26 @@ If a refactor turns up a real bug or a missing feature, that is a second task. I
 
 ## 2. Write the criteria
 
-Open `references/task-templates.md` and copy the template for the workflow. Each criterion is one statement that must hold, and, wherever a command can show it, a `check` that interlock will run itself.
+Copy the template for the workflow from `references/task-templates.md`. Each criterion is one statement that must hold, and, wherever a command can show it, a `check` that interlock will run itself.
 
 - **Make each check fail for the right reason.** A reproduction must exit non-zero while the problem exists (`baseline = "fails"`). A regression guard must pass today and run real tests (`baseline = "passes"`). interlock runs both on the input snapshot and refuses a task whose checks prove nothing.
-- **Short checks go inline** (`python3 -c '...'`, `cargo test name`). A longer one goes in a script under `checks/` that you commit before step 4, so the input snapshot holds it. Files a check runs are protected: no result may change them.
-- **Independent where it matters.** The criterion that captures the request gets `producer = "independent"`: only the separate verifier can pass it. Routine guards can be `producer = "self"`.
-- **Scope** lists the files and globs the work may change. A result that changes anything else is rejected. Investigations change nothing; leave their scope empty.
+- **Short checks go inline** (`python3 -c '...'`, `cargo test name`), so nothing needs committing. Files a check runs are protected: no result may change them.
+- **A longer check needs a script under `checks/`, committed before step 4,** because the input snapshot is a commit. That commit lands on the person's current branch, so tell them first: name the file, the branch, and the commit message, and wait for their go-ahead when they are at the keyboard. If they decline, keep the check inline.
+- **Independent where it matters.** The criterion that captures the request gets `producer = "independent"`: only an independent verifier can pass it. Routine guards can be `producer = "self"`.
+- **Scope** lists the files and globs the work may change. An empty scope allows no change at all, which is right for an investigation; `["**"]` allows any. A result that changes anything else is rejected.
 
 Show the person the criteria in a few lines and go on. Ask only if the request is genuinely ambiguous about what done means.
 
 ## 3. Create the task
 
-From the repository root:
+From the repository root, with the task's TOML on stdin, so no file is written:
 
 ```bash
 interlock init                                  # once per repository; safe to repeat
-mkdir -p .interlock/tasks
-# write .interlock/tasks/<id>.toml from the template
-interlock task create .interlock/tasks/<id>.toml
+interlock task create - <<'EOF'
+id = "<id>"
+...the template, filled in...
+EOF
 ```
 
 Task ids are short, lowercase and hyphenated, like `export-retry`. A refusal names the field to fix.
@@ -44,7 +46,7 @@ interlock task ready <id> --base "$(git rev-parse HEAD)"
 interlock status <id>
 ```
 
-The status should read `ready`. Commit anything the checks need before this step; uncommitted files are not in the snapshot.
+The status should read `ready`. Uncommitted files are not in the snapshot.
 
 ## 5. Hand off
 

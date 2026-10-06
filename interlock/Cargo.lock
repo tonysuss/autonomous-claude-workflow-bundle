@@ -554,9 +554,11 @@ dependencies = [
 name = "interlock-skillgen"
 version = "0.1.0"
 dependencies = [
+ "hex",
  "interlock-adapter",
  "serde",
  "serde_json",
+ "sha2",
  "tempfile",
  "thiserror",
  "toml",
@@ -586,6 +588,7 @@ dependencies = [
  "interlock-core",
  "interlock-schema",
  "interlock-store",
+ "rusqlite",
  "serde",
  "serde_json",
  "tempfile",

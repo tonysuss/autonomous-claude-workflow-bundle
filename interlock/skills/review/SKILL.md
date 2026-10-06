@@ -2,6 +2,8 @@
 
 Challenge a submitted result before it is verified. The deliverable is a judged list of findings, each with its evidence. Review informs; it does not decide. Findings that break a criterion go to the verifier, whose evidence interlock counts. Read `references/interlock-basics.md` once per session.
 
+Review runs in the working session, usually the one that did the work, so on its own it is a second look, not an independent one. Two things make it stronger: a reviewer on a different model (step 3), and the verifier, which checks every act-on finding independently.
+
 ## 1. Open a reviewer attempt
 
 ```bash
@@ -15,7 +17,7 @@ Keep `attempt.id`, `attempt.worktree` and `token`. The worktree holds exactly th
 cd <worktree> && git show --stat HEAD && git show HEAD
 ```
 
-The reviewer grant is read-only. Do not edit anything here.
+The reviewer grant is read-only, and a reviewer records no evidence. Do not edit anything here.
 
 ## 2. State the intent
 
@@ -32,7 +34,7 @@ Read the whole change against the intent and the criteria. Look for:
 
 For each finding, gather evidence: the `path:line`, and wherever possible a command that shows the problem. A finding you cannot support is a hunch; label it so. Grade claims about intent or history with `references/confidence-tiers.md`.
 
-If your host can run other agents or models, a second reviewer given the same prompt adds signal: findings two reviewers raise on their own are the strongest.
+Offer the person an independent second reviewer, as pstack's interrogate does: the same prompt (the intent, the diff, and this list of things to look for) given to a subagent on a different model family, read-only, whose findings you merge with yours. Findings two reviewers raise on their own are the strongest signal; a lone finding still gets read. Ask before starting one, since it costs a second model's time.
 
 ## 4. Judge each finding
 
@@ -42,6 +44,9 @@ Use `references/lead-judgment.md`: you are the lead reviewer, not a neutral aggr
 
 ```bash
 interlock attempt end <attempt.id> --token <token> --note "review: <n> act on, <n> consider, <n> noted, <n> dismissed"
+interlock note add --task <id> --kind review --file - <<'EOF'
+<the intent paragraph, then act on, consider, noted, dismissed, each finding with its evidence and reason>
+EOF
 ```
 
-Then write the full judged list to `.interlock/reviews/<id>.md` in the repository root, and show it to the person. Pass the act-on findings to {{skill:verify}}, which hands them to the verifier to check; a finding it reproduces fails its criterion, and interlock sends the task back for rework.
+Show the person the judged list. Pass the act-on findings to {{skill:verify}}, which hands them to the verifier to check; a finding it reproduces fails its criterion, and interlock sends the task back for rework.

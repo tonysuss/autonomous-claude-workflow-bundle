@@ -14,8 +14,24 @@ pub struct GitError {
 
 pub type Result<T> = std::result::Result<T, GitError>;
 
+/// Variables that would point git at another repository, index or object
+/// store than the one interlock names. interlock's own git calls never inherit them.
+const GIT_REDIRECTS: &[&str] = &[
+    "GIT_DIR",
+    "GIT_WORK_TREE",
+    "GIT_INDEX_FILE",
+    "GIT_OBJECT_DIRECTORY",
+    "GIT_ALTERNATE_OBJECT_DIRECTORIES",
+    "GIT_COMMON_DIR",
+    "GIT_NAMESPACE",
+];
+
 fn git(dir: &Path, args: &[&str], env: &[(&str, &str)]) -> Result<String> {
-    let out = Command::new("git")
+    let mut cmd = Command::new("git");
+    for var in GIT_REDIRECTS {
+        cmd.env_remove(var);
+    }
+    let out = cmd
         .args(args)
         .current_dir(dir)
         .envs(env.iter().copied())

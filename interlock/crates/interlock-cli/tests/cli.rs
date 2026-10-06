@@ -1,11 +1,10 @@
-//! End-to-end runs of the `interlock` binary against a store on disk.
+//! End-to-end runs of the `interlock` binary against a store on disk, in a
+//! git repository: interlock reads every result's changes from its tree.
 
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::process::{Command, Output};
 
 use serde_json::Value;
-
-const TREE_A: &str = "aaaaaaa1111111111111111111111111111111111";
 
 const TASK: &str = r#"
 id = "export-retry"
@@ -23,6 +22,7 @@ paths = ["src/export/**"]
 [[criterion]]
 id = "repro"
 statement = "Retrying an export produces no duplicate rows"
+check = "grep -rq idempotent src"
 min_strength = "observed"
 producer = "independent"
 
@@ -38,11 +38,35 @@ const CAPS: &str = "session_start,session_collect,session_cancel,tool_restrictio
 
 struct Env {
     dir: tempfile::TempDir,
+    /// The commit tasks start from.
+    base: String,
+    /// An output tree that changes only src/export/retry.rs.
+    tree: String,
+}
+
+fn git_out(dir: &Path, args: &[&str]) -> String {
+    let out = Command::new("git").args(args).current_dir(dir).output().unwrap();
+    assert!(out.status.success(), "git {args:?}: {}", String::from_utf8_lossy(&out.stderr));
+    String::from_utf8(out.stdout).unwrap().trim().to_string()
 }
 
 impl Env {
     fn new() -> Env {
-        let env = Env { dir: tempfile::tempdir().unwrap() };
+        let dir = tempfile::tempdir().unwrap();
+        let p = dir.path();
+        std::fs::create_dir_all(p.join("src/export")).unwrap();
+        std::fs::write(p.join("src/export/retry.rs"), "// retries insert again\n").unwrap();
+        std::fs::write(p.join(".gitignore"), ".interlock/\n*.toml\n*.json\n").unwrap();
+        git_out(p, &["init", "-q", "-b", "main"]);
+        git_out(p, &["add", "-A"]);
+        git_out(p, &["-c", "user.name=t", "-c", "user.email=t@t", "commit", "-q", "-m", "init"]);
+        let base = git_out(p, &["rev-parse", "HEAD"]);
+        std::fs::write(p.join("src/export/retry.rs"), "// retries are idempotent\n").unwrap();
+        git_out(p, &["add", "-A"]);
+        let tree = git_out(p, &["write-tree"]);
+        git_out(p, &["reset", "-q"]);
+        std::fs::write(p.join("src/export/retry.rs"), "// retries insert again\n").unwrap();
+        let env = Env { dir, base, tree };
         std::fs::write(env.path("task.toml"), TASK).unwrap();
         env.ok(&["init"]);
         env
@@ -55,7 +79,7 @@ impl Env {
     fn cmd(&self, args: &[&str]) -> Command {
         let mut c = Command::new(env!("CARGO_BIN_EXE_interlock"));
         c.args(args)
-            .env("INTERLOCK_DB", self.path("state.db"))
+            .env("INTERLOCK_DB", self.path(".interlock/state.db"))
             .env_remove("INTERLOCK_FAULT")
             .env_remove("INTERLOCK_TOKEN")
             .env_remove("INTERLOCK_ATTEMPT")
@@ -74,7 +98,16 @@ impl Env {
     }
 
     fn start(&self, role: &str) -> (String, String, u64) {
-        let v = self.ok(&[
+        let v = self.start_with(role, &[]);
+        (
+            v["attempt"]["id"].as_str().unwrap().into(),
+            v["token"].as_str().unwrap().into(),
+            v["attempt"]["epoch"].as_u64().unwrap(),
+        )
+    }
+
+    fn start_with(&self, role: &str, extra: &[&str]) -> Value {
+        let mut args = vec![
             "attempt",
             "start",
             "export-retry",
@@ -86,13 +119,11 @@ impl Env {
             "headless",
             "--capabilities",
             CAPS,
-        ]);
+        ];
+        args.extend(extra);
+        let v = self.ok(&args);
         assert_eq!(v["started"], "yes", "{v}");
-        (
-            v["attempt"]["id"].as_str().unwrap().into(),
-            v["token"].as_str().unwrap().into(),
-            v["attempt"]["epoch"].as_u64().unwrap(),
-        )
+        v
     }
 
     fn state(&self) -> String {
@@ -102,7 +133,7 @@ impl Env {
 
 fn to_running(env: &Env) -> (String, String, u64) {
     env.ok(&["task", "create", "task.toml"]);
-    env.ok(&["task", "ready", "export-retry", "--base", "e43c7ee"]);
+    env.ok(&["task", "ready", "export-retry", "--base", &env.base]);
     env.start("worker")
 }
 
@@ -117,7 +148,7 @@ fn submit(env: &Env, attempt: &str, token: &str, epoch: u64, event: &str) -> Out
         "--epoch",
         &epoch.to_string(),
         "--tree",
-        TREE_A,
+        &env.tree,
         "--summary",
         "made retries idempotent",
         "--event-id",
@@ -143,7 +174,7 @@ fn a_bug_fix_runs_from_create_to_done() {
         "--strength",
         "tested",
         "--tree",
-        TREE_A,
+        &env.tree,
     ]);
     assert_eq!(env.state(), "awaiting_verification");
 
@@ -152,7 +183,13 @@ fn a_bug_fix_runs_from_create_to_done() {
     let next = &status["next_moves"][0];
     assert_eq!((next["signal"].as_str(), next["ready"].as_bool()), (Some("G4"), Some(false)));
 
-    let (v, vt, _) = env.start("verifier");
+    // A verifier opened from the command line is unbound; interlock runs the check it counts.
+    let started = env.start_with("verifier", &["--worktree", "auto"]);
+    assert_eq!(started["attempt"]["binding"]["via"], "unbound", "{started:#}");
+    let v = started["attempt"]["id"].as_str().unwrap().to_string();
+    let vt = started["token"].as_str().unwrap().to_string();
+    let check = env.ok(&["check", "run", "--criterion", "repro", "--attempt", &v, "--token", &vt]);
+    assert_eq!(check["passed"], true, "{check:#}");
     env.ok(&[
         "assess",
         "add",
@@ -165,7 +202,7 @@ fn a_bug_fix_runs_from_create_to_done() {
         "--strength",
         "observed",
         "--tree",
-        TREE_A,
+        "auto",
     ]);
     let advanced = env.ok(&["advance", "export-retry"]);
     let signals: Vec<&str> =
@@ -195,7 +232,7 @@ fn refusals_exit_2_with_a_json_reason() {
         "--strength",
         "observed",
         "--tree",
-        TREE_A,
+        &env.tree,
     ]);
     assert_eq!(out.status.code(), Some(2));
     let err: Value = serde_json::from_slice(&out.stderr).unwrap();
@@ -213,7 +250,7 @@ fn refusals_exit_2_with_a_json_reason() {
         "--strength",
         "observed",
         "--tree",
-        TREE_A,
+        &env.tree,
     ]);
     assert_eq!(out.status.code(), Some(4), "bad token");
 }
@@ -234,7 +271,7 @@ fn a_crash_mid_apply_loses_nothing_and_the_replay_applies_once() {
             "--epoch",
             "1",
             "--tree",
-            TREE_A,
+            &env.tree,
             "--event-id",
             "evt-crash",
         ])
@@ -329,7 +366,7 @@ fn the_brief_is_built_from_records() {
         "--strength",
         "failed",
         "--tree",
-        TREE_A,
+        &env.tree,
         "--note",
         "a retry after a timeout still inserts twice",
     ]);
@@ -395,8 +432,7 @@ baseline = "passes"
 "#,
     )
     .unwrap();
-    std::fs::write(p.join(".gitignore"), "state.db*\nscratch/\nartifacts/\n__pycache__/\n*.toml\n").unwrap();
-    git(p, &["init", "-q", "-b", "main"]);
+    std::fs::write(p.join(".gitignore"), ".interlock/\n__pycache__/\n*.toml\n").unwrap();
     git(p, &["add", "-A"]);
     git(p, &["-c", "user.name=t", "-c", "user.email=t@t", "commit", "-q", "-m", "init"]);
     env.ok(&["task", "create", "checked.toml"]);

@@ -4,7 +4,7 @@
 
 use std::path::{Path, PathBuf};
 
-use interlock_adapter::hooks::{HookEvent, HookResponse, action_of, parse_event};
+use interlock_adapter::hooks::{Action, HookEvent, HookResponse, action_of, parse_event};
 use interlock_core::evidence::{same_currency, same_tree};
 use interlock_core::grants::{self, Verdict};
 use interlock_core::scope::{Placement, place};
@@ -13,6 +13,7 @@ use interlock_store::Store;
 use serde_json::Value;
 
 use crate::git;
+use crate::state_paths::{is_interlock_state_path, normalize, state_paths_in_command};
 
 /// Where the hook finds its attempt, from the session's environment.
 #[derive(Debug, Clone)]
@@ -55,6 +56,30 @@ pub fn handle(ctx: &HookContext, payload: &Value, _now: Timestamp) -> HookRespon
     }
 }
 
+/// Denies an action that would change, or a command that names, interlock's
+/// state: everything under the store's directory except `own`, the caller's
+/// own worktree. Paths resolve against `own` (edits) or `cwd` (commands).
+pub fn state_guard(db: &Path, action: &Action, cwd: Option<&Path>, own: Option<&Path>) -> Option<HookResponse> {
+    let interlock_dir = db.parent().map(PathBuf::from).unwrap_or_default();
+    let edit_root = own.or(cwd).map(Path::to_path_buf).unwrap_or_default();
+    let mut named: Vec<String> = action
+        .writes
+        .iter()
+        .filter(|p| is_interlock_state_path(&normalize(p, &edit_root), &interlock_dir, own))
+        .map(|p| p.display().to_string())
+        .collect();
+    if let Some(cmd) = &action.command {
+        let shell_dir = cwd.map(Path::to_path_buf).unwrap_or_else(|| edit_root.clone());
+        named.extend(state_paths_in_command(cmd, &shell_dir, &interlock_dir, own));
+    }
+    (!named.is_empty()).then(|| {
+        HookResponse::deny(&format!(
+            "{} is interlock's own state and off limits; report through the interlock command",
+            named.join(", ")
+        ))
+    })
+}
+
 fn pre_tool_use(
     ctx: &HookContext,
     attempt_id: &str,
@@ -66,7 +91,9 @@ fn pre_tool_use(
     if let Some(cmd) = &action.command {
         let db = ctx.db.display().to_string();
         if cmd.contains(&db) || cmd.contains("state.db") {
-            return HookResponse::deny("interlock's store is off limits; report through the interlock command");
+            return HookResponse::deny(
+                "interlock's own state (its store) is off limits; report through the interlock command",
+            );
         }
     }
     if !action.governed {
@@ -83,6 +110,9 @@ fn pre_tool_use(
     };
     if !matches!(attempt.status, AttemptStatus::Running | AttemptStatus::Submitted) {
         return HookResponse::deny(&format!("attempt {attempt_id} is no longer active ({:?})", attempt.status));
+    }
+    if let Some(denied) = state_guard(&ctx.db, &action, cwd.as_deref(), attempt.worktree.as_deref().map(Path::new)) {
+        return denied;
     }
     if !action.writes.is_empty() {
         let root = attempt.worktree.clone().map(PathBuf::from).or(cwd).unwrap_or_default();
@@ -168,29 +198,31 @@ fn stop(ctx: &HookContext, attempt_id: &str, cwd: Option<PathBuf>) -> HookRespon
     if missing_records.is_empty() && missing_runs.is_empty() {
         return HookResponse::allow();
     }
+    // Every suggested command is complete; a headless session has its token in the environment.
+    let token = if ctx.headless { "\"$INTERLOCK_TOKEN\"" } else { "<your token from attempt start>" };
+    let auth = format!("--attempt {} --token {token}", attempt.id);
     let mut steps = Vec::new();
-    if !missing_runs.is_empty() {
+    for c in &missing_runs {
         steps.push(format!(
-            "have interlock run the check on your current files for: {} (interlock check run --criterion <id>)",
-            missing_runs.join(", ")
+            "have interlock run the check for {c} on your current files: `interlock check run --criterion {c} {auth}`"
         ));
     }
-    if !missing_records.is_empty() {
+    let strengths = "<observed|tested|static|failed|blocked>";
+    for c in &missing_records {
+        // A worker is only ever asked for claims; only a verifier records assessments.
         steps.push(match attempt.role {
             Role::Worker => format!(
-                "record a claim for: {} (interlock claim add --criterion <id> --strength \
-                 <observed|tested|static|failed|blocked> --tree auto --ref \"<command>\" --note \"<what you saw>\")",
-                missing_records.join(", ")
+                "record a claim for {c}: `interlock claim add --criterion {c} --strength {strengths} --tree auto \
+                 --ref \"<command you ran>\" --note \"<what you saw>\" {auth}`"
             ),
             _ => format!(
-                "record an assessment for: {} (interlock assess add --criterion <id> --strength \
-                 <observed|tested|static|failed|blocked> --ref \"<command>\" --note \"<what you saw>\")",
-                missing_records.join(", ")
+                "record an assessment for {c}: `interlock assess add --criterion {c} --strength {strengths} --tree auto \
+                 --ref \"<command you ran>\" --note \"<what you saw>\" {auth}`"
             ),
         });
     }
     let reason =
-        format!("Before you finish, {}. Evidence made before your last edit no longer counts.", steps.join(", then "));
+        format!("Before you finish, {}. Evidence made before your last edit no longer counts.", steps.join("; then "));
     HookResponse::block_stop(&reason)
 }
 
@@ -336,7 +368,7 @@ mod tests {
         let s = setup(true);
         let held = stop(&s, false);
         assert!(held.stdout.contains("\"decision\":\"block\""));
-        assert!(held.stdout.contains("record a claim for: tests"), "{}", held.stdout);
+        assert!(held.stdout.contains("record a claim for tests"), "{}", held.stdout);
         assert_eq!(stop(&s, true), HookResponse::allow(), "never holds twice in a row");
 
         // A claim for the current tree releases it; a later edit makes it stale again.
@@ -377,7 +409,7 @@ mod tests {
             .unwrap();
         drop(store);
         let held = stop(&s, false);
-        assert!(held.stdout.contains("interlock check run --criterion <id>"), "{}", held.stdout);
+        assert!(held.stdout.contains("interlock check run --criterion tests --attempt"), "{}", held.stdout);
         let mut store = Store::open(&s.ctx.db).unwrap();
         crate::checks::run_check(
             &mut store,
@@ -394,6 +426,6 @@ mod tests {
         .unwrap();
         let still = stop(&s, false);
         assert!(!still.stdout.contains("check run"), "the run is recorded: {}", still.stdout);
-        assert!(still.stdout.contains("record a claim for: tests"), "{}", still.stdout);
+        assert!(still.stdout.contains("record a claim for tests"), "{}", still.stdout);
     }
 }

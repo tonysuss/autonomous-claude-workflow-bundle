@@ -30,7 +30,15 @@ If your host can run sub-agents, give each sketch to a separate one with the sam
 
 Score each sketch against the rubric point by point. Pick a base; graft the one or two best ideas from the others by hand so the result keeps one mental model. If the sketches diverge wildly, the framing was wrong: reframe rather than average.
 
-Write the decision with `references/rationale.md` to `.interlock/designs/<id>.md` in the repository root, and show the person the comparison table.
+Write the decision with `references/rationale.md` and keep it on the task, where it outlives the session and no hook stands in its way:
+
+```bash
+interlock note add --task <id> --kind design --file - <<'EOF'
+<the rationale>
+EOF
+```
+
+Show the person the comparison table.
 
 ## 5. Implement against it
 

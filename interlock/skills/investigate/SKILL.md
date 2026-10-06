@@ -21,7 +21,7 @@ The goal is the question. The criteria say what the answer must show.
 interlock attempt start <id> --role worker --host {{host}} --worktree auto
 ```
 
-Keep `attempt.id`, `attempt.epoch`, `attempt.worktree` and `token`. The worktree holds the repository at the input snapshot. Read there. Editing is denied for investigations, and nothing you write would count.
+Keep `attempt.id`, `attempt.epoch`, `attempt.worktree` and `token`. The worktree holds the repository at the input snapshot. Read there. An investigation changes nothing: the hooks deny this attempt the edit tools, and interlock rejects its result if the worktree's files differ from the snapshot in any way, however they were changed. Put scratch files under /tmp.
 
 ## 3. How it works
 
@@ -59,6 +59,12 @@ cd <worktree> && interlock result submit --epoch <attempt.epoch> --tree auto \
   --summary "<the answer, with its citations>" --attempt <attempt.id> --token <token>
 ```
 
-Use `observed` only for what you ran and saw; `static` for what you only read. The summary is the record of your answer: keep the citations in it.
+Use `observed` only for what you ran and saw; `static` for what you only read. The summary is the record of your answer: keep the citations in it. Keep the full answer on the task as well, so it outlives this session:
+
+```bash
+interlock note add --task <id> --kind answer --file - <<'EOF'
+<the answer, in the answer format>
+EOF
+```
 
 The task now awaits verification. Invoke {{skill:verify}} with the task id: an independent verifier rechecks your citations and reruns your commands. Give the person the answer when the task is verified.

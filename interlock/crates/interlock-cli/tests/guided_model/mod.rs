@@ -6,7 +6,10 @@
 //!
 //! A step's arguments may use placeholders that the model fills from the
 //! JSON of the latest `interlock attempt start` in the same conversation, as
-//! an agent would read it: `{attempt}`, `{token}`, `{epoch}`, `{worktree}`.
+//! an agent would read it: `{attempt}`, `{token}`, `{epoch}`, `{worktree}`;
+//! and `{model_url}`, this model's own address.
+
+#![allow(dead_code)]
 
 use std::io::{BufRead, BufReader, Read, Write};
 use std::net::{TcpListener, TcpStream};
@@ -44,6 +47,7 @@ pub struct Conversation {
 #[derive(Default)]
 struct State {
     log: Vec<Value>,
+    port: u16,
 }
 
 pub struct GuidedModel {
@@ -55,7 +59,7 @@ impl GuidedModel {
     pub fn start(conversations: Vec<Conversation>) -> GuidedModel {
         let listener = TcpListener::bind("127.0.0.1:0").unwrap();
         let port = listener.local_addr().unwrap().port();
-        let state = Arc::new(Mutex::new(State::default()));
+        let state = Arc::new(Mutex::new(State { port, ..State::default() }));
         let shared = state.clone();
         let conversations = Arc::new(conversations);
         std::thread::spawn(move || {
@@ -133,10 +137,14 @@ fn respond(req: &Value, conversations: &[Conversation], state: &Mutex<State>) ->
         .flatten()
         .filter_map(|t| t["function"]["name"].as_str().map(String::from))
         .collect();
+    // Everything the host added since the model's last turn: tool results, and any skill text it injected.
+    let since = msgs.iter().rposition(|m| m["role"] == "assistant").map_or(0, |i| i + 1);
+    let new_text: Vec<String> = msgs[since..].iter().filter(|m| m["role"] != "system").map(text_of).collect();
     state.lock().unwrap().log.push(json!({
         "conversation": conversation.map(|c| c.marker.clone()),
         "tools_done": done,
         "last": msgs.last(),
+        "new_text": new_text.join("\n"),
         "offered": offered,
     }));
     let Some(conversation) = conversation else {
@@ -144,7 +152,9 @@ fn respond(req: &Value, conversations: &[Conversation], state: &Mutex<State>) ->
     };
     match conversation.steps.get(done) {
         Some(step) if offered.contains(&step.tool) => {
-            let mut args = fill(&step.args, &attempt_values(&msgs));
+            let mut values = attempt_values(&msgs);
+            values.push(("{model_url}", format!("http://127.0.0.1:{}/v1", state.lock().unwrap().port)));
+            let mut args = fill(&step.args, &values);
             let schema = req["tools"]
                 .as_array()
                 .into_iter()

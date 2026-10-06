@@ -6,14 +6,15 @@ interlock decides when work advances. You propose; it checks each move against r
 
 | Step | Command | Who |
 | --- | --- | --- |
-| Create the task | `interlock task create .interlock/tasks/<id>.toml` | route |
+| Create the task | `interlock task create - <<'EOF'` ... `EOF` (the task's TOML on stdin) | route |
 | Record the input snapshot (G1) | `interlock task ready <id> --base "$(git rev-parse HEAD)"` | route |
 | Open a worker attempt (G2) | `interlock attempt start <id> --role worker --host {{host}} --worktree auto` | implement, investigate |
 | Have interlock run a check | `interlock check run --criterion <c> [--target base]` | worker, verifier |
 | Record a worker claim | `interlock claim add --criterion <c> --strength <s> --tree auto --ref "<command>" --note "<what you saw>"` | worker |
 | Submit the result (G3) | `interlock result submit --epoch <n> --tree auto --summary "<what changed and how you checked>"` | worker |
-| Verify independently | the verifier agent opens its own attempt and records assessments | verify |
+| Verify independently | the verify skill: an independent verifier records its own assessments | verify |
 | Apply what the evidence allows (G4, G7, R1, R2) | `interlock advance <id>` | verify |
+| Keep a design, review or answer on the task | `interlock note add --task <id> --kind <design\|review\|answer> --file - <<'EOF'` ... `EOF` | design, review, investigate |
 | Where things stand | `interlock status <id>` and `interlock task log <id>` | anyone |
 | Resume from records | `interlock brief <id>` | anyone |
 
@@ -29,7 +30,13 @@ interlock claim add --attempt <attempt.id> --token <token> ...
 
 The flags `--attempt` and `--token` work on `check run`, `claim add`, `assess add` and `result submit`. `interlock attempt end <attempt.id> --token <token>` closes an attempt.
 
-With `--worktree auto`, interlock makes a fresh git worktree for the attempt under `.interlock/worktrees/` and prints its path. Work there. Run interlock's evidence commands from inside it: `check run` and `--tree auto` read the files in the directory you run them from. Prefix commands with `cd <worktree> &&` so a shell that forgets its directory cannot point them elsewhere.
+With `--worktree auto`, interlock makes a fresh git worktree for the attempt under `.interlock/worktrees/` and prints its path. Work there. `--tree auto` always means that worktree's files, wherever you run the command. Prefix commands with `cd <worktree> &&` so `check run` runs the check on your files.
+
+The hooks bind the attempt to the agent that opened it, as the host reports it, and govern only that agent. A verifier attempt's credentials work only for the verifier it is bound to.
+
+## Scope
+
+A task's `scope` lists the files and globs its result may change. An empty scope allows no change at all; `["**"]` allows any. interlock reads what a result changes from the result's own tree, and rejects anything outside the scope, any file the task's checks run, and, for an investigation, any change.
 
 ## Evidence strength
 
@@ -45,7 +52,7 @@ A criterion that names a check needs a passing run that interlock made itself (`
 
 ## Rules
 
-- Report only through `interlock`. Never read or write its store, never pass `--operator`, never run `interlock grant`.
+- Report only through `interlock`. Everything under `.interlock/` except your attempt's worktree is interlock's state: do not read, write, move or delete it, and never pass `--operator` or run `interlock grant`.
 - Do not commit, push, or create branches in an attempt's worktree. interlock records the worktree's files itself.
 - If a hook denies or asks about a tool call, the reason says why. Do not work around it; tell the person.
 - Read `interlock status <id>` after each move. Its `next_moves` list what is still needed.

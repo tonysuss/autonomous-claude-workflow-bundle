@@ -15,7 +15,7 @@ use interlock_core::evidence;
 use interlock_core::grants::{HostPolicy, Profile};
 use interlock_core::lifecycle::Move;
 use interlock_core::workflow::Mode;
-use interlock_schema::{Baseline, HostRef, ResultStatus, Role, RunTarget, Snapshot, State};
+use interlock_schema::{Baseline, Binding, HostRef, ResultStatus, Role, RunTarget, Snapshot, State};
 use interlock_store::{StartAttempt, Started, Store, SubmitResult};
 use serde::Serialize;
 
@@ -316,9 +316,43 @@ impl Supervisor {
             Utc::now(),
         )?;
         Ok(match started {
-            Started::Yes { attempt, token, .. } => Ok((attempt, token)),
+            Started::Yes { attempt, token, .. } => {
+                // interlock launches this session itself, so it knows who holds the attempt.
+                let attempt = self.store.bind_attempt(&attempt.id, Binding::interlock_launched())?;
+                Ok((attempt, token))
+            }
             Started::Blocked { moved } => Err(moved),
         })
+    }
+
+    /// One independent verifier session for a task awaiting verification,
+    /// launched by interlock: for guided sessions on hosts that cannot name a
+    /// verifier subagent to the hooks. Applies what the evidence then allows.
+    pub fn verify(&mut self, task_id: &str) -> Result<RunReport> {
+        let dir = self.dir();
+        std::fs::create_dir_all(&dir).map_err(|e| RunError::Other(e.to_string()))?;
+        let _lock = Lock::acquire(dir.join("supervisor.lock"))?;
+        let plugin = dir.join("plugin");
+        write_hooks_plugin(&plugin, &self.cfg.interlock_bin).map_err(|e| RunError::Other(e.to_string()))?;
+        let task = self.store.task(task_id)?;
+        let mut report = RunReport {
+            task_id: task_id.into(),
+            host: self.host.name().into(),
+            final_state: task.state,
+            stopped_because: String::new(),
+            reconciled: vec![],
+            baseline: vec![],
+            sessions: vec![],
+        };
+        if task.state != State::AwaitingVerification {
+            report.stopped_because = format!("the task is {}, not awaiting verification", task.state);
+            return Ok(report);
+        }
+        let session = self.verifier_session(task_id, &plugin)?;
+        report.sessions.push(session);
+        report.final_state = self.store.task(task_id)?.state;
+        report.stopped_because = "the verifier session ended".into();
+        Ok(report)
     }
 
     fn env(&self, attempt_id: &str, token: &str, tree: Option<&str>) -> Vec<(String, String)> {

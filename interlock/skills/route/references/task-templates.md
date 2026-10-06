@@ -2,6 +2,8 @@
 
 Copy one, then replace every `<...>`. Fields: `id`, `repository` (always `"."`), `workflow`, `intent`, optional `environment` (where checks run, like `linux-python3`), `[budget] max_attempts`, `[scope] paths`, and one `[[criterion]]` block per criterion with `id`, `statement`, optional `check`, `min_strength` (`observed`, `tested` or `static`), `producer` (`independent` or `self`), and optional `baseline` (`fails`, `passes` or `any`).
 
+Scope: an empty or missing `[scope]` allows no change at all; `paths = ["**"]` allows any. An investigation may never change a file, whatever its scope.
+
 ## Investigation
 
 ```toml

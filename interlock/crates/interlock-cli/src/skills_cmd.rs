@@ -7,6 +7,7 @@ use std::process::ExitCode;
 use anyhow::{Result, anyhow};
 use clap::Subcommand;
 use interlock_adapter::HostReport;
+use interlock_skillgen::safe_write::SafeWriter;
 use interlock_skillgen::validate::{self, Severity};
 use interlock_skillgen::{Catalog, Target};
 use serde_json::json;
@@ -23,8 +24,12 @@ pub enum SkillsCmd {
         /// Read canonical skills from this interlock/ directory instead of the built-in copy.
         #[arg(long)]
         from: Option<PathBuf>,
+        /// Overwrite files interlock did not generate here, or that changed since it did.
+        #[arg(long)]
+        force: bool,
     },
-    /// Statically check a directory of skill folders.
+    /// Statically check generated skills: a folder of skill folders, a Claude Code
+    /// plugin, or a repository with .github/skills. Agent files are checked too.
     Validate {
         dir: PathBuf,
         /// Which fields to accept: agent-skills (the standard only), copilot or claude-code.
@@ -55,7 +60,7 @@ fn print(v: &serde_json::Value) {
 
 pub fn skills(cmd: &SkillsCmd) -> Result<ExitCode> {
     match cmd {
-        SkillsCmd::Generate { target: name, out, from } => {
+        SkillsCmd::Generate { target: name, out, from, force } => {
             let target = target(name)?;
             let output = interlock_skillgen::generate(&catalog(from.as_deref())?, target)?;
             let problems = validate::check_output(&output);
@@ -63,15 +68,20 @@ pub fn skills(cmd: &SkillsCmd) -> Result<ExitCode> {
                 print(&json!({"written": [], "problems": problems}));
                 return Ok(ExitCode::from(1));
             }
-            let written = output.write(out)?;
+            // The manifest lets a later run replace interlock's own files and nobody else's.
+            let mut writer = SafeWriter::new(out, Some(out.join(".interlock").join("generated.json")), *force)?;
+            output.write_with(&mut writer, Path::new(""))?;
+            let report = writer.finish()?;
             print(&json!({
                 "target": target.name(),
                 "out": out,
                 "skills": output.skill_names(),
-                "written": written,
+                "written": report.written,
+                "unchanged": report.unchanged,
+                "refused": report.refused,
                 "problems": problems,
             }));
-            Ok(ExitCode::SUCCESS)
+            Ok(if report.refused.is_empty() { ExitCode::SUCCESS } else { ExitCode::from(2) })
         }
         SkillsCmd::Validate { dir, target: name } => {
             let problems = validate::check_dir(dir, target(name)?)?;
@@ -103,9 +113,17 @@ pub fn skills(cmd: &SkillsCmd) -> Result<ExitCode> {
 }
 
 /// Installs the guided-session files for `host` in the repository at `repo`.
-pub fn setup(host: &str, repo: &Path, db: &Path, from: Option<&Path>, inspected: &HostReport) -> Result<ExitCode> {
+pub fn setup(
+    host: &str,
+    repo: &Path,
+    db: &Path,
+    from: Option<&Path>,
+    inspected: &HostReport,
+    force: bool,
+) -> Result<ExitCode> {
     let bin = std::env::current_exe()?;
-    let report = interlock_skillgen::setup::install(&catalog(from)?, host, repo, db, &bin)?;
+    let report = interlock_skillgen::setup::install(&catalog(from)?, host, repo, db, &bin, force)?;
+    let refused = !report.refused.is_empty();
     let mut out = serde_json::to_value(&report)?;
     out["host_report"] = json!({
         "installed": inspected.installed,
@@ -114,5 +132,5 @@ pub fn setup(host: &str, repo: &Path, db: &Path, from: Option<&Path>, inspected:
         "notes": inspected.notes,
     });
     print(&out);
-    Ok(ExitCode::SUCCESS)
+    Ok(if refused { ExitCode::from(2) } else { ExitCode::SUCCESS })
 }

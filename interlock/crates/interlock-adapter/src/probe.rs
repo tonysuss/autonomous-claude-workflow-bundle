@@ -1,6 +1,7 @@
 use std::io::Read;
 use std::path::PathBuf;
 use std::process::{Command, Stdio};
+use std::sync::{Arc, Mutex, mpsc};
 use std::time::{Duration, Instant};
 
 /// Finds and runs host binaries. Pure parsing lives in each adapter so it can
@@ -15,7 +16,7 @@ pub struct Probe {
 
 impl Default for Probe {
     fn default() -> Self {
-        Probe { overrides: vec![], timeout: Duration::from_secs(30) }
+        Probe { overrides: vec![], timeout: Duration::from_secs(15) }
     }
 }
 
@@ -38,10 +39,16 @@ impl Probe {
         std::env::split_paths(&path).map(|dir| dir.join(binary)).find(|p| p.is_file())
     }
 
-    /// Runs a command and returns stdout and stderr together. `None` if it
-    /// could not start or did not finish within the timeout; a hung probe is
-    /// killed with its whole process group.
+    /// Runs a command and returns stdout and stderr together, trying once more
+    /// if the first try hangs. `None` if neither try finished in time.
     pub fn run(&self, bin: &PathBuf, args: &[&str]) -> Option<(bool, String)> {
+        self.run_once(bin, args).or_else(|| self.run_once(bin, args))
+    }
+
+    /// One try. A hung probe is killed with its whole process group, and once
+    /// the probe exits its output is read for at most two seconds more, so a
+    /// background process that keeps the pipes open cannot hold interlock.
+    fn run_once(&self, bin: &PathBuf, args: &[&str]) -> Option<(bool, String)> {
         let mut cmd = Command::new(bin);
         cmd.args(args)
             .stdin(Stdio::null())
@@ -52,35 +59,55 @@ impl Probe {
         #[cfg(unix)]
         std::os::unix::process::CommandExt::process_group(&mut cmd, 0);
         let mut child = cmd.spawn().ok()?;
-        let drain = |mut pipe: Box<dyn Read + Send>| {
-            std::thread::spawn(move || {
-                let mut buf = Vec::new();
-                let _ = pipe.read_to_end(&mut buf);
-                buf
-            })
+        let group = child.id();
+        let kill_group = move || {
+            #[cfg(unix)]
+            let _ = Command::new("kill")
+                .args(["-s", "KILL", "--", &format!("-{group}")])
+                .stdout(Stdio::null())
+                .stderr(Stdio::null())
+                .status();
         };
-        let out = drain(Box::new(child.stdout.take()?));
-        let err = drain(Box::new(child.stderr.take()?));
+        // Readers append as they go, so whatever arrived is kept even if a pipe never closes.
+        let drain = |mut pipe: Box<dyn Read + Send>| {
+            let buf = Arc::new(Mutex::new(Vec::new()));
+            let (sink, (tx, rx)) = (buf.clone(), mpsc::channel::<()>());
+            std::thread::spawn(move || {
+                let mut chunk = [0u8; 8192];
+                while let Ok(n) = pipe.read(&mut chunk) {
+                    if n == 0 {
+                        break;
+                    }
+                    sink.lock().map(|mut b| b.extend_from_slice(&chunk[..n])).ok();
+                }
+                let _ = tx.send(());
+            });
+            (buf, rx)
+        };
+        let (out, out_done) = drain(Box::new(child.stdout.take()?));
+        let (err, err_done) = drain(Box::new(child.stderr.take()?));
         let started = Instant::now();
         let status = loop {
             if let Some(status) = child.try_wait().ok()? {
                 break status;
             }
             if started.elapsed() >= self.timeout {
-                #[cfg(unix)]
-                let _ = Command::new("kill")
-                    .args(["-s", "KILL", "--", &format!("-{}", child.id())])
-                    .stdout(Stdio::null())
-                    .stderr(Stdio::null())
-                    .status();
+                kill_group();
                 let _ = child.kill();
                 let _ = child.wait();
                 return None;
             }
             std::thread::sleep(Duration::from_millis(20));
         };
-        let mut text = String::from_utf8_lossy(&out.join().unwrap_or_default()).into_owned();
-        text.push_str(&String::from_utf8_lossy(&err.join().unwrap_or_default()));
+        let grace = Duration::from_secs(2);
+        if out_done.recv_timeout(grace).is_err() | err_done.recv_timeout(grace).is_err() {
+            kill_group();
+        }
+        let take = |b: &Arc<Mutex<Vec<u8>>>| {
+            String::from_utf8_lossy(&b.lock().map(|b| b.clone()).unwrap_or_default()).into_owned()
+        };
+        let mut text = take(&out);
+        text.push_str(&take(&err));
         Some((status.success(), text))
     }
 }
@@ -97,5 +124,14 @@ mod tests {
         assert!(started.elapsed() < Duration::from_secs(5));
         let (ok, out) = probe.run(&PathBuf::from("/bin/sh"), &["-c", "echo hi; echo err >&2"]).unwrap();
         assert!(ok && out.contains("hi") && out.contains("err"));
+    }
+
+    #[test]
+    fn a_background_process_holding_the_pipes_cannot_hold_the_probe() {
+        let probe = Probe { timeout: Duration::from_secs(10), ..Probe::default() };
+        let started = Instant::now();
+        let (ok, out) = probe.run(&PathBuf::from("/bin/sh"), &["-c", "echo version 1.0; sleep 60 & exit 0"]).unwrap();
+        assert!(ok && out.contains("version 1.0"), "{out}");
+        assert!(started.elapsed() < Duration::from_secs(6), "took {:?}", started.elapsed());
     }
 }

@@ -164,41 +164,55 @@ pub fn check_output(output: &Output) -> Vec<Problem> {
 
 /// Agent files: a name that matches the file, a description, and tools.
 fn check_agents(output: &Output) -> Vec<Problem> {
-    let mut out = Vec::new();
-    let suffix = match output.target {
-        Target::Copilot => ".agent.md",
-        Target::ClaudeCode => ".md",
-        Target::AgentSkills => return out,
-    };
     let dir = PathBuf::from(if output.target == Target::Copilot { ".github/agents" } else { "agents" });
-    for (path, text) in output.files.iter().filter(|(p, _)| p.parent() == Some(dir.as_path())) {
-        let mut err = |m: String| out.push(Problem { path: path.clone(), severity: Severity::Error, message: m });
-        let stem = path.file_name().and_then(|f| f.to_str()).and_then(|f| f.strip_suffix(suffix)).unwrap_or_default();
-        match split(text) {
-            Ok(Some((fm, body))) => {
-                if fm.str("name") != Some(stem) {
-                    err(format!("the agent's name must match its file name {stem:?}"));
-                }
-                if fm.str("description").is_none_or(|d| description_problem(d).is_some()) {
-                    err("the agent needs a description of at most 1024 characters".into());
-                }
-                if fm.get("tools").is_none() {
-                    err("the agent lists no tools; it would get every tool".into());
-                }
-                if body.trim().is_empty() {
-                    err("the agent's instructions are empty".into());
-                }
+    output
+        .files
+        .iter()
+        .filter(|(p, _)| output.target != Target::AgentSkills && p.parent() == Some(dir.as_path()))
+        .flat_map(|(path, text)| check_agent(path, text))
+        .collect()
+}
+
+/// One agent file (`<name>.md`, or Copilot's `<name>.agent.md`).
+pub fn check_agent(path: &Path, text: &str) -> Vec<Problem> {
+    let mut out = Vec::new();
+    let mut err = |m: String| out.push(Problem { path: path.to_path_buf(), severity: Severity::Error, message: m });
+    let file = path.file_name().and_then(|f| f.to_str()).unwrap_or_default();
+    let stem = file.strip_suffix(".agent.md").or_else(|| file.strip_suffix(".md")).unwrap_or(file);
+    match split(text) {
+        Ok(Some((fm, body))) => {
+            if fm.str("name") != Some(stem) {
+                err(format!("the agent's name must match its file name {stem:?}"));
             }
-            _ => err("the agent file needs frontmatter".into()),
+            if fm.str("description").is_none_or(|d| description_problem(d).is_some()) {
+                err("the agent needs a description of at most 1024 characters".into());
+            }
+            if fm.get("tools").is_none() {
+                err("the agent lists no tools; it would get every tool".into());
+            }
+            if body.trim().is_empty() {
+                err("the agent's instructions are empty".into());
+            }
         }
+        Ok(None) => err("the agent file needs frontmatter".into()),
+        Err(e) => err(format!("unreadable frontmatter: {e}")),
     }
     out
 }
 
-/// Checks a directory of skills on disk: every folder under `root` that holds a SKILL.md.
+/// Checks skills on disk. `root` is a folder of skill folders, a Claude Code
+/// plugin (its `skills/` and `agents/`), or a repository with `.github/skills`
+/// (and `.github/agents`). Agent files beside the skills are checked too.
 pub fn check_dir(root: &Path, target: Target) -> std::io::Result<Vec<Problem>> {
+    let (skills, agents) = if root.join(".claude-plugin").is_dir() {
+        (root.join("skills"), root.join("agents"))
+    } else if root.join(".github/skills").is_dir() {
+        (root.join(".github/skills"), root.join(".github/agents"))
+    } else {
+        (root.to_path_buf(), root.parent().map(|p| p.join("agents")).unwrap_or_default())
+    };
     let mut out = Vec::new();
-    let mut entries: Vec<PathBuf> = std::fs::read_dir(root)?.filter_map(|e| e.ok().map(|e| e.path())).collect();
+    let mut entries: Vec<PathBuf> = std::fs::read_dir(&skills)?.filter_map(|e| e.ok().map(|e| e.path())).collect();
     entries.sort();
     let mut seen: BTreeMap<String, PathBuf> = BTreeMap::new();
     for dir in entries.into_iter().filter(|p| p.is_dir()) {
@@ -214,10 +228,17 @@ pub fn check_dir(root: &Path, target: Target) -> std::io::Result<Vec<Problem>> {
     }
     if seen.is_empty() {
         out.push(Problem {
-            path: root.to_path_buf(),
+            path: skills.clone(),
             severity: Severity::Error,
             message: "no skill folders (a folder holding SKILL.md) here".into(),
         });
+    }
+    if target != Target::AgentSkills && agents.is_dir() {
+        let mut files: Vec<PathBuf> = std::fs::read_dir(&agents)?.filter_map(|e| e.ok().map(|e| e.path())).collect();
+        files.sort();
+        for f in files.iter().filter(|f| f.extension().is_some_and(|e| e == "md")) {
+            out.extend(check_agent(f, &std::fs::read_to_string(f)?));
+        }
     }
     Ok(out)
 }

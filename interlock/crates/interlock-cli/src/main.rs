@@ -128,7 +128,26 @@ enum Command {
         /// Read canonical skills from this interlock/ directory instead of the built-in copy.
         #[arg(long)]
         from: Option<PathBuf>,
+        /// Overwrite files interlock did not generate, or that changed since it did.
+        #[arg(long)]
+        force: bool,
     },
+    /// Launch an independent verifier session for a task awaiting verification.
+    Verify {
+        task: String,
+        /// copilot or claude-code.
+        #[arg(long)]
+        host: String,
+        #[arg(long)]
+        model: Option<String>,
+        #[arg(long, default_value = "20m")]
+        timeout: String,
+        #[arg(long, default_value_t = 60)]
+        max_turns: u32,
+    },
+    /// Notes kept on a task: designs, reviews, answers.
+    #[command(subcommand)]
+    Note(NoteCmd),
 }
 
 #[derive(Subcommand)]
@@ -306,17 +325,48 @@ enum ResultCmd {
         auth: Auth,
         #[arg(long)]
         epoch: u32,
-        /// The git tree id of the output.
+        /// The git tree id of the output; `auto` records the attempt's worktree.
+        /// interlock reads the changed files from this tree itself.
         #[arg(long)]
         tree: String,
         #[arg(long, default_value = "")]
         summary: String,
-        #[arg(long = "changed")]
-        changed: Vec<String>,
         #[arg(long = "question")]
         questions: Vec<String>,
     },
 }
+
+#[derive(Subcommand)]
+enum NoteCmd {
+    /// Keep a note on a task: a design, a review, an answer.
+    Add {
+        #[arg(long)]
+        task: String,
+        /// For example design, review or answer.
+        #[arg(long)]
+        kind: String,
+        /// The note's text; `-` reads it from stdin.
+        #[arg(long)]
+        file: PathBuf,
+    },
+    /// A task's notes, oldest first.
+    List {
+        #[arg(long)]
+        task: String,
+    },
+}
+
+/// A move interlock refuses, reported with exit code 2 like the store's refusals.
+#[derive(Debug)]
+struct Refused(String);
+
+impl std::fmt::Display for Refused {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_str(&self.0)
+    }
+}
+
+impl std::error::Error for Refused {}
 
 #[derive(Subcommand)]
 enum EvidenceCmd {
@@ -525,6 +575,12 @@ fn absolute_db(cli: &Cli) -> Result<PathBuf> {
 
 fn open(cli: &Cli) -> Result<Store> {
     let path = cli.db.clone().unwrap_or_else(default_db);
+    // Inside an attempt's worktree the store must already exist: never start a fresh one there.
+    let cwd = std::env::current_dir().unwrap_or_default();
+    let worktrees = Path::new(".interlock").join("worktrees");
+    if cli.db.is_none() && !path.exists() && cwd.ancestors().any(|d| d.ends_with(&worktrees)) {
+        bail!("no interlock store at {}; this directory is an attempt's worktree", path.display());
+    }
     let mut store = Store::open(&path).with_context(|| format!("opening {}", path.display()))?;
     match std::env::var("INTERLOCK_FAULT").as_deref() {
         Ok("crash_before_commit") => store.set_fault(Some(Fault::CrashBeforeCommit)),
@@ -553,6 +609,13 @@ fn read_spec(path: &Path) -> Result<TaskSpec> {
         std::fs::read_to_string(path).with_context(|| format!("reading {}", path.display()))?
     };
     let is_toml = path.extension().is_some_and(|e| e == "toml");
+    if path == Path::new("-") {
+        // From stdin, JSON or TOML, so a session can create a task without writing a file.
+        return match serde_json::from_str(&text) {
+            Ok(spec) => Ok(spec),
+            Err(_) => Ok(toml::from_str(&text).context("reading the task from stdin as JSON or TOML")?),
+        };
+    }
     Ok(if is_toml { toml::from_str(&text)? } else { serde_json::from_str(&text)? })
 }
 
@@ -591,8 +654,11 @@ fn host_profile(store: &mut Store, host: &str, declared: Option<&[String]>) -> R
     let report = match store.host_report(host)? {
         Some(v) => serde_json::from_value::<HostReport>(v)?,
         None => {
-            let report = host_by_name(host)?.inspect(&Probe::from_env());
-            store.save_host_report(host, &serde_json::to_value(&report)?, now()?)?;
+            // Saved only when it says something: never a probe that came back with no capabilities.
+            let report = inspect_to_save(host)?;
+            if report.installed {
+                store.save_host_report(host, &serde_json::to_value(&report)?, now()?)?;
+            }
             report
         }
     };
@@ -607,7 +673,10 @@ fn status(store: &Store, task_id: &str) -> Result<Value> {
     let attempts: Vec<Value> = store
         .attempts(task_id)?
         .iter()
-        .map(|a| json!({"id": a.id, "role": a.role, "epoch": a.epoch, "status": a.status, "host": a.host.host}))
+        .map(|a| {
+            json!({"id": a.id, "role": a.role, "epoch": a.epoch, "status": a.status, "host": a.host.host,
+                   "binding": a.binding, "bound": binding_text(a)})
+        })
         .collect();
     Ok(json!({
         "task": {
@@ -627,6 +696,52 @@ fn status(store: &Store, task_id: &str) -> Result<Value> {
         "next_moves": next_moves(&task, &report),
         "attempts": attempts,
     }))
+}
+
+/// How an attempt is bound, in words, for status and briefs.
+fn binding_text(a: &Attempt) -> String {
+    let who = |b: &Binding| match (&b.host_session, &b.host_agent, &b.agent_type) {
+        (Some(s), Some(agent), t) => format!("session {s}, agent {agent} ({})", t.as_deref().unwrap_or("type unknown")),
+        (Some(s), None, _) => format!("session {s}"),
+        _ => "no host session yet".into(),
+    };
+    match &a.binding {
+        None => "not recorded".into(),
+        Some(b) => match b.via {
+            BoundVia::InterlockLaunched => "launched by interlock".into(),
+            BoundVia::Subagent => format!("interlock's verifier subagent: {}", who(b)),
+            BoundVia::Session => format!("bound to {}", who(b)),
+            BoundVia::Unbound if a.role == Role::Worker => format!("unbound: {}", who(b)),
+            BoundVia::Unbound => {
+                format!("unbound ({}): its assessments count only where interlock ran the criterion's check", who(b))
+            }
+        },
+    }
+}
+
+/// Once a task is done, failed or cancelled: ends the attempts it left open
+/// and removes their worktrees.
+fn settle(cli: &Cli, store: &mut Store, task: &str) -> Result<Value> {
+    let closed: Vec<String> = store.close_open_attempts(task, now()?)?.into_iter().map(|a| a.id).collect();
+    let db = absolute_db(cli)?;
+    let removed = match interlock_supervisor::guided::repo_of_store(&db) {
+        Ok(repo) => interlock_supervisor::guided::cleanup_worktrees(store, &repo, &db, task)?,
+        Err(_) => vec![],
+    };
+    Ok(json!({"closed_attempts": closed, "removed_worktrees": removed}))
+}
+
+/// `--tree auto` means the tree of the attempt's own worktree, wherever the
+/// command runs; without a recorded worktree, the current directory's.
+fn tree_for(store: &Store, attempt_id: &str, arg: &str) -> Result<String> {
+    if arg != "auto" {
+        return Ok(arg.to_string());
+    }
+    let dir = match store.attempt(attempt_id)?.worktree {
+        Some(w) => PathBuf::from(w),
+        None => std::env::current_dir()?,
+    };
+    Ok(interlock_supervisor::git::worktree_tree(&dir)?)
 }
 
 fn run(cli: &Cli) -> Result<()> {
@@ -676,9 +791,9 @@ fn run(cli: &Cli) -> Result<()> {
                         None => store.task(task)?.repository,
                     };
                     let criteria = store.task(task)?.criteria;
-                    let protected = std::env::current_dir()
+                    // Checks name files in the repository that owns the store, not the caller's.
+                    let protected = interlock_supervisor::guided::repo_of_store(&absolute_db(cli)?)
                         .ok()
-                        .and_then(|d| interlock_supervisor::git::toplevel(&d).ok())
                         .map(|root| interlock_supervisor::checks::protected_paths(&root, base, &criteria))
                         .unwrap_or_default();
                     let snapshot = Snapshot {
@@ -693,8 +808,12 @@ fn run(cli: &Cli) -> Result<()> {
                 TaskCmd::Block { task, reason } => print(&store.block(task, reason, now()?)?),
                 TaskCmd::Unblock { task } => print(&store.unblock(task, now()?)?),
                 TaskCmd::Retry { task, reason } => print(&store.retry(task, reason, now()?)?),
-                TaskCmd::Fail { task, reason } => print(&store.stop(task, false, reason, now()?)?),
-                TaskCmd::Cancel { task, reason } => print(&store.stop(task, true, reason, now()?)?),
+                TaskCmd::Fail { task, reason } | TaskCmd::Cancel { task, reason } => {
+                    let cancel = matches!(cmd, TaskCmd::Cancel { .. });
+                    let mut moved = serde_json::to_value(store.stop(task, cancel, reason, now()?)?)?;
+                    moved["settled"] = settle(cli, &mut store, task)?;
+                    print(&moved)
+                }
                 TaskCmd::Log { task } => print(&store.transitions(task)?),
             }
         }
@@ -703,11 +822,24 @@ fn run(cli: &Cli) -> Result<()> {
             match cmd {
                 AttemptCmd::Start { task, role, host, mode, capabilities, agent, model, worktree } => {
                     let (caps, version) = host_profile(&mut store, host, capabilities.as_deref())?;
-                    // `--worktree auto`: interlock makes a fresh worktree for this attempt.
                     let db = absolute_db(cli)?;
+                    let interactive = matches!(mode, ModeArg::Interactive);
+                    // In a guided session the hooks saw who ran this command; nobody else can say.
+                    let opener = if interactive {
+                        interlock_supervisor::guided::take_intent(&store, task, (*role).into(), now()?)?
+                    } else {
+                        None
+                    };
+                    if *role == RoleArg::Verifier {
+                        if let Some(who) = &opener {
+                            interlock_supervisor::guided::may_open_verifier(&store, who, Some(task))
+                                .map_err(Refused)?;
+                        }
+                    }
+                    // `--worktree auto`: interlock makes a fresh worktree for this attempt.
                     let made = match worktree.as_deref() {
                         Some("auto") => {
-                            let repo = interlock_supervisor::git::toplevel(&std::env::current_dir()?)?;
+                            let repo = interlock_supervisor::guided::repo_of_store(&db)?;
                             let dir = interlock_supervisor::guided::prepare_worktree(
                                 &store,
                                 &repo,
@@ -742,10 +874,11 @@ fn run(cli: &Cli) -> Result<()> {
                     if let (false, Some((repo, dir))) = (opened, &made) {
                         interlock_supervisor::guided::discard_worktree(repo, dir);
                     }
-                    let started = started?;
-                    // A guided session's hooks govern the attempt it opened last.
-                    if let (Started::Yes { attempt, .. }, ModeArg::Interactive) = (&started, mode) {
-                        interlock_supervisor::guided::record_active(&db, attempt)?;
+                    let mut started = started?;
+                    if let Started::Yes { attempt, .. } = &mut started {
+                        let binding =
+                            interlock_supervisor::guided::binding_for((*role).into(), interactive, opener.as_ref());
+                        *attempt = store.bind_attempt(&attempt.id, binding)?;
                     }
                     print(&started)
                 }
@@ -755,21 +888,21 @@ fn run(cli: &Cli) -> Result<()> {
                 AttemptCmd::List { task } => print(&store.attempts(task)?),
             }
         }
-        Command::Result(ResultCmd::Submit { auth, epoch, tree, summary, changed, questions }) => {
+        Command::Result(ResultCmd::Submit { auth, epoch, tree, summary, questions }) => {
             let mut store = open(cli)?;
-            let cwd = std::env::current_dir()?;
-            let tree = interlock_supervisor::hook::resolve_tree(tree, &cwd)?;
-            // Where git can read the output tree, the change set comes from the
-            // tree itself, so scope holds whatever the caller lists.
-            let mut changed = changed.clone();
-            let task_id = store.attempt(&auth.attempt).map(|a| a.task_id).ok();
-            if let (Some(task_id), Ok(repo)) = (task_id, interlock_supervisor::git::toplevel(&cwd)) {
-                if let Ok(paths) = interlock_supervisor::guided::changed_paths(&store, &repo, &task_id, &tree) {
-                    changed.extend(paths);
-                    changed.sort();
-                    changed.dedup();
-                }
-            }
+            let task_id = store.attempt(&auth.attempt)?.task_id;
+            // G3 reads the change set from the output tree, in the repository that owns
+            // the store, against the task's input snapshot. When it cannot, it refuses.
+            let db = absolute_db(cli)?;
+            let read = || -> Result<(String, Vec<String>)> {
+                let repo = interlock_supervisor::guided::repo_of_store(&db)?;
+                let tree = tree_for(&store, &auth.attempt, tree)?;
+                let changed = interlock_supervisor::guided::changed_paths(&store, &repo, &task_id, &tree)?;
+                Ok((tree, changed))
+            };
+            let (tree, changed) = read().map_err(|e| {
+                Refused(format!("interlock could not read what the result changes, so it refuses it: {e:#}"))
+            })?;
             print(&store.submit_result(
                 SubmitResult {
                     attempt_id: auth.attempt.clone(),
@@ -796,7 +929,7 @@ fn run(cli: &Cli) -> Result<()> {
                     token: auth.token.clone(),
                     criterion_id: criterion.clone(),
                     strength: (*strength).into(),
-                    tree: interlock_supervisor::hook::resolve_tree(tree, &std::env::current_dir()?)?,
+                    tree: tree_for(&store, &auth.attempt, tree)?,
                     environment: environment.clone(),
                     evidence_refs: refs.clone(),
                     note: note.clone(),
@@ -809,15 +942,33 @@ fn run(cli: &Cli) -> Result<()> {
         Command::Advance { task } => {
             let mut store = open(cli)?;
             let moves = store.advance(task, now()?)?;
-            print(&json!({"moves": moves, "status": status(&store, task)?}))
+            let settled = settle(cli, &mut store, task)?;
+            print(&json!({"moves": moves, "status": status(&store, task)?, "settled": settled}))
         }
         Command::Brief { task, role, format } => {
             let store = open(cli)?;
             let brief = store.brief(task, (*role).into(), profile, &host_policy, now()?)?;
+            let attempts = store.attempts(task)?;
+            let bound: Vec<(String, String)> = attempts
+                .iter()
+                .filter(|a| a.role != Role::Worker)
+                .map(|a| (format!("{} ({:?}, {:?})", a.id, a.role, a.status).to_lowercase(), binding_text(a)))
+                .collect();
             match format {
-                Format::Json => print(&brief),
+                Format::Json => {
+                    let mut v = serde_json::to_value(&brief)?;
+                    v["verifier_bindings"] =
+                        json!(bound.iter().map(|(a, b)| json!({"attempt": a, "bound": b})).collect::<Vec<_>>());
+                    print(&v)
+                }
                 Format::Markdown => {
                     print!("{}", brief.to_markdown());
+                    if !bound.is_empty() {
+                        println!("\n## Verifier attempts\n");
+                        for (a, b) in &bound {
+                            println!("- {a}: {b}");
+                        }
+                    }
                     Ok(())
                 }
             }
@@ -882,7 +1033,8 @@ fn run(cli: &Cli) -> Result<()> {
                 }
                 if *save {
                     let mut store = open(cli)?;
-                    for r in &reports {
+                    // A probe that found the host but no capabilities (it may have timed out) is not saved.
+                    for r in reports.iter().filter(|r| !r.installed || !r.capability_set().0.is_empty()) {
                         store.save_host_report(&r.host, &serde_json::to_value(r)?, now()?)?;
                     }
                 }
@@ -910,21 +1062,44 @@ fn run(cli: &Cli) -> Result<()> {
                 }))
             }
         },
-        Command::Run { .. } | Command::Hook { .. } | Command::Skills(_) | Command::Setup { .. } => {
+        Command::Run { .. }
+        | Command::Hook { .. }
+        | Command::Skills(_)
+        | Command::Setup { .. }
+        | Command::Verify { .. } => {
             unreachable!("handled in main")
+        }
+        Command::Note(cmd) => {
+            let store = open(cli)?;
+            match cmd {
+                NoteCmd::Add { task, kind, file } => {
+                    let body = if file == Path::new("-") {
+                        std::io::read_to_string(std::io::stdin())?
+                    } else {
+                        std::fs::read_to_string(file).with_context(|| format!("reading {}", file.display()))?
+                    };
+                    print(&interlock_supervisor::guided::add_note(&store, task, kind, &body, now()?)?)
+                }
+                NoteCmd::List { task } => print(&interlock_supervisor::guided::notes(&store, task)?),
+            }
         }
         Command::Check(CheckCmd::Run { criterion, target, task, operator, timeout, attempt, token }) => {
             let mut store = open(cli)?;
             let nonempty = |v: &Option<String>| v.clone().filter(|s| !s.is_empty());
-            let (attempt, task_id) = if *operator {
+            // An attempt's run checks the files in its own worktree, wherever the command runs.
+            let (attempt, task_id, dir) = if *operator {
                 let task = task.clone().ok_or_else(|| anyhow!("--operator needs --task"))?;
-                (None, task)
+                (None, task, std::env::current_dir()?)
             } else {
                 let (Some(a), Some(t)) = (nonempty(attempt), nonempty(token)) else {
                     bail!("outside an attempt, pass --operator and --task");
                 };
-                let task_id = store.attempt(&a)?.task_id;
-                (Some((a, t)), task_id)
+                let rec = store.attempt(&a)?;
+                let dir = match rec.worktree {
+                    Some(w) => PathBuf::from(w),
+                    None => std::env::current_dir()?,
+                };
+                (Some((a, t)), rec.task_id, dir)
             };
             let db = cli.db.clone().unwrap_or_else(default_db);
             let scratch = db.parent().map(|d| d.join("scratch")).unwrap_or_else(|| PathBuf::from(".interlock/scratch"));
@@ -938,7 +1113,7 @@ fn run(cli: &Cli) -> Result<()> {
                         TargetArg::Base => RunTarget::Base,
                     },
                     attempt,
-                    dir: &std::env::current_dir()?,
+                    dir: &dir,
                     scratch: &scratch,
                     timeout: parse_duration(timeout)?.to_std()?,
                 },
@@ -983,16 +1158,24 @@ fn run(cli: &Cli) -> Result<()> {
 fn hook(cli: &Cli) -> ExitCode {
     let mut raw = String::new();
     let _ = std::io::Read::read_to_string(&mut std::io::stdin(), &mut raw);
-    let ctx = interlock_supervisor::guided::hook_context(cli.db.clone().unwrap_or_else(default_db));
+    let ctx = interlock_supervisor::hook::HookContext::from_env(cli.db.clone().unwrap_or_else(default_db));
+    // A guided session names no attempt in its environment; the hooks learn the caller from the payload.
+    let guided = ctx.attempt_id.is_none() && !ctx.headless;
     let Ok(payload) = serde_json::from_str::<Value>(&raw) else {
         // Fail closed: inside an attempt, a tool call we cannot read is denied.
-        if ctx.attempt_id.is_some() && matches!(cli.command, Command::Hook { event: HookArg::PreToolUse }) {
+        let governed =
+            ctx.attempt_id.is_some() || (guided && interlock_supervisor::guided::guided_attempt_open(&ctx.db));
+        if governed && matches!(cli.command, Command::Hook { event: HookArg::PreToolUse }) {
             eprintln!("interlock could not read the hook payload");
             return ExitCode::from(2);
         }
         return ExitCode::SUCCESS;
     };
-    let response = interlock_supervisor::hook::handle(&ctx, &payload, Utc::now());
+    let response = if guided {
+        interlock_supervisor::guided::handle(&ctx, &payload, Utc::now())
+    } else {
+        interlock_supervisor::hook::handle(&ctx, &payload, Utc::now())
+    };
     if !response.stdout.is_empty() {
         println!("{}", response.stdout);
     }
@@ -1034,6 +1217,55 @@ fn run_task(
     Ok(if report.final_state == State::Done { ExitCode::SUCCESS } else { ExitCode::from(5) })
 }
 
+/// A host report fit to save: re-probed once if the first probe came back
+/// without capabilities (a probe that timed out reads as none), refused if
+/// the second did too.
+fn inspect_to_save(host: &str) -> Result<HostReport> {
+    let h = host_by_name(host)?;
+    let probe = Probe::from_env();
+    let report = h.inspect(&probe);
+    if !report.installed || !report.capability_set().0.is_empty() {
+        return Ok(report);
+    }
+    let again = h.inspect(&probe);
+    if again.capability_set().0.is_empty() {
+        bail!(
+            "{host} is installed but probing it reported no capabilities twice (a probe may have timed out); \
+             nothing was saved. Check that `{host} --help` runs, then try again"
+        );
+    }
+    Ok(again)
+}
+
+/// `interlock verify`: one verifier session launched by interlock.
+fn verify_task(
+    cli: &Cli,
+    task: &str,
+    host: &str,
+    model: &Option<String>,
+    timeout: &str,
+    max_turns: u32,
+) -> Result<ExitCode> {
+    let db = absolute_db(cli)?;
+    let repo = interlock_supervisor::guided::repo_of_store(&db)?;
+    let cfg = interlock_supervisor::RunConfig {
+        model: model.clone(),
+        timeout: parse_duration(timeout)?.to_std()?,
+        max_turns: Some(max_turns),
+        keep_worktrees: false,
+        max_sessions: 1,
+        profile: profile(cli),
+        interlock_bin: std::env::current_exe()?,
+        capabilities: None,
+    };
+    let mut supervisor = interlock_supervisor::Supervisor::new(repo, db, host_by_name(host)?, Probe::from_env(), cfg)?;
+    let report = supervisor.verify(task)?;
+    print(&report)?;
+    let mut store = open(cli)?;
+    settle(cli, &mut store, task)?;
+    Ok(if matches!(report.final_state, State::Verified | State::Done) { ExitCode::SUCCESS } else { ExitCode::from(5) })
+}
+
 fn main() -> ExitCode {
     let cli = Cli::parse();
     let result = match &cli.command {
@@ -1042,14 +1274,20 @@ fn main() -> ExitCode {
             run_task(&cli, task, host, model, timeout, *max_turns, *max_sessions, *keep_worktrees, capabilities)
         }
         Command::Skills(cmd) => skills_cmd::skills(cmd),
-        Command::Setup { host, from } => absolute_db(&cli).and_then(|db| {
-            let mut store = open(&cli)?;
+        Command::Setup { host, from, force } => absolute_db(&cli).and_then(|db| {
+            // The store must live in the repository setup writes to; nothing is created otherwise.
+            let repo = interlock_supervisor::guided::repo_of_store(&db)?;
             // Inspect the host once now, so a guided session's attempts read the saved report.
-            let report = host_by_name(host)?.inspect(&Probe::from_env());
-            store.save_host_report(host, &serde_json::to_value(&report)?, now()?)?;
-            let repo = interlock_supervisor::git::toplevel(&std::env::current_dir()?)?;
-            skills_cmd::setup(host, &repo, &db, from.as_deref(), &report)
+            let report = inspect_to_save(host)?;
+            let mut store = open(&cli)?;
+            if report.installed {
+                store.save_host_report(host, &serde_json::to_value(&report)?, now()?)?;
+            }
+            skills_cmd::setup(host, &repo, &db, from.as_deref(), &report, *force)
         }),
+        Command::Verify { task, host, model, timeout, max_turns } => {
+            verify_task(&cli, task, host, model, timeout, *max_turns)
+        }
         _ => run(&cli).map(|()| ExitCode::SUCCESS),
     };
     match result {
@@ -1061,6 +1299,9 @@ fn main() -> ExitCode {
                 _ => None,
             });
             let (code, body) = match store_err {
+                _ if err.downcast_ref::<Refused>().is_some() => {
+                    (2, json!({"error": "refused", "message": err.to_string()}))
+                }
                 Some(StoreError::Refused(r)) => (2, json!({"error": "refused", "refusal": r})),
                 Some(StoreError::NotFound(what)) => {
                     (3, json!({"error": "not_found", "message": format!("not found: {what}")}))

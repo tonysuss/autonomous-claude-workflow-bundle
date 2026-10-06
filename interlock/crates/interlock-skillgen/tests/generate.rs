@@ -86,34 +86,44 @@ fn every_target_validates() {
         assert_eq!(errors(&validate::check_output(&out)), Vec::<String>::new(), "{}", target.name());
         let mut names = out.skill_names();
         names.sort();
-        assert_eq!(names, ["design", "implement", "investigate", "review", "route", "verify"], "{}", target.name());
+        let base = ["design", "implement", "investigate", "review", "route", "verify"];
+        // On Copilot, interlock's skills share the repository's namespace, so they carry a prefix.
+        let want: Vec<String> = match target {
+            Target::Copilot => base.iter().map(|n| format!("interlock-{n}")).collect(),
+            _ => base.iter().map(|n| n.to_string()).collect(),
+        };
+        assert_eq!(names, want, "{}", target.name());
     }
 }
 
 #[test]
-fn copilot_gets_github_skills_routed_references_and_a_custom_agent() {
+fn copilot_gets_prefixed_github_skills_routed_references_and_no_custom_agent() {
     let out = generate(&Catalog::embedded().unwrap(), Target::Copilot).unwrap();
-    let (fm, body) = split_frontmatter(file(&out, ".github/skills/route/SKILL.md")).unwrap().unwrap();
+    let (fm, body) = split_frontmatter(file(&out, ".github/skills/interlock-route/SKILL.md")).unwrap().unwrap();
     let keys: Vec<&str> = fm.0.iter().map(|(k, _)| k.as_str()).collect();
     assert_eq!(keys, ["name", "description"], "model-invoked skills carry name and description only");
+    assert_eq!(fm.str("name"), Some("interlock-route"), "the name matches the prefixed folder");
     assert!(body.contains("interlock task create"), "{body}");
-    assert!(file(&out, ".github/skills/implement/SKILL.md").contains("--host copilot"));
+    assert!(body.contains("interlock-investigate"), "skills name each other with the prefix");
+    assert!(file(&out, ".github/skills/interlock-implement/SKILL.md").contains("--host copilot"));
 
-    let (fm, _) = split_frontmatter(file(&out, ".github/skills/design/SKILL.md")).unwrap().unwrap();
+    let (fm, _) = split_frontmatter(file(&out, ".github/skills/interlock-design/SKILL.md")).unwrap().unwrap();
     assert_eq!(fm.get("disable-model-invocation"), Some(&Value::Bool(true)), "S1: hidden from the agent");
     assert_eq!(fm.str("argument-hint"), Some("<task id>"));
 
     // Routed skills are reference files under their routers, never standalone.
-    assert!(!out.files.contains_key(Path::new(".github/skills/prove-it-works/SKILL.md")));
-    assert!(file(&out, ".github/skills/verify/references/prove-it-works.md").starts_with("# Prove it works"));
-    assert!(out.files.contains_key(Path::new(".github/skills/route/references/interlock-basics.md")));
+    assert!(!out.files.contains_key(Path::new(".github/skills/interlock-prove-it-works/SKILL.md")));
+    assert!(file(&out, ".github/skills/interlock-verify/references/prove-it-works.md").starts_with("# Prove it works"));
+    assert!(out.files.contains_key(Path::new(".github/skills/interlock-route/references/interlock-basics.md")));
 
-    let (fm, body) = split_frontmatter(file(&out, ".github/agents/interlock-verifier.agent.md")).unwrap().unwrap();
-    assert_eq!(fm.str("name"), Some("interlock-verifier"));
-    assert_eq!(fm.get("tools"), Some(&Value::List(vec!["read".into(), "search".into(), "execute".into()])));
-    assert!(body.contains("--agent interlock-verifier"));
-    let verify = file(&out, ".github/skills/verify/SKILL.md");
-    assert!(verify.contains("call the `task` tool with `agent_type: \"interlock-verifier\"`"), "{verify}");
+    // Copilot's hooks cannot name a subagent's type, so interlock launches the verifier itself.
+    assert!(
+        !out.files.keys().any(|p| p.starts_with(".github/agents")),
+        "no custom agent: {:?}",
+        out.files.keys().collect::<Vec<_>>()
+    );
+    let verify = file(&out, ".github/skills/interlock-verify/SKILL.md");
+    assert!(verify.contains("Run `interlock verify <id> --host copilot`"), "{verify}");
     assert!(file(&out, ".github/skills/NOTICE").contains("pstack"));
 }
 
@@ -123,7 +133,8 @@ fn claude_code_gets_a_namespaced_plugin() {
     let manifest: serde_json::Value = serde_json::from_str(file(&out, ".claude-plugin/plugin.json")).unwrap();
     assert_eq!(manifest["name"], "interlock");
     let verify = file(&out, "skills/verify/SKILL.md");
-    assert!(verify.contains("call the Agent tool with `subagent_type: \"interlock:verifier\"`"), "{verify}");
+    assert!(verify.contains("Call the Agent tool with `subagent_type: \"interlock:verifier\"`"), "{verify}");
+    assert!(verify.contains("Host: `claude-code`"), "the prompt it hands over is filled for the host: {verify}");
     assert!(
         file(&out, "skills/route/SKILL.md").contains("interlock:investigate"),
         "skills name each other with the namespace"
@@ -155,7 +166,7 @@ fn plain_agent_skills_keep_the_intent_in_metadata_and_validate_on_disk() {
     let cdir = tempfile::tempdir().unwrap();
     copilot.write(cdir.path()).unwrap();
     let strict = validate::check_dir(&cdir.path().join(".github/skills"), Target::AgentSkills).unwrap();
-    let design = cdir.path().join(".github/skills/design/SKILL.md");
+    let design = cdir.path().join(".github/skills/interlock-design/SKILL.md");
     let expected = ["disable-model-invocation", "argument-hint"]
         .map(|f| format!("{}: unknown field {f} for agent-skills", design.display()));
     assert_eq!(errors(&strict), expected);
