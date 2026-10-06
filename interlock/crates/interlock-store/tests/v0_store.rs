@@ -35,6 +35,10 @@ fn copy_dir(from: &Path, to: &Path) {
 fn v0_store() -> (tempfile::TempDir, PathBuf) {
     let dir = tempfile::tempdir().unwrap();
     let fixture = Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/fixtures/v0-store");
+    // Rollback-journal mode (header bytes 18 and 19 are 1), so reading the
+    // fixture in place leaves no -wal or -shm file in the repository.
+    let header = std::fs::read(fixture.join("state.db")).unwrap();
+    assert_eq!(header[18..20], [1, 1], "the fixture is in WAL mode");
     let store_dir = dir.path().join(".interlock");
     copy_dir(&fixture.join("artifacts"), &store_dir.join("artifacts"));
     std::fs::copy(fixture.join("state.db"), store_dir.join("state.db")).unwrap();

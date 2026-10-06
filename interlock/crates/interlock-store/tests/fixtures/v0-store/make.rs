@@ -3,6 +3,11 @@
 //! lifecycle leaves them, as the last build with v0 schemas (commit a2ec7b9)
 //! writes it. `tests/v0_store.rs` opens it with the current build.
 //!
+//! The store keeps its database in WAL mode. The fixture's journal mode was
+//! then switched to DELETE (`PRAGMA journal_mode=DELETE`, which leaves the
+//! records as they are), so reading it in place leaves no `-wal` or `-shm`
+//! file beside it; opening a copy with the store switches it back.
+//!
 //! Kept as a record, not compiled. To write it again, copy it to
 //! `crates/interlock-store/tests/make_v0_fixture.rs` in a checkout of a2ec7b9
 //! and run:
