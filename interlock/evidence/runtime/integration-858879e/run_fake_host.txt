@@ -1,0 +1,31 @@
+$ git rev-parse HEAD
+858879e634c703ee8a8e7b31072fe3447e049565
+$ date -u
+Tue Oct  6 02:30:58 UTC 2026
+$ INTERLOCK_REQUIRE_HOSTS=1 INTERLOCK_COPILOT_BIN=<copilot 1.0.91> cargo test -p interlock-cli --test run_fake_host
+   Compiling interlock-cli v0.1.0 (/home/user/autonomous-claude-workflow-bundle/.claude/worktrees/agent-a015a201024863c38/interlock/crates/interlock-cli)
+    Finished `test` profile [unoptimized] target(s) in 0.83s
+     Running tests/run_fake_host.rs (target/debug/deps/run_fake_host-97d2b5e98076a1c0)
+
+running 17 tests
+test a_bad_config_does_not_stand_in_the_way_of_recovery ... ok
+test a_dead_sessions_children_are_stopped_at_restart ... ok
+test a_restart_for_one_task_ends_sessions_left_by_another ... ok
+test a_signal_during_a_baseline_check_stops_it_and_the_first_signal_is_reported ... ok
+test a_skills_plugin_is_loaded_into_every_session_and_a_non_plugin_is_refused ... ok
+test an_effort_the_host_cannot_take_is_refused_before_anything_starts ... ok
+test budgets_must_be_finite_amounts ... ok
+test max_sessions_zero_runs_the_baseline_only ... ok
+test a_signal_while_the_host_is_inspected_opens_no_attempt ... ok
+test pausing_safely_keeps_work_the_worker_committed ... ok
+test processes_that_leave_the_session_are_stopped_when_it_ends ... ok
+test sessions_get_an_allowlisted_environment_and_the_effort_asked_for ... ok
+test sighup_stops_a_run_like_sigterm ... ok
+test a_reattached_session_leaves_no_strays ... ok
+test task_cancel_stops_a_session_whose_supervisor_is_gone ... ok
+test only_one_supervisor_gets_the_lock_however_many_race ... ok
+test an_escaped_worker_process_cannot_forge_the_verifiers_evidence ... ok
+
+test result: ok. 17 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 11.45s
+
+exit 0

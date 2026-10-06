@@ -1,0 +1,54 @@
+{
+  "id": "fix-add",
+  "repository": ".",
+  "workflow": {
+    "name": "bug-fix",
+    "version": 1
+  },
+  "intent": "add() returns the difference instead of the sum",
+  "scope": {
+    "paths": [
+      "calc.py",
+      "tests/**"
+    ],
+    "description": null
+  },
+  "dependencies": [],
+  "criteria": [
+    {
+      "id": "fixed",
+      "statement": "add(2, 3) returns 5",
+      "check": "sh check.sh",
+      "check_version": "1",
+      "min_strength": "tested",
+      "producer": "self",
+      "baseline": "fails"
+    },
+    {
+      "id": "verified",
+      "statement": "An independent run of the check passes",
+      "check": "sh check.sh",
+      "check_version": "1",
+      "min_strength": "observed",
+      "producer": "independent",
+      "baseline": "fails"
+    }
+  ],
+  "input_snapshot": null,
+  "environment": "",
+  "policy_digest": "sha256:078ac21dc6a75ef7abaafd3efcd69eaa962227732a69c9cf42d0b8a11508a118",
+  "budget": {
+    "max_attempts": 3,
+    "max_cost_usd": 0.5
+  },
+  "integration_required": false,
+  "state": "pending",
+  "resume_point": null,
+  "blocked_reason": null,
+  "current_tree": null,
+  "lease_epoch": 0,
+  "current_attempt": null,
+  "attempts_used": 0,
+  "created_at": "2026-10-06T02:27:44.103155713Z",
+  "updated_at": "2026-10-06T02:27:44.103155713Z"
+}

@@ -1,0 +1,79 @@
+{
+  "attempts": [
+    {
+      "binding": {
+        "agent_type": null,
+        "host_agent": null,
+        "host_session": null,
+        "interactive": false,
+        "via": "interlock_launched"
+      },
+      "bound": "launched by interlock",
+      "epoch": 1,
+      "host": "claude-code",
+      "id": "att-8017943935334f7a",
+      "role": "worker",
+      "status": "completed"
+    },
+    {
+      "binding": {
+        "agent_type": null,
+        "host_agent": null,
+        "host_session": null,
+        "interactive": false,
+        "via": "interlock_launched"
+      },
+      "bound": "launched by interlock",
+      "epoch": 1,
+      "host": "claude-code",
+      "id": "att-9f25674733fa41b8",
+      "role": "verifier",
+      "status": "completed"
+    }
+  ],
+  "evidence": {
+    "all_pass": true,
+    "any_fail": false,
+    "criteria": [
+      {
+        "criterion_id": "fixed",
+        "current_assessments": 1,
+        "current_claims": 1,
+        "current_runs": 2,
+        "evidence_id": "clm-97427d77add54f34",
+        "source": "claim",
+        "stale": 0,
+        "strength": "observed",
+        "verdict": "pass"
+      },
+      {
+        "criterion_id": "verified",
+        "current_assessments": 1,
+        "current_claims": 1,
+        "current_runs": 2,
+        "evidence_id": "asm-c11cc14e3efb4b33",
+        "source": "assessment",
+        "stale": 0,
+        "strength": "observed",
+        "verdict": "pass"
+      }
+    ]
+  },
+  "next_moves": [],
+  "task": {
+    "attempts_used": 1,
+    "blocked_reason": null,
+    "current_attempt": "att-8017943935334f7a",
+    "current_tree": "505e161bca68a8fed441c2a2c02ef5027cffd1f8",
+    "id": "fix-add",
+    "integration_required": false,
+    "intent": "add() returns the difference instead of the sum",
+    "lease_epoch": 1,
+    "max_attempts": 3,
+    "state": "done",
+    "workflow": {
+      "name": "bug-fix",
+      "version": 1
+    }
+  }
+}

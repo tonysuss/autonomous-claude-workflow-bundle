@@ -7,10 +7,11 @@ No file here holds a credential or an attempt token:
 - The store keeps only token hashes. The supervisor keeps the live token in a per-user runtime directory outside the repository and deletes it when the attempt ends.
 - Paths under this container's scratch directory are shown as `<scratch>`.
 
-Two rounds are recorded:
+Two rounds are recorded, plus a check of the integrated build:
 
 - **Round 1:** the first implementation (commits `5d0d894` to `57b0cdb`).
-- **Round 2:** the fixes after review (`9e587d5` onward).
+- **Round 2:** the fixes after review (`9e587d5` to `8a62e80`).
+- **Integration:** the same checks rerun on `interlock-foundation` at `858879e`, after the workstreams were merged (section 7).
 
 Where round 1's notes no longer match the code, they are corrected below.
 
@@ -156,7 +157,43 @@ These probes shaped the adapters:
 
 Before the environment allowlist was written, two console probes ran Claude Code with a reduced environment: one scrubbed of the parent agent's session variables ($0.039), and one with only the allowlist ($0.016). Both signed in. Their output was not kept; the round-2 live run above shows the same thing with records.
 
-Model spend for this work, about $0.53 in all:
+Model spend for this work, about $0.66 in all:
 
 - **Round 1, $0.344:** the live demo ($0.289), the cost-cap probe ($0.0009), and two earlier headless probes, one with the full environment and one with a scrubbed one ($0.030 and $0.025). Round 1's notes left those two out, and their output is not kept.
 - **Round 2, $0.183:** the two environment probes ($0.039 and $0.016) and the live demo ($0.127).
+- **Integration, $0.132:** the live demo on the integrated build (section 7).
+
+## 7. Integration: the same checks on the merged build
+
+The merged build is `interlock-foundation` at `858879e` ("Reconcile the merged branches, add run --skills, and rewrite the README"). This worktree was fast-forwarded to it and rebuilt.
+
+The merge changed three things that touch the runtime code:
+
+- The forge commands take the same `ControllerLock`.
+- `run` now ends at delivery (G5 and G6) for tasks that need integration. The demo task does not (`integration_required: false`).
+- The hook's rule against reading interlock's state directory applies to headless sessions only, and its messages now say "interlock's own state".
+
+| Check (October 6, UTC) | Result | Evidence |
+| --- | --- | --- |
+| `run_robustness`, with `INTERLOCK_REQUIRE_HOSTS=1` and Copilot CLI 1.0.91 (02:29:04) | **10 of 10 passed**, 104 s | [`integration-858879e/run_robustness.txt`](integration-858879e/run_robustness.txt) |
+| `run_fake_host`, with `INTERLOCK_REQUIRE_HOSTS=1` (02:30:58) | **17 of 17 passed**, 11 s. The merge added `a_skills_plugin_is_loaded_into_every_session_and_a_non_plugin_is_refused` | [`integration-858879e/run_fake_host.txt`](integration-858879e/run_fake_host.txt) |
+| Live Claude Code demo (haiku; budget lowered to a $0.50 hard cap), with the supervisor killed by `kill -9` 6 s into the worker session | **Re-attached and reached done**, $0.132 | [`live-claude-reattach-integrated/`](live-claude-reattach-integrated/) |
+
+The live run, step by step:
+
+| Time | What happened | File |
+| --- | --- | --- |
+| 02:27:44 | Supervisor 1 (pid 14975) starts. The worker's handoff is recorded: Claude Code is pid 15030, in its own group | [`00-timeline.txt`](live-claude-reattach-integrated/00-timeline.txt), [`04-ps-before-kill.txt`](live-claude-reattach-integrated/04-ps-before-kill.txt) |
+| 02:27:51 | `kill -9 14975` exits with status 137 | [`00-timeline.txt`](live-claude-reattach-integrated/00-timeline.txt) |
+| 02:27:52 | Pid 15030 is still running, now a child of pid 1. Supervisor 2 starts, finds it alive, and re-attaches (`"reattached": ["att-8017943935334f7a"]`, `"reconciled": []`) | [`05-ps-after-kill.txt`](live-claude-reattach-integrated/05-ps-after-kill.txt), [`07-run-2-report.json`](live-claude-reattach-integrated/07-run-2-report.json) |
+| 02:28:14 | The worker ends (29.3 s, $0.072, 13 turns, `completed`, no strays). G3 accepts its tree | [`08-task-log.json`](live-claude-reattach-integrated/08-task-log.json) |
+| 02:28:50 | One verifier (35.9 s, $0.061) records `tested` for `fixed` and `observed` for `verified`. G4 and G7 take the task to **done** | [`10-events.json`](live-claude-reattach-integrated/10-events.json) |
+
+The outcome:
+
+- The task log is `G1 G2 G3 G4 G7`: one worker attempt, one verifier, and no R3.
+- The output tree's `calc.py` returns `a + b`. The user's branch and files are untouched ([`12-output-and-user-branch.txt`](live-claude-reattach-integrated/12-output-and-user-branch.txt)).
+- The transcript's `session_id` matches the handoff's `host_session_id`, and the pin shows `match`.
+- `handoff.env` lists only allowlisted names, the same set as in round 2.
+
+The script is [`live-claude-reattach-integrated/live_reattach.sh`](live-claude-reattach-integrated/live_reattach.sh). It is round 2's script with `max_cost_usd = 0.5` instead of `1.0`.
