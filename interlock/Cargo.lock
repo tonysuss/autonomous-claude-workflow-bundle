@@ -526,6 +526,7 @@ dependencies = [
  "interlock-core",
  "interlock-forge",
  "interlock-schema",
+ "interlock-skillgen",
  "interlock-store",
  "interlock-supervisor",
  "serde",
@@ -573,6 +574,20 @@ dependencies = [
 ]
 
 [[package]]
+name = "interlock-skillgen"
+version = "0.1.0"
+dependencies = [
+ "hex",
+ "interlock-adapter",
+ "serde",
+ "serde_json",
+ "sha2",
+ "tempfile",
+ "thiserror",
+ "toml",
+]
+
+[[package]]
 name = "interlock-store"
 version = "0.1.0"
 dependencies = [
@@ -598,6 +613,7 @@ dependencies = [
  "interlock-schema",
  "interlock-store",
  "nix",
+ "rusqlite",
  "serde",
  "serde_json",
  "tempfile",

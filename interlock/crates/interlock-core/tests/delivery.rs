@@ -290,6 +290,7 @@ fn a_moved_base_makes_the_evidence_stale_and_r2_follows() {
             evidence_refs: vec![],
             note: None,
             recorded_at: t(1),
+            bound_via: None,
         },
         Evidence {
             id: "a2".into(),
@@ -301,6 +302,7 @@ fn a_moved_base_makes_the_evidence_stale_and_r2_follows() {
             evidence_refs: vec![],
             note: None,
             recorded_at: t(1),
+            bound_via: None,
         },
     ];
     let records = Records { claims: &[], assessments: &assessments, runs: &[] };

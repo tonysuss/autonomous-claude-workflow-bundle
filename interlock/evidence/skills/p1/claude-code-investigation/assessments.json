@@ -1,0 +1,21 @@
+[
+  {
+    "id": "asm-a7aa3d7e1be546af",
+    "task_id": "ttl-boundary",
+    "criterion_id": "answer",
+    "attempt_id": "att-15f54f782cd94357",
+    "strength": "observed",
+    "currency": {
+      "tree": "e2abab1d819807dd70f25b1fa552bd377f7eb000",
+      "check_version": "1",
+      "environment": "",
+      "policy_digest": "sha256:942e364feb73c2e81af5317332237bc512b825968701d5260c65d3e1f195a4c8"
+    },
+    "evidence_refs": [
+      "python3 fake-clock ttl=10; git show 2e2afb8; cache.py:20"
+    ],
+    "note": "t=10 returns 'v', t=10.001 None; cache.py:20 uses strict >; 2e2afb8 changed >= to > for coarse 15ms clocks, ttl as minimum lifetime. Citations confirmed.",
+    "recorded_at": "2026-10-06T01:53:31.890265274Z",
+    "bound_via": "subagent"
+  }
+]

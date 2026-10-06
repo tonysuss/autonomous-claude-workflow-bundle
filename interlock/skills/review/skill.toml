@@ -1,0 +1,5 @@
+name = "review"
+description = "Adversarially review a submitted interlock result before it is verified: findings with evidence, a lead judgment on each (act on, consider, noted, dismissed), dismissals kept, and the act-on findings handed to the verifier."
+invocation = "model"
+requires = ["interlock-cli"]
+pack = "core"

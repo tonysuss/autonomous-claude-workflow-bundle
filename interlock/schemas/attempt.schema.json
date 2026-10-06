@@ -22,6 +22,7 @@
     "ended_at": {
       "oneOf": [{ "$ref": "common.schema.json#/$defs/timestamp" }, { "type": "null" }]
     },
+    "binding": { "$ref": "common.schema.json#/$defs/binding" },
     "handoff": {
       "description": "How to find the attempt's headless session again. Written in its own transaction before the session starts.",
       "oneOf": [{ "$ref": "#/$defs/handoff" }, { "type": "null" }]

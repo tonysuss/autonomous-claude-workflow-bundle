@@ -1,0 +1,40 @@
+[
+  {
+    "id": "asm-7d1417684ec249f1",
+    "task_id": "duration-sum",
+    "criterion_id": "repro",
+    "attempt_id": "att-2847147c2820422d",
+    "strength": "observed",
+    "currency": {
+      "tree": "4688fba1015d33dedf241719d5caee3cfb7ffa3c",
+      "check_version": "1",
+      "environment": "",
+      "policy_digest": "sha256:78bdf18f4cbdd649c16dd0906dacfb5377f554c009176ce15d10c6277ff456cd"
+    },
+    "evidence_refs": [
+      "interlock check run --criterion repro"
+    ],
+    "note": "passed, run-7474affc90d6410f; 1h30m=5400, 2m10s=130",
+    "recorded_at": "2026-10-06T01:55:36.509887739Z",
+    "bound_via": "subagent"
+  },
+  {
+    "id": "asm-31ca7614f4a7421d",
+    "task_id": "duration-sum",
+    "criterion_id": "regression",
+    "attempt_id": "att-2847147c2820422d",
+    "strength": "tested",
+    "currency": {
+      "tree": "4688fba1015d33dedf241719d5caee3cfb7ffa3c",
+      "check_version": "1",
+      "environment": "",
+      "policy_digest": "sha256:78bdf18f4cbdd649c16dd0906dacfb5377f554c009176ce15d10c6277ff456cd"
+    },
+    "evidence_refs": [
+      "interlock check run --criterion regression"
+    ],
+    "note": "passed, 4 tests OK, run-61c0b644bcfd48c1",
+    "recorded_at": "2026-10-06T01:55:36.578014530Z",
+    "bound_via": "subagent"
+  }
+]

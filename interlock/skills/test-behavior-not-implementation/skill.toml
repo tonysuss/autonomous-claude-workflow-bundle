@@ -1,0 +1,5 @@
+name = "test-behavior-not-implementation"
+description = "When writing or keeping a test, call the code the way its users do and assert what they observe against a literal expected value."
+invocation = "routed"
+pack = "core"
+routers = ["implement", "verify"]

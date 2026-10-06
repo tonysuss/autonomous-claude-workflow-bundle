@@ -1,0 +1,38 @@
+[
+  {
+    "id": "clm-221002b50d354676",
+    "task_id": "duration-sum",
+    "criterion_id": "repro",
+    "attempt_id": "att-0c96f4cd20834457",
+    "strength": "observed",
+    "currency": {
+      "tree": "4688fba1015d33dedf241719d5caee3cfb7ffa3c",
+      "check_version": "1",
+      "environment": "",
+      "policy_digest": "sha256:78bdf18f4cbdd649c16dd0906dacfb5377f554c009176ce15d10c6277ff456cd"
+    },
+    "evidence_refs": [
+      "python3 -c 'from durations import parse_duration as p; assert p(\"1h30m\")==5400 and p(\"2m10s\")==130'"
+    ],
+    "note": "Failed on base (AssertionError); passes after changing total = to total += in parse_duration",
+    "recorded_at": "2026-10-06T01:55:22.698221751Z"
+  },
+  {
+    "id": "clm-bc86d1d55e1d4f03",
+    "task_id": "duration-sum",
+    "criterion_id": "regression",
+    "attempt_id": "att-0c96f4cd20834457",
+    "strength": "tested",
+    "currency": {
+      "tree": "4688fba1015d33dedf241719d5caee3cfb7ffa3c",
+      "check_version": "1",
+      "environment": "",
+      "policy_digest": "sha256:78bdf18f4cbdd649c16dd0906dacfb5377f554c009176ce15d10c6277ff456cd"
+    },
+    "evidence_refs": [
+      "python3 -m unittest discover -s tests"
+    ],
+    "note": "4 tests pass, including new test_sums_multiple_units",
+    "recorded_at": "2026-10-06T01:55:22.765283008Z"
+  }
+]

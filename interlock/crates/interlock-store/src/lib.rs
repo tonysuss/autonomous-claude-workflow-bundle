@@ -604,6 +604,7 @@ impl Store {
                     handoff: None,
                     end: None,
                     spent: None,
+                    binding: None,
                 };
                 put_attempt(&tx, v, &attempt, true)?;
                 let moved = match &outcome {
@@ -728,6 +729,11 @@ impl Store {
             evidence_refs: req.evidence_refs,
             note: req.note,
             recorded_at: now,
+            // An assessment keeps how its verifier was bound, as it stood when recorded.
+            bound_via: match kind {
+                EvidenceKind::Assessment => attempt.binding.as_ref().map(|b| b.via),
+                EvidenceKind::Claim => None,
+            },
         };
         let (table, record_kind, event_kind) = match kind {
             EvidenceKind::Claim => ("claims", RecordKind::Claim, EventKind::ClaimAdded),
@@ -939,6 +945,50 @@ impl Store {
         }
         tx.commit()?;
         Ok(attempt)
+    }
+
+    /// Records who an attempt belongs to. Only interlock's own paths call
+    /// this: the supervisor for sessions it launches, and guided sessions from
+    /// what the host's hooks reported.
+    pub fn bind_attempt(&mut self, attempt_id: &str, binding: Binding) -> Result<Attempt> {
+        let (tx, v) = self.begin()?;
+        let mut attempt = get_attempt(&tx, attempt_id)?;
+        attempt.binding = Some(binding);
+        put_attempt(&tx, v, &attempt, false)?;
+        tx.commit()?;
+        Ok(attempt)
+    }
+
+    /// Attempts still running or submitted, across every task.
+    pub fn open_attempts(&self) -> Result<Vec<Attempt>> {
+        let mut stmt =
+            self.conn.prepare("SELECT record FROM attempts WHERE status IN ('running', 'submitted') ORDER BY rowid")?;
+        let rows = stmt.query_map([], |r| r.get::<_, String>(0))?;
+        rows.map(|r| decode(r?)).collect()
+    }
+
+    /// Once a task is done, failed or cancelled, ends the attempts it left
+    /// open, so nothing stays running. A no-op for an active task.
+    pub fn close_open_attempts(&mut self, task_id: &str, now: Timestamp) -> Result<Vec<Attempt>> {
+        let (tx, v) = self.begin()?;
+        let task = get_task(&tx, task_id)?;
+        let to = match task.state {
+            State::Done => AttemptStatus::Completed,
+            State::Cancelled => AttemptStatus::Cancelled,
+            State::Failed => AttemptStatus::Failed,
+            _ => return Ok(vec![]),
+        };
+        let mut closed = Vec::new();
+        for mut a in attempts_of(&tx, task_id)? {
+            if matches!(a.status, AttemptStatus::Running | AttemptStatus::Submitted) {
+                a.status = to;
+                a.ended_at = Some(now);
+                put_attempt(&tx, v, &a, false)?;
+                closed.push(a);
+            }
+        }
+        tx.commit()?;
+        Ok(closed)
     }
 
     /// Records interlock's own run of a criterion's check. The store derives

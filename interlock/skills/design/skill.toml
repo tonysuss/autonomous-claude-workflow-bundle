@@ -1,0 +1,6 @@
+name = "design"
+description = "Compare two or more whole designs for an interlock task before implementing, when the change crosses function boundaries and both the uncertainty and the cost of a wrong shape are high. Started by a person; skip it for small or obvious changes."
+invocation = "user"
+requires = ["interlock-cli"]
+pack = "core"
+argument-hint = "<task id>"

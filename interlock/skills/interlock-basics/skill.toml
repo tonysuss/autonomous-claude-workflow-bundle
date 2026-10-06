@@ -1,0 +1,6 @@
+name = "interlock-basics"
+description = "How a guided session reports through interlock: attempts, tokens, check runs, claims, results, and what each command prints."
+invocation = "routed"
+requires = ["interlock-cli"]
+pack = "core"
+routers = ["route", "investigate", "design", "implement", "verify", "review"]

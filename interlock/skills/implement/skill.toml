@@ -1,0 +1,5 @@
+name = "implement"
+description = "Make the smallest change that meets an interlock task's criteria, in the isolated worktree interlock opens for the attempt: reproduce first for a bug fix, build from a named data shape for a feature, pin behavior first for a refactor."
+invocation = "model"
+requires = ["interlock-cli"]
+pack = "core"

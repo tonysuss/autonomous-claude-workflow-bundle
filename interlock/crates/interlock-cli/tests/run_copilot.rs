@@ -1,8 +1,10 @@
 //! Whole `interlock run` passes on the real Copilot CLI, in offline mode
 //! against a scripted model. They need a Copilot CLI binary: set
-//! INTERLOCK_COPILOT_BIN or put `copilot` on PATH. Without one they skip.
+//! INTERLOCK_COPILOT_BIN or put `copilot` on PATH. Without one they skip, unless
+//! INTERLOCK_REQUIRE_HOSTS=1, which makes a missing host a failure.
 
 mod fake_model;
+mod hosts;
 
 use std::path::{Path, PathBuf};
 use std::process::Command;
@@ -64,10 +66,8 @@ struct Fixture {
 
 impl Fixture {
     fn new() -> Option<Fixture> {
-        let Some(copilot) = copilot() else {
-            eprintln!("skipping: no Copilot CLI binary");
-            return None;
-        };
+        // Skips without Copilot, unless INTERLOCK_REQUIRE_HOSTS=1.
+        let copilot = hosts::copilot()?;
         Some(Fixture::with_task(TASK, copilot))
     }
 

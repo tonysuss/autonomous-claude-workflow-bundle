@@ -1,0 +1,5 @@
+name = "fix-root-causes"
+description = "When debugging, trace each symptom to its root cause and fix it there: reproduce first, ask why until you reach it, no guards that silence the symptom."
+invocation = "routed"
+pack = "core"
+routers = ["implement", "investigate"]

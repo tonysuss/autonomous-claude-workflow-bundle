@@ -1,0 +1,46 @@
+{
+  "id": "ttl-boundary",
+  "repository": ".",
+  "workflow": {
+    "name": "investigation",
+    "version": 1
+  },
+  "intent": "Can TTLCache.get in cache.py still return a value exactly ttl seconds after it was stored? Where is that decided, and why is it that way?",
+  "scope": {
+    "paths": [],
+    "description": null
+  },
+  "dependencies": [],
+  "criteria": [
+    {
+      "id": "answer",
+      "statement": "The question is answered with file and line citations (where the expiry boundary is decided, and the history/reason for it), and a command shows the behavior at exactly ttl seconds",
+      "check": null,
+      "check_version": "1",
+      "min_strength": "observed",
+      "producer": "independent",
+      "baseline": "any"
+    }
+  ],
+  "input_snapshot": {
+    "repository": ".",
+    "base_commit": "2e2afb8027b7b7948dafb9b467a64cd3dac5a416",
+    "untracked_hash": null,
+    "protected_paths": []
+  },
+  "environment": "",
+  "policy_digest": "sha256:942e364feb73c2e81af5317332237bc512b825968701d5260c65d3e1f195a4c8",
+  "budget": {
+    "max_attempts": 2
+  },
+  "integration_required": false,
+  "state": "done",
+  "resume_point": null,
+  "blocked_reason": null,
+  "current_tree": "e2abab1d819807dd70f25b1fa552bd377f7eb000",
+  "lease_epoch": 1,
+  "current_attempt": "att-9b6c3a6489844769",
+  "attempts_used": 1,
+  "created_at": "2026-10-06T01:52:54.754153428Z",
+  "updated_at": "2026-10-06T01:53:36.109578300Z"
+}

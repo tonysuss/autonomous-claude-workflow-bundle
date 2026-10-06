@@ -1,0 +1,45 @@
+     Running unittests src/lib.rs
+test result: ok. 20 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out
+     Running unittests src/main.rs
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out
+     Running tests/cli.rs
+test result: ok. 9 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out
+     Running tests/guided_cli.rs
+test result_submit_reads_the_change_from_the_tree_and_fails_closed ... ok
+test result: ok. 15 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out
+     Running tests/guided_copilot.rs
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out
+     Running tests/run_copilot.rs
+test result: ok. 6 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out
+     Running tests/skills_load.rs
+test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out
+     Running unittests src/lib.rs
+test result: ok. 16 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out
+     Running tests/checks.rs
+test results_that_leave_the_scope_or_touch_the_checks_are_rejected ... ok
+test result: ok. 11 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out
+     Running tests/evidence_props.rs
+test result: ok. 6 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out
+     Running tests/lifecycle.rs
+test result: ok. 11 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out
+     Running unittests src/lib.rs
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out
+     Running tests/conformance.rs
+test result: ok. 5 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out
+     Running unittests src/lib.rs
+test result: ok. 8 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out
+     Running tests/generate.rs
+test result: ok. 9 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out
+     Running unittests src/lib.rs
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out
+     Running tests/invariants.rs
+test results_outside_the_scope_are_rejected_and_the_attempt_may_try_again ... ok
+test result: ok. 15 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out
+     Running unittests src/lib.rs
+test result: ok. 25 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out

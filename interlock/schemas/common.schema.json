@@ -150,7 +150,25 @@
         "currency": { "$ref": "#/$defs/currency" },
         "evidence_refs": { "type": "array", "items": { "type": "string" } },
         "note": { "type": ["string", "null"] },
-        "recorded_at": { "$ref": "#/$defs/timestamp" }
+        "recorded_at": { "$ref": "#/$defs/timestamp" },
+        "bound_via": { "$ref": "#/$defs/bound_via" }
+      }
+    },
+    "bound_via": {
+      "description": "How interlock knows which agent holds an attempt: it launched the session, the host named the caller as its verifier subagent, the host named the session, or nobody established it.",
+      "enum": ["interlock_launched", "subagent", "session", "unbound"]
+    },
+    "binding": {
+      "description": "The host session (and subagent) an attempt belongs to. Guided hooks govern only that caller.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["via", "interactive"],
+      "properties": {
+        "via": { "$ref": "#/$defs/bound_via" },
+        "interactive": { "type": "boolean" },
+        "host_session": { "type": ["string", "null"] },
+        "host_agent": { "type": ["string", "null"] },
+        "agent_type": { "type": ["string", "null"] }
       }
     }
   }

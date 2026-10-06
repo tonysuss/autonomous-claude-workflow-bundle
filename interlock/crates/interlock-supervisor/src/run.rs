@@ -23,8 +23,8 @@ use interlock_core::grants::{HostPolicy, Profile};
 use interlock_core::lifecycle::Move;
 use interlock_core::workflow::Mode;
 use interlock_schema::{
-    Attempt, AttemptEnd, AttemptStatus, Baseline, EndReason, Handoff, HostRef, ResultStatus, Role, RunTarget, Snapshot,
-    Spent, State, Task,
+    Attempt, AttemptEnd, AttemptStatus, Baseline, Binding, EndReason, Handoff, HostRef, ResultStatus, Role, RunTarget,
+    Snapshot, Spent, State, Task,
 };
 use interlock_store::{SessionEnd, StartAttempt, Started, Store, SubmitResult};
 use serde::Serialize;
@@ -574,9 +574,55 @@ impl Supervisor {
             Utc::now(),
         )?;
         Ok(match started {
-            Started::Yes { attempt, token, .. } => Opened::Yes(attempt, token),
+            Started::Yes { attempt, token, .. } => {
+                // interlock launches this session itself, so it knows who holds the attempt.
+                let attempt = self.store.bind_attempt(&attempt.id, Binding::interlock_launched())?;
+                Opened::Yes(attempt, token)
+            }
             Started::Blocked { moved } => Opened::Blocked(moved),
         })
+    }
+
+    /// One independent verifier session for a task awaiting verification,
+    /// launched by interlock: for guided sessions on hosts that cannot name a
+    /// verifier subagent to the hooks. Applies what the evidence then allows.
+    pub fn verify(&mut self, task_id: &str) -> Result<RunReport> {
+        self.check_effort()?;
+        let dir = self.dir();
+        std::fs::create_dir_all(&dir).map_err(|e| RunError::Other(e.to_string()))?;
+        let _lock = ControllerLock::acquire(&dir)?;
+        self.subreaper = interlock_adapter::become_subreaper();
+        let plugin = dir.join("plugin");
+        write_hooks_plugin(&plugin, &self.cfg.interlock_bin).map_err(|e| RunError::Other(e.to_string()))?;
+        let mut report = RunReport {
+            task_id: task_id.into(),
+            host: self.host.name().into(),
+            final_state: self.store.task(task_id)?.state,
+            stopped_because: String::new(),
+            reconciled: vec![],
+            reattached: vec![],
+            interrupted: false,
+            baseline: vec![],
+            sessions: vec![],
+            pin: None,
+            spent: Spent::default(),
+            exports: vec![],
+        };
+        self.restart_reconcile(task_id, &mut report)?;
+        self.config = Config::load(&dir).map_err(RunError::Other)?;
+        let task = self.store.task(task_id)?;
+        if task.state != State::AwaitingVerification {
+            report.final_state = task.state;
+            report.stopped_because = format!("the task is {}, not awaiting verification", task.state);
+            return Ok(report);
+        }
+        if let Some(session) = self.verifier_session(task_id, &plugin)? {
+            report.sessions.push(session);
+        }
+        self.store.advance(task_id, Utc::now())?;
+        report.final_state = self.store.task(task_id)?.state;
+        report.stopped_because = "the verifier session ended".into();
+        Ok(report)
     }
 
     /// The session's environment: the allowlist (see `interlock_adapter::env`),

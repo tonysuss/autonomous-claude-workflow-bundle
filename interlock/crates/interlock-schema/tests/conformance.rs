@@ -94,6 +94,7 @@ fn every_record_kind_round_trips_through_its_schema() {
         handoff: None,
         end: None,
         spent: None,
+        binding: Some(Binding::unbound(true)),
     };
     v.check(RecordKind::Attempt, &attempt).unwrap();
 
@@ -122,6 +123,7 @@ fn every_record_kind_round_trips_through_its_schema() {
         evidence_refs: vec!["artifacts/run.log".into()],
         note: None,
         recorded_at: t0(),
+        bound_via: Some(BoundVia::Subagent),
     };
     v.check(RecordKind::Claim, &evidence).unwrap();
     v.check(RecordKind::Assessment, &evidence).unwrap();
@@ -267,6 +269,7 @@ fn running_attempt() -> Attempt {
         handoff: None,
         end: None,
         spent: None,
+        binding: None,
     }
 }
 

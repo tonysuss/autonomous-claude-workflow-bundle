@@ -16,6 +16,7 @@ interlock-store = { path = "crates/interlock-store" }
 interlock-adapter = { path = "crates/interlock-adapter" }
 interlock-forge = { path = "crates/interlock-forge" }
 interlock-supervisor = { path = "crates/interlock-supervisor" }
+interlock-skillgen = { path = "crates/interlock-skillgen" }
 
 anyhow = "1"
 chrono = { version = "0.4", default-features = false, features = ["serde", "clock", "std"] }

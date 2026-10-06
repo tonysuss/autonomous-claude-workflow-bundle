@@ -1,0 +1,5 @@
+name = "subtract-before-you-add"
+description = "When adding, refactoring or redesigning, remove dead code and needless layers first, then build the smallest change on the simpler base."
+invocation = "routed"
+pack = "core"
+routers = ["implement", "design"]

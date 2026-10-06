@@ -130,6 +130,84 @@ fn results_that_leave_the_scope_or_touch_the_checks_are_rejected() {
     assert!(reason.contains("README.md (outside the scope src/**)"), "{reason}");
 }
 
+/// A running task at epoch 1 with worker w1, for G3 tests.
+fn running(mut task: Task) -> (Task, Attempt) {
+    task.state = State::Running;
+    task.lease_epoch = 1;
+    task.current_attempt = Some("w1".into());
+    let worker = attempt(&task, "w1", Role::Worker, 1);
+    (task, worker)
+}
+
+#[test]
+fn an_empty_scope_allows_no_change_and_double_star_allows_any() {
+    let mut empty = task(Baseline::Any);
+    empty.scope = Scope { paths: vec![], description: None };
+    let (empty, worker) = running(empty);
+    let changed = vec!["src/export.rs".to_string()];
+    let Submission::Rejected { reason } = lifecycle::submit_result(&empty, &worker, 1, TREE_A, &changed, t(3)).unwrap()
+    else {
+        panic!("an empty scope used to allow everything")
+    };
+    assert!(reason.contains("scope is empty"), "{reason}");
+    assert!(matches!(
+        lifecycle::submit_result(&empty, &worker, 1, TREE_A, &[], t(3)).unwrap(),
+        Submission::Accepted(_)
+    ));
+
+    let mut any = task(Baseline::Any);
+    any.scope = Scope { paths: vec!["**".into()], description: None };
+    let (any, worker) = running(any);
+    let changed = vec!["deep/any/where.rs".to_string()];
+    assert!(matches!(
+        lifecycle::submit_result(&any, &worker, 1, TREE_A, &changed, t(3)).unwrap(),
+        Submission::Accepted(_)
+    ));
+}
+
+#[test]
+fn an_investigation_rejects_any_change_whatever_its_scope() {
+    let mut inv = task(Baseline::Any);
+    inv.workflow = WorkflowRef { name: "investigation".into(), version: 1 };
+    inv.scope = Scope { paths: vec!["**".into()], description: None };
+    let (inv, worker) = running(inv);
+    let changed = vec!["notes.md".to_string()];
+    let Submission::Rejected { reason } = lifecycle::submit_result(&inv, &worker, 1, TREE_A, &changed, t(3)).unwrap()
+    else {
+        panic!("an investigation changed a file")
+    };
+    assert!(reason.contains("an investigation changes no files"), "{reason}");
+    assert!(matches!(lifecycle::submit_result(&inv, &worker, 1, TREE_A, &[], t(3)).unwrap(), Submission::Accepted(_)));
+}
+
+#[test]
+fn an_unbound_verifier_cannot_pass_a_criterion_without_a_check() {
+    let mut task = task(Baseline::Any);
+    task.criteria[0].check = None;
+    let with = |via: Option<BoundVia>, strength: Strength| {
+        let mut e = evidence(&task, "a1", "repro", "v1", strength, TREE_A);
+        e.bound_via = via;
+        verdict(&task, &[e], &[])
+    };
+    let unbound = with(Some(BoundVia::Unbound), Strength::Observed);
+    let CriterionVerdict::NotYet { reason } = &unbound else { panic!("unbound passed: {unbound:?}") };
+    assert!(reason.contains("unbound verifier"), "{reason}");
+    for via in [Some(BoundVia::Subagent), Some(BoundVia::InterlockLaunched), None] {
+        assert!(matches!(with(via, Strength::Observed), CriterionVerdict::Pass { .. }), "{via:?}");
+    }
+    assert!(
+        matches!(with(Some(BoundVia::Unbound), Strength::Failed), CriterionVerdict::Fail { .. }),
+        "a failure counts from anyone"
+    );
+
+    // Where interlock ran the check, an unbound verifier's assessment counts alongside the run.
+    let checked = self::task(Baseline::Any);
+    let mut e = evidence(&checked, "a1", "repro", "v1", Strength::Observed, TREE_A);
+    e.bound_via = Some(BoundVia::Unbound);
+    let runs = [run(&checked, "r1", "repro", Verifier, Output, TREE_A, 0)];
+    assert!(matches!(verdict(&checked, &[e], &runs), CriterionVerdict::Pass { .. }));
+}
+
 proptest! {
     /// Vacuous runs never move a verdict, whatever their exit code or producer.
     #[test]

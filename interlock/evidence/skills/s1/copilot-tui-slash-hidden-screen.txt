@@ -1,0 +1,30 @@
+[?2026$p[?12$p[?1007$p [Current] Sessions Issues Pull requests Gists
+ ╭─╮╭─╮
+ ╰─╯╰─╯ Copilot v1.0.91 uses AI.
+ █ ▘▝ █ Check for mistakes.
+ ▔▔▔▔
+╭──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╮
+│ Confirm folder trust│
+│ ──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────── │
+│ ╭──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╮ │
+│ │ /home/user/autonomous-claude-workflow-bundle/.claude/worktrees/agent-a7be600d9be0a6677/interlock/target/skws/s1repo│ │
+│ ╰──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╯ │
+││
+│ Copilot can read files in this folder and, with your permission, edit them or run code and shell commands. It will remember your permissions for the rest of │
+│ this session.│
+││
+│ Do you trust the files in this folder?│
+││
+│ ❯ 1. Yes │
+│ 2. Yes, and remember this folder for future sessions│
+│ 3. No (Esc)│
+││
+│ ↑/↓ to navigate · enter to select · esc to cancel│
+╰──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╯● No copilot-instructions.md found. Run /init to generate.
+ ● Tip: /permissions
+ └ Switch between permission modes╴╶  ╴╶ ▘▝ ╴╶  ╴╶ ▘▝ ╴╶  ╴╶ ▘▝
+ /home/user/autonomous-claude-workflow-bundle/.claude/worktrees/agent-a7be600d9be0a6677/interlock/target/skws/s1repo [⎇ main]
+────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+❯
+────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+ ← open sidebar · Interactive · Manual Approval · / commands · ? help · tab next tab gpt-4.1 ✗ Unknown command: /s1-hidden ● MCP Servers reloaded: 0 servers connected

@@ -96,6 +96,7 @@ pub fn attempt(task: &Task, id: &str, role: Role, epoch: u32) -> Attempt {
         handoff: None,
         end: None,
         spent: None,
+        binding: None,
     }
 }
 
@@ -115,6 +116,7 @@ pub fn evidence(task: &Task, id: &str, criterion: &str, attempt: &str, strength:
         evidence_refs: vec![],
         note: None,
         recorded_at: t(5),
+        bound_via: None,
     }
 }
 

@@ -39,6 +39,7 @@ fn store_with_task(max_attempts: u32) -> Store {
         "intent": "Fix duplicate rows when an export retries",
         "environment": "linux-x86_64",
         "budget": {"max_attempts": max_attempts},
+        "scope": {"paths": ["**"]},
         "criteria": [
             {"id": "repro", "statement": "Retrying an export produces no duplicate rows",
              "check": "checks/export-retry.sh", "min_strength": "observed", "producer": "independent"},
