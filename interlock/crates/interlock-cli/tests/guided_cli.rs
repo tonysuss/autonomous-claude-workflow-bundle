@@ -188,8 +188,13 @@ impl Repo {
 
     /// The hook's verdict on a shell command from `who`, run from the repository root.
     fn bash(&self, who: Who, command: &str) -> Output {
+        self.bash_in(who, &self.path(), command)
+    }
+
+    /// The same from another directory: Claude Code keeps the directory a `cd` left the session in.
+    fn bash_in(&self, who: Who, cwd: &Path, command: &str) -> Output {
         let p = json!({"hook_event_name": "PreToolUse", "tool_name": "Bash",
-            "tool_input": {"command": command}, "cwd": self.path()});
+            "tool_input": {"command": command}, "cwd": cwd});
         self.hook("pre-tool-use", &who.payload(p))
     }
 
@@ -463,6 +468,14 @@ fn guided_hooks_keep_every_caller_out_of_interlocks_state() {
     // Sessions no attempt governs are kept out too.
     denied(repo.bash(OTHER, "rm -f .interlock/state.db"));
     denied(repo.edit(OTHER, &root.join(".interlock/worktrees/fix-add-worker-1/calc.py")));
+    // Reading is fine: Claude Code's skills keep their references under .interlock/.
+    assert_eq!(repo.bash(OTHER, "cat .interlock/guided/x/references/task-templates.md | head").status.code(), Some(0));
+    assert_eq!(
+        repo.bash(WORKER, "ls .interlock/worktrees && git -C .interlock/worktrees/fix-add-worker-1 status")
+            .status
+            .code(),
+        Some(0)
+    );
     // The worker's own worktree is its to change.
     assert_eq!(repo.edit(WORKER, &w.wt.join("calc.py")).status.code(), Some(0));
     assert_eq!(repo.bash(WORKER, &format!("cd {} && python3 -c 'import calc'", w.wt.display())).status.code(), Some(0));
@@ -504,6 +517,16 @@ fn a_guided_attempt_governs_only_the_session_that_opened_it_until_submitted() {
     let submit = w.auth(&["result", "submit", "--epoch", &w.epoch, "--tree", "auto", "--summary", "s"]);
     repo.guided(WORKER, &w.wt, &submit);
     assert_eq!(repo.edit(WORKER, &root.join("README.md")).status.code(), Some(0), "released once submitted");
+    // Still in the submitted worktree (a live run hit this): it may leave and use interlock, not change files there.
+    let leave = format!("cd {} && interlock status fix-add", root.display());
+    assert_eq!(
+        repo.bash_in(WORKER, &w.wt, &leave).status.code(),
+        Some(0),
+        "{}",
+        stderr(&repo.bash_in(WORKER, &w.wt, &leave))
+    );
+    assert_eq!(repo.bash_in(WORKER, &w.wt, "interlock advance fix-add").status.code(), Some(0));
+    assert_eq!(repo.bash_in(WORKER, &w.wt, "python3 -m unittest").status.code(), Some(2));
 }
 
 #[test]
@@ -570,6 +593,11 @@ fn the_worker_cannot_verify_its_own_work_and_only_a_bound_verifier_counts() {
     for wt in [&w.wt, &helper.wt, &v.wt] {
         assert!(!wt.exists(), "{} still there", wt.display());
     }
+    // The verified output outlives them, as a ref the person can apply.
+    assert_eq!(advanced["settled"]["output_ref"], "refs/interlock/tasks/fix-add", "{advanced:#}");
+    assert_eq!(git(&root, &["rev-parse", "--abbrev-ref", "HEAD"]), "main", "no branch moved");
+    git(&root, &["-c", "user.name=t", "-c", "user.email=t@t", "cherry-pick", "refs/interlock/tasks/fix-add"]);
+    assert_eq!(std::fs::read_to_string(root.join("calc.py")).unwrap(), "def add(a, b):\n    return a + b\n");
 }
 
 #[test]

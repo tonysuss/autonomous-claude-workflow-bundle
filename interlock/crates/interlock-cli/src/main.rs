@@ -720,15 +720,24 @@ fn binding_text(a: &Attempt) -> String {
 }
 
 /// Once a task is done, failed or cancelled: ends the attempts it left open
-/// and removes their worktrees.
+/// and removes their worktrees. A done task's verified output is kept first,
+/// as a ref the person can apply.
 fn settle(cli: &Cli, store: &mut Store, task: &str) -> Result<Value> {
     let closed: Vec<String> = store.close_open_attempts(task, now()?)?.into_iter().map(|a| a.id).collect();
     let db = absolute_db(cli)?;
-    let removed = match interlock_supervisor::guided::repo_of_store(&db) {
-        Ok(repo) => interlock_supervisor::guided::cleanup_worktrees(store, &repo, &db, task)?,
-        Err(_) => vec![],
+    // The task has already moved; a problem here is reported, not raised.
+    let tidy = || -> Result<(Option<String>, Vec<PathBuf>)> {
+        let Ok(repo) = interlock_supervisor::guided::repo_of_store(&db) else { return Ok((None, vec![])) };
+        let kept = interlock_supervisor::guided::keep_output(store, &repo, task)?;
+        Ok((kept, interlock_supervisor::guided::cleanup_worktrees(store, &repo, &db, task)?))
     };
-    Ok(json!({"closed_attempts": closed, "removed_worktrees": removed}))
+    let (kept, removed, problem) = match tidy() {
+        Ok((kept, removed)) => (kept, removed, None),
+        Err(e) => (None, vec![], Some(format!("{e:#}"))),
+    };
+    let apply = kept.as_ref().map(|r| format!("git cherry-pick {r}"));
+    Ok(json!({"closed_attempts": closed, "removed_worktrees": removed, "output_ref": kept, "apply_with": apply,
+              "problem": problem}))
 }
 
 /// `--tree auto` means the tree of the attempt's own worktree, wherever the

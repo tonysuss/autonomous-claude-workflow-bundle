@@ -25,7 +25,7 @@ interlock status <id>
 
 | State after `advance` | Meaning | Next |
 | --- | --- | --- |
-| `done` | Every criterion has current passing evidence from allowed producers (G4), and the workflow needs no delivery (G7). interlock closed the task's attempts and removed their worktrees | Report to the person |
+| `done` | Every criterion has current passing evidence from allowed producers (G4), and the workflow needs no delivery (G7). interlock closed the task's attempts, removed their worktrees, and kept the verified change at `settled.output_ref` | Report to the person |
 | `verified` | Verified; delivery needs landing authority | Tell the person; landing is theirs |
 | `ready` | An independent check failed (R1); the brief now starts with the failure | Back to {{skill:implement}} with the task id |
 | `blocked` | interlock stopped the task: `blocked_reason` says why, for example no independent verifier is available on this host | Tell the person the reason; the work is kept, and `interlock task unblock` (the person's call) resumes it |
@@ -38,4 +38,4 @@ interlock status <id>
 interlock task log <id>
 ```
 
-Tell the person the final state, each criterion's verdict and evidence strength from `status`, and the transition log. Quote failing output verbatim. Same surface before and after is the standard (`references/prove-it-works.md`): if a reproduction was only shown on a different surface, say so. Tests that only restate the code prove little (`references/test-behavior-not-implementation.md`).
+Tell the person the final state, each criterion's verdict and evidence strength from `status`, and the transition log. For a change, tell them where it is: `advance` printed `settled.output_ref`, a commit on the input snapshot, and `settled.apply_with` (`git cherry-pick <ref>`) applies it to their branch. Applying it is their call; do not run it yourself. Quote failing output verbatim. Same surface before and after is the standard (`references/prove-it-works.md`): if a reproduction was only shown on a different surface, say so. Tests that only restate the code prove little (`references/test-behavior-not-implementation.md`).

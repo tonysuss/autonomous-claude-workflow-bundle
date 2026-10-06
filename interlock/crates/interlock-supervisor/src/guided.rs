@@ -455,6 +455,26 @@ pub fn discard_worktree(repo: &Path, dir: &Path) {
     let _ = std::fs::remove_dir_all(dir);
 }
 
+/// The ref that keeps a done task's verified output: a commit of its output
+/// tree on top of the input snapshot, so `git cherry-pick <ref>` applies it.
+pub fn output_ref(task_id: &str) -> String {
+    // Task ids may hold `:` and `..`, which ref names may not.
+    format!("refs/interlock/tasks/{}", task_id.replace(':', "-").replace("..", "-"))
+}
+
+/// Once a task is done, points `output_ref` at its verified output, so the
+/// work outlives the worktrees. Returns the ref, or `None` for other states.
+pub fn keep_output(store: &Store, repo: &Path, task_id: &str) -> Result<Option<String>> {
+    let task = store.task(task_id)?;
+    let (State::Done, Some(tree)) = (task.state, task.current_tree.as_deref()) else { return Ok(None) };
+    let base = task.input_snapshot.as_ref().map(|s| s.base_commit.as_str());
+    let name = output_ref(task_id);
+    let message = format!("interlock: {task_id}, verified\n\n{}", task.intent);
+    let commit = git::commit_tree(repo, tree, base, &message)?;
+    git::update_ref(repo, &name, &commit)?;
+    Ok(Some(name))
+}
+
 /// Removes the worktrees of a task's attempts once the task is done, failed
 /// or cancelled. Returns the ones removed.
 pub fn cleanup_worktrees(store: &Store, repo: &Path, db: &Path, task_id: &str) -> Result<Vec<PathBuf>> {

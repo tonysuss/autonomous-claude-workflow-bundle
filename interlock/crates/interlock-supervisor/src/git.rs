@@ -105,6 +105,11 @@ pub fn commit_tree(repo: &Path, tree: &str, parent: Option<&str>, message: &str)
     git(repo, &args, &[])
 }
 
+/// Points `name` (a ref outside refs/heads, so no branch moves) at `commit`.
+pub fn update_ref(repo: &Path, name: &str, commit: &str) -> Result<()> {
+    git(repo, &["update-ref", name, commit], &[]).map(|_| ())
+}
+
 pub fn tree_of(repo: &Path, commit: &str) -> Result<String> {
     git(repo, &["rev-parse", &format!("{commit}^{{tree}}")], &[])
 }
