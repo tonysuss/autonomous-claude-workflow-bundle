@@ -21,6 +21,7 @@
     "started_at": { "$ref": "common.schema.json#/$defs/timestamp" },
     "ended_at": {
       "oneOf": [{ "$ref": "common.schema.json#/$defs/timestamp" }, { "type": "null" }]
-    }
+    },
+    "binding": { "$ref": "common.schema.json#/$defs/binding" }
   }
 }

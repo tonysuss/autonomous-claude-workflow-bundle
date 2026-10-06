@@ -278,6 +278,56 @@ pub struct Attempt {
     pub started_at: Timestamp,
     #[serde(default)]
     pub ended_at: Option<Timestamp>,
+    /// Who the attempt belongs to and how interlock knows. `None` on records
+    /// made through the store directly, before bindings existed.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub binding: Option<Binding>,
+}
+
+/// How interlock knows which agent an attempt belongs to.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum BoundVia {
+    /// interlock started the session itself and gave it the attempt.
+    InterlockLaunched,
+    /// The host named the caller as interlock's verifier subagent.
+    Subagent,
+    /// The host named the session (and agent) that opened the attempt.
+    Session,
+    /// Nobody established who holds the attempt.
+    Unbound,
+}
+
+/// The host session an attempt belongs to. A guided session's hooks govern
+/// only the session (and agent) an attempt is bound to.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct Binding {
+    pub via: BoundVia,
+    /// Opened from a session a person drives, rather than one interlock launched.
+    pub interactive: bool,
+    #[serde(default)]
+    pub host_session: Option<String>,
+    /// The host's id for a subagent within the session.
+    #[serde(default)]
+    pub host_agent: Option<String>,
+    #[serde(default)]
+    pub agent_type: Option<String>,
+}
+
+impl Binding {
+    pub fn interlock_launched() -> Binding {
+        Binding {
+            via: BoundVia::InterlockLaunched,
+            interactive: false,
+            host_session: None,
+            host_agent: None,
+            agent_type: None,
+        }
+    }
+
+    pub fn unbound(interactive: bool) -> Binding {
+        Binding { via: BoundVia::Unbound, interactive, host_session: None, host_agent: None, agent_type: None }
+    }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
@@ -320,6 +370,9 @@ pub struct Evidence {
     #[serde(default)]
     pub note: Option<String>,
     pub recorded_at: Timestamp,
+    /// For assessments: how the verifier attempt was bound when this was recorded.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub bound_via: Option<BoundVia>,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]

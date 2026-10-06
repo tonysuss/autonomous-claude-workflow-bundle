@@ -1,6 +1,6 @@
 //! Task scope: the paths a worker may change, as globs relative to the
 //! repository root. `**` matches any number of path segments, `*` and `?`
-//! match within one segment. An empty scope allows every path.
+//! match within one segment. An empty scope allows no path; `**` allows every path.
 
 use std::path::{Component, Path};
 
@@ -76,11 +76,7 @@ pub fn place(root: &Path, path: &Path, scope: &[String]) -> Placement {
         return Placement::Outside;
     }
     let rel = parts[root_parts.len()..].join("/");
-    if scope.is_empty() || scope.iter().any(|g| glob_matches(g, &rel)) {
-        Placement::InScope(rel)
-    } else {
-        Placement::OutOfScope(rel)
-    }
+    if scope.iter().any(|g| glob_matches(g, &rel)) { Placement::InScope(rel) } else { Placement::OutOfScope(rel) }
 }
 
 #[cfg(test)]
@@ -107,6 +103,7 @@ mod tests {
         assert_eq!(place(root, Path::new("README.md"), &scope), Placement::OutOfScope("README.md".into()));
         assert_eq!(place(root, Path::new("../att-2/src/a.rs"), &scope), Placement::Outside);
         assert_eq!(place(root, Path::new("/home/user/.bashrc"), &scope), Placement::Outside);
-        assert_eq!(place(root, Path::new("anything"), &[]), Placement::InScope("anything".into()));
+        assert_eq!(place(root, Path::new("anything"), &[]), Placement::OutOfScope("anything".into()), "empty: nothing");
+        assert_eq!(place(root, Path::new("a/b"), &["**".to_string()]), Placement::InScope("a/b".into()));
     }
 }

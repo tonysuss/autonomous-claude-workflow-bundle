@@ -91,6 +91,7 @@ fn every_record_kind_round_trips_through_its_schema() {
         status: AttemptStatus::Running,
         started_at: t0(),
         ended_at: None,
+        binding: Some(Binding::unbound(true)),
     };
     v.check(RecordKind::Attempt, &attempt).unwrap();
 
@@ -119,6 +120,7 @@ fn every_record_kind_round_trips_through_its_schema() {
         evidence_refs: vec!["artifacts/run.log".into()],
         note: None,
         recorded_at: t0(),
+        bound_via: Some(BoundVia::Subagent),
     };
     v.check(RecordKind::Claim, &evidence).unwrap();
     v.check(RecordKind::Assessment, &evidence).unwrap();

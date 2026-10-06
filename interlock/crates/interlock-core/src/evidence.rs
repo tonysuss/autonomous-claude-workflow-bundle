@@ -14,7 +14,7 @@
 //! A check run that ran nothing (no tests found) never passes and never fails.
 
 use interlock_schema::{
-    Baseline, CheckRun, Criterion, Currency, Evidence, Id, Producer, RunProducer, RunTarget, Strength, Task,
+    Baseline, BoundVia, CheckRun, Criterion, Currency, Evidence, Id, Producer, RunProducer, RunTarget, Strength, Task,
 };
 use serde::Serialize;
 
@@ -214,10 +214,15 @@ pub fn decide(task: &Task, criterion: &Criterion, records: Records<'_>) -> Crite
             missing.push("a run of its check on the input snapshot".into());
         }
     }
-    let allowed = cur_assess
-        .iter()
-        .map(|e| (Source::Assessment, *e))
-        .chain(cur_claims.iter().filter(|_| criterion.producer == Producer::SelfReport).map(|e| (Source::Claim, *e)));
+    // Where no check of interlock's backs a criterion, an assessment is the
+    // whole evidence, so it counts only from a verifier interlock could bind
+    // (an unbound one could be the worker under another role). Failures from
+    // anyone still count above.
+    let countable = |e: &&&Evidence| criterion.check.is_some() || e.bound_via != Some(BoundVia::Unbound);
+    let allowed =
+        cur_assess.iter().filter(countable).map(|e| (Source::Assessment, *e)).chain(
+            cur_claims.iter().filter(|_| criterion.producer == Producer::SelfReport).map(|e| (Source::Claim, *e)),
+        );
     let best = allowed
         .filter(|(_, e)| e.strength.satisfies(criterion.min_strength))
         .max_by_key(|(src, e)| (e.strength.pass_rank(), *src == Source::Assessment));
@@ -257,6 +262,13 @@ fn not_yet_reason(criterion: &Criterion, claims: &[&Evidence], assessments: &[&E
     }
     if criterion.producer == Producer::Independent && !claims.is_empty() {
         notes.push(format!("{} worker claim(s) do not count here", claims.len()));
+    }
+    let unbound = assessments.iter().filter(|e| e.bound_via == Some(BoundVia::Unbound)).count();
+    if criterion.check.is_none() && unbound > 0 {
+        notes.push(format!(
+            "{unbound} assessment(s) from an unbound verifier do not count for a criterion without a check \
+             (hand off to the verifier subagent, or run `interlock verify`)"
+        ));
     }
     if stale > 0 {
         notes.push(format!("{stale} stale record(s) ignored"));

@@ -333,17 +333,22 @@ pub enum Submission {
     },
 }
 
-/// Changed paths a result may not contain: anything outside a non-empty
-/// scope, and any file the task's checks run.
+/// Changed paths a result may not contain: any file the task's checks run,
+/// anything outside the scope (an empty scope allows nothing; `**` allows
+/// everything), and, for an investigation, anything at all.
 pub fn scope_violations(task: &Task, changed_paths: &[String]) -> Vec<String> {
     let protected = task.input_snapshot.as_ref().map(|s| s.protected_paths.as_slice()).unwrap_or_default();
+    let read_only = task.workflow.name == "investigation";
     changed_paths
         .iter()
         .filter_map(|p| {
             if protected.contains(p) {
                 Some(format!("{p} (a file the task's checks run)"))
-            } else if !task.scope.paths.is_empty() && !task.scope.paths.iter().any(|g| crate::scope::glob_matches(g, p))
-            {
+            } else if read_only {
+                Some(format!("{p} (an investigation changes no files)"))
+            } else if task.scope.paths.is_empty() {
+                Some(format!("{p} (the task's scope is empty, so it may change nothing)"))
+            } else if !task.scope.paths.iter().any(|g| crate::scope::glob_matches(g, p)) {
                 Some(format!("{p} (outside the scope {})", task.scope.paths.join(", ")))
             } else {
                 None
