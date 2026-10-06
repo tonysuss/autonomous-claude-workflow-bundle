@@ -1,0 +1,89 @@
+[
+  {
+    "id": "att-efbaf6bd83e543b0",
+    "task_id": "ttl-boundary",
+    "epoch": 1,
+    "role": "worker",
+    "host": {
+      "host": "claude-code",
+      "version": "2.1.289"
+    },
+    "agent": null,
+    "model": null,
+    "worktree": "/home/user/autonomous-claude-workflow-bundle/.claude/worktrees/agent-a7be600d9be0a6677/interlock/target/skws/live5/investigation-repo/.interlock/worktrees/ttl-boundary-worker-1",
+    "effective_grant": {
+      "action_classes": [
+        "read",
+        "local_reversible"
+      ],
+      "tools": {
+        "allow": [
+          "read",
+          "shell",
+          "web"
+        ],
+        "deny": [
+          "edit",
+          "shell:git push",
+          "shell:git commit"
+        ]
+      },
+      "landing_authority": "none",
+      "grant_ids": []
+    },
+    "token_hash": "a810f6966537b099cb6d71e84b5f696e46a1353d975bf41335c3b69c2c80bb3e",
+    "status": "completed",
+    "started_at": "2026-10-06T02:28:51.049020386Z",
+    "ended_at": "2026-10-06T02:29:27.929144636Z",
+    "binding": {
+      "via": "session",
+      "interactive": true,
+      "host_session": "533a7202-b2b1-5f9c-8fb9-d9bcdfeb7c84",
+      "host_agent": null,
+      "agent_type": null
+    }
+  },
+  {
+    "id": "att-0c30e0eb6913462d",
+    "task_id": "ttl-boundary",
+    "epoch": 1,
+    "role": "verifier",
+    "host": {
+      "host": "claude-code",
+      "version": "2.1.289"
+    },
+    "agent": "interlock:verifier",
+    "model": null,
+    "worktree": "/home/user/autonomous-claude-workflow-bundle/.claude/worktrees/agent-a7be600d9be0a6677/interlock/target/skws/live5/investigation-repo/.interlock/worktrees/ttl-boundary-verifier-1",
+    "effective_grant": {
+      "action_classes": [
+        "read",
+        "local_reversible"
+      ],
+      "tools": {
+        "allow": [
+          "read",
+          "shell"
+        ],
+        "deny": [
+          "edit",
+          "shell:git push",
+          "shell:git commit"
+        ]
+      },
+      "landing_authority": "none",
+      "grant_ids": []
+    },
+    "token_hash": "c9787d86d6f09ef8c1717ec312df757c1e2a6c21ada8954d436fb0228de452bc",
+    "status": "completed",
+    "started_at": "2026-10-06T02:29:13.688374339Z",
+    "ended_at": "2026-10-06T02:29:23.156967379Z",
+    "binding": {
+      "via": "subagent",
+      "interactive": true,
+      "host_session": "533a7202-b2b1-5f9c-8fb9-d9bcdfeb7c84",
+      "host_agent": "ae6b3694ff9c764fa",
+      "agent_type": "interlock:verifier"
+    }
+  }
+]

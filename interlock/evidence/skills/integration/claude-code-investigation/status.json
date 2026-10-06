@@ -1,0 +1,68 @@
+{
+  "attempts": [
+    {
+      "binding": {
+        "agent_type": null,
+        "host_agent": null,
+        "host_session": "533a7202-b2b1-5f9c-8fb9-d9bcdfeb7c84",
+        "interactive": true,
+        "via": "session"
+      },
+      "bound": "bound to session 533a7202-b2b1-5f9c-8fb9-d9bcdfeb7c84",
+      "epoch": 1,
+      "host": "claude-code",
+      "id": "att-efbaf6bd83e543b0",
+      "role": "worker",
+      "status": "completed"
+    },
+    {
+      "binding": {
+        "agent_type": "interlock:verifier",
+        "host_agent": "ae6b3694ff9c764fa",
+        "host_session": "533a7202-b2b1-5f9c-8fb9-d9bcdfeb7c84",
+        "interactive": true,
+        "via": "subagent"
+      },
+      "bound": "interlock's verifier subagent: session 533a7202-b2b1-5f9c-8fb9-d9bcdfeb7c84, agent ae6b3694ff9c764fa (interlock:verifier)",
+      "epoch": 1,
+      "host": "claude-code",
+      "id": "att-0c30e0eb6913462d",
+      "role": "verifier",
+      "status": "completed"
+    }
+  ],
+  "evidence": {
+    "all_pass": true,
+    "any_fail": false,
+    "criteria": [
+      {
+        "criterion_id": "answer",
+        "current_assessments": 1,
+        "current_claims": 1,
+        "current_runs": 0,
+        "evidence_id": "asm-170af84c73c74851",
+        "source": "assessment",
+        "stale": 0,
+        "strength": "observed",
+        "verdict": "pass"
+      }
+    ]
+  },
+  "next_moves": [],
+  "task": {
+    "attempts_used": 1,
+    "blocked_reason": null,
+    "current_attempt": "att-efbaf6bd83e543b0",
+    "current_tree": "e2abab1d819807dd70f25b1fa552bd377f7eb000",
+    "id": "ttl-boundary",
+    "integration_required": false,
+    "intent": "Can TTLCache.get in cache.py still return a value exactly ttl seconds after it was stored? Where is that decided, and why is it that way?",
+    "lease_epoch": 1,
+    "max_attempts": 2,
+    "state": "done",
+    "workflow": {
+      "name": "investigation",
+      "version": 1
+    }
+  }
+}

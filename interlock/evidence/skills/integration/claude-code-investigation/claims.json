@@ -1,0 +1,20 @@
+[
+  {
+    "id": "clm-5f98a0bc73674615",
+    "task_id": "ttl-boundary",
+    "criterion_id": "answer",
+    "attempt_id": "att-efbaf6bd83e543b0",
+    "strength": "observed",
+    "currency": {
+      "tree": "e2abab1d819807dd70f25b1fa552bd377f7eb000",
+      "check_version": "1",
+      "environment": "",
+      "policy_digest": "sha256:c21a7dd84bdde34be22dbc5f3179e723f959e58b3510fc3b0f3683890b5d247f"
+    },
+    "evidence_refs": [
+      "cache.py:20; python3 -c \"from cache import TTLCache;t=[0];c=TTLCache(10,lambda:t[0]);c.put('k','v');t[0]=10;print(c.get('k','MISS'));t[0]=10.001;print(c.get('k','MISS'))\""
+    ],
+    "note": "get() uses '>' at cache.py:20, so at age == ttl the value is returned (prints v); just past ttl it is deleted and default returned (MISS). Before e6ed919 it was '>=' (bdf7b91). Reason stated directly in e6ed919's message: coarse clocks expired ttl=1 entries on first read after one tick; ttl is the minimum lifetime.",
+    "recorded_at": "2026-10-06T02:29:08.248235350Z"
+  }
+]

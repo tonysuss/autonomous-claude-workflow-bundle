@@ -1,0 +1,88 @@
+[
+  {
+    "id": "att-885afad123d54fe1",
+    "task_id": "duration-sum",
+    "epoch": 1,
+    "role": "worker",
+    "host": {
+      "host": "claude-code",
+      "version": "2.1.289"
+    },
+    "agent": null,
+    "model": null,
+    "worktree": "/home/user/autonomous-claude-workflow-bundle/.claude/worktrees/agent-a7be600d9be0a6677/interlock/target/skws/live5/bugfix-repo/.interlock/worktrees/duration-sum-worker-1",
+    "effective_grant": {
+      "action_classes": [
+        "read",
+        "local_reversible"
+      ],
+      "tools": {
+        "allow": [
+          "read",
+          "edit",
+          "shell"
+        ],
+        "deny": [
+          "shell:git push",
+          "shell:git commit"
+        ]
+      },
+      "landing_authority": "none",
+      "grant_ids": []
+    },
+    "token_hash": "87d69029ec386d52a4d80c961fa618d1ddd76dc24f79b42563eabbad7b1c5237",
+    "status": "completed",
+    "started_at": "2026-10-06T02:27:59.783783910Z",
+    "ended_at": "2026-10-06T02:28:28.926487766Z",
+    "binding": {
+      "via": "session",
+      "interactive": true,
+      "host_session": "533a7202-b2b1-5f9c-8fb9-d9bcdfeb7c84",
+      "host_agent": null,
+      "agent_type": null
+    }
+  },
+  {
+    "id": "att-410623b63d22418d",
+    "task_id": "duration-sum",
+    "epoch": 1,
+    "role": "verifier",
+    "host": {
+      "host": "claude-code",
+      "version": "2.1.289"
+    },
+    "agent": "interlock:verifier",
+    "model": null,
+    "worktree": "/home/user/autonomous-claude-workflow-bundle/.claude/worktrees/agent-a7be600d9be0a6677/interlock/target/skws/live5/bugfix-repo/.interlock/worktrees/duration-sum-verifier-1",
+    "effective_grant": {
+      "action_classes": [
+        "read",
+        "local_reversible"
+      ],
+      "tools": {
+        "allow": [
+          "read",
+          "shell"
+        ],
+        "deny": [
+          "edit",
+          "shell:git push",
+          "shell:git commit"
+        ]
+      },
+      "landing_authority": "none",
+      "grant_ids": []
+    },
+    "token_hash": "7d0ef2653f4f8224b66cd181933eee71bd3d823cc301a56bce5db0ea5347806d",
+    "status": "completed",
+    "started_at": "2026-10-06T02:28:17.447023613Z",
+    "ended_at": "2026-10-06T02:28:25.209449072Z",
+    "binding": {
+      "via": "subagent",
+      "interactive": true,
+      "host_session": "533a7202-b2b1-5f9c-8fb9-d9bcdfeb7c84",
+      "host_agent": "a54671e0874c90716",
+      "agent_type": "interlock:verifier"
+    }
+  }
+]

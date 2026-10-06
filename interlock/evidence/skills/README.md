@@ -1,6 +1,6 @@
 # Evidence: skills, the generator, S1, and guided sessions
 
-October 5 and 6, 2026. Copilot CLI 1.0.91 and Claude Code 2.1.289, in the development container. What was built and what it means is in [docs/skills.md](../../docs/skills.md); this page lists what was run. S1 and row 22 ran on commit 4f7e74b; everything else on this branch's final commit, after the review fixes (section "Review fixes").
+October 5 and 6, 2026. Copilot CLI 1.0.91 and Claude Code 2.1.289, in the development container. What was built and what it means is in [docs/skills.md](../../docs/skills.md); this page lists what was run. S1 and row 22 ran on commit 4f7e74b; rows 23 and 24 on the integrated build, interlock-foundation at 858879e; everything else on commit d266645, after the review fixes (section "Review fixes").
 
 Conventions in the commands below:
 
@@ -75,6 +75,17 @@ with `interlock` on PATH. The request names the route skill, as a person would t
 Both live runs report the outer session's id as `host_session`: in this container a nested `claude` inherits its parent's session id. The binding still separates the main agent from the subagent by the subagent's agent id.
 
 Live spend after the review fixes, all `--model sonnet`: $1.19 over four runs: rows 20 and 21, and the two bug-fix runs under "Review fixes" below.
+
+### Claude Code, live, on the integrated build
+
+The same two gates on interlock-foundation at 858879e, after integration (where the runtime branch's hook rule against paths under `.interlock/` applies to headless sessions only, and guided sessions rely on the state guard). Fresh samples from [scripts/init_samples.py](scripts/init_samples.py), `interlock setup --host claude-code` in each, then [scripts/cc_guided.sh](scripts/cc_guided.sh) with the same requests as rows 20 and 21, `--model sonnet`; records dumped with [scripts/dump_run.py](scripts/dump_run.py). Hook coverage counts the transcript's `hook_started`/`hook_response` events against its tool calls.
+
+| # | Run | Outcome | Signals | Verifier binding | Hook coverage | Denials | Spend | Raw output |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| 23 | Bug fix (request as row 20) | `done` in 45 s, 16 turns. Task `duration-sum`: `repro` failed on the input snapshot (exit 1) and passed on the output (exit 0) in interlock's runs, `regression` passed on both; the verifier reran both on the output. Output kept at `refs/interlock/tasks/duration-sum`, branch `main` unmoved, no worktrees left; the reply leaves `git cherry-pick` to the person | G1, G2, G3, G4, G7 | worker `session`; verifier `subagent` (`agent_type: interlock:verifier`, its own agent id); both assessments `bound_via: subagent` | PreToolUse on 17 of 17 tool calls (4 by the subagent); `SubagentStop` and `Stop` once each | 0 permission denials, 0 tool errors | $0.26 | [integration/claude-code-bug-fix/](integration/claude-code-bug-fix/) |
+| 24 | Investigation (request as row 21) | `done` in 55 s, 13 turns. Answer: yes; `cache.py:20` uses a strict `>`; the second commit changed `>=` to `>` for coarse clocks, quoted from its message; a fake-clock run showed the value at age 10 and a miss at 10.001, which the verifier reran. Scope empty, nothing changed; the answer kept as a note | G1, G2, G3, G4, G7 | worker `session`; verifier `subagent`; the assessment `bound_via: subagent` | PreToolUse on 15 of 15 tool calls (5 by the subagent); `SubagentStop` and `Stop` once each | 0, 0 | $0.26 | [integration/claude-code-investigation/](integration/claude-code-investigation/) |
+
+Integration spend: $0.53 of the $1.00 cap ($0.2618 and $0.2630).
 
 ## Review fixes
 

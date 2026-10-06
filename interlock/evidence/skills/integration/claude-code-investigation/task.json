@@ -1,0 +1,46 @@
+{
+  "id": "ttl-boundary",
+  "repository": ".",
+  "workflow": {
+    "name": "investigation",
+    "version": 1
+  },
+  "intent": "Can TTLCache.get in cache.py still return a value exactly ttl seconds after it was stored? Where is that decided, and why is it that way?",
+  "scope": {
+    "paths": [],
+    "description": null
+  },
+  "dependencies": [],
+  "criteria": [
+    {
+      "id": "answer",
+      "statement": "Whether TTLCache.get returns a value exactly ttl seconds after it was stored is answered, with file and line citations for where that is decided, the history or reasoning for why, and a command that shows the boundary behavior",
+      "check": null,
+      "check_version": "1",
+      "min_strength": "observed",
+      "producer": "independent",
+      "baseline": "any"
+    }
+  ],
+  "input_snapshot": {
+    "repository": ".",
+    "base_commit": "e6ed919cc6b9b8fb2a8fc853c16a5708b68ce8d8",
+    "untracked_hash": null,
+    "protected_paths": []
+  },
+  "environment": "",
+  "policy_digest": "sha256:c21a7dd84bdde34be22dbc5f3179e723f959e58b3510fc3b0f3683890b5d247f",
+  "budget": {
+    "max_attempts": 2
+  },
+  "integration_required": false,
+  "state": "done",
+  "resume_point": null,
+  "blocked_reason": null,
+  "current_tree": "e2abab1d819807dd70f25b1fa552bd377f7eb000",
+  "lease_epoch": 1,
+  "current_attempt": "att-efbaf6bd83e543b0",
+  "attempts_used": 1,
+  "created_at": "2026-10-06T02:28:47.557216556Z",
+  "updated_at": "2026-10-06T02:29:27.929144636Z"
+}
