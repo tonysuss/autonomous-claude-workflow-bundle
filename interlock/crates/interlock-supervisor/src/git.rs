@@ -101,6 +101,40 @@ pub fn worktree_remove(repo: &Path, path: &Path) -> Result<()> {
     git(repo, &["worktree", "remove", "--force", &path.display().to_string()], &[]).map(|_| ())
 }
 
+/// The commit `rev` names, and its tree.
+pub fn resolve_commit(repo: &Path, rev: &str) -> Result<(String, String)> {
+    let commit = git(repo, &["rev-parse", "--verify", "--end-of-options", &format!("{rev}^{{commit}}")], &[])?;
+    let tree = tree_of(repo, &commit)?;
+    Ok((commit, tree))
+}
+
+/// Whether `ancestor` is `commit` or one of its ancestors.
+pub fn is_ancestor(repo: &Path, ancestor: &str, commit: &str) -> Result<bool> {
+    let status = Command::new("git")
+        .args(["merge-base", "--is-ancestor", ancestor, commit])
+        .current_dir(repo)
+        .status()
+        .map_err(|e| GitError { args: "merge-base --is-ancestor".into(), message: e.to_string() })?;
+    match status.code() {
+        Some(0) => Ok(true),
+        Some(1) => Ok(false),
+        _ => Err(GitError {
+            args: format!("merge-base --is-ancestor {ancestor} {commit}"),
+            message: "git could not compare the commits".into(),
+        }),
+    }
+}
+
+/// Points interlock's own ref `name` (under refs/heads/interlock/) at `commit`.
+/// Never used for the user's branches.
+pub fn update_interlock_ref(repo: &Path, name: &str, commit: &str, message: &str) -> Result<()> {
+    if !name.starts_with("refs/heads/interlock/") {
+        return Err(GitError { args: format!("update-ref {name}"), message: "not an interlock ref".into() });
+    }
+    git(repo, &["check-ref-format", name], &[])?;
+    git(repo, &["update-ref", "-m", message, name, commit], &[]).map(|_| ())
+}
+
 /// The object type at `spec` (for example `HEAD:src/a.rs`), or `None` if absent.
 pub fn object_type(repo: &Path, spec: &str) -> Option<String> {
     git(repo, &["cat-file", "-t", spec], &[]).ok()

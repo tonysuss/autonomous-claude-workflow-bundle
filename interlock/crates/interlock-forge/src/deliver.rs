@@ -668,16 +668,16 @@ impl Pass<'_> {
             Ok(h) => h,
             Err(e) => return stop(e),
         };
-        if let Some(found) = remote.as_deref().filter(|r| !same_sha(r, head)) {
-            if !self.pushed_before(&task.id, found)? {
-                let reason = format!(
-                    "the branch {branch} holds {found}, which interlock did not push; \
-                     delete it or reset it to {head}, then unblock the task"
-                );
-                let mv = self.store.block(&task.id, &reason, Utc::now())?;
-                self.d.moves.push(mv);
-                return Ok(Err(Flow::Next));
-            }
+        if let Some(found) = remote.as_deref().filter(|r| !same_sha(r, head))
+            && !self.pushed_before(&task.id, found)?
+        {
+            let reason = format!(
+                "the branch {branch} holds {found}, which interlock did not push; \
+                 delete it or reset it to {head}, then unblock the task"
+            );
+            let mv = self.store.block(&task.id, &reason, Utc::now())?;
+            self.d.moves.push(mv);
+            return Ok(Err(Flow::Next));
         }
         let intent = OperationIntent {
             expected_head_sha: Some(head.to_string()),

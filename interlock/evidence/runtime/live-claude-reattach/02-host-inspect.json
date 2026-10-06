@@ -1,0 +1,80 @@
+[
+  {
+    "auth": "unknown",
+    "binary": "/opt/node22/bin/claude",
+    "capabilities": [
+      {
+        "available": true,
+        "capability": "session_start",
+        "detail": "headless print mode (--print)",
+        "source": "detected"
+      },
+      {
+        "available": true,
+        "capability": "session_collect",
+        "detail": "JSON result (--output-format)",
+        "source": "detected"
+      },
+      {
+        "available": true,
+        "capability": "event_stream",
+        "detail": "stream-json events (stream-json)",
+        "source": "detected"
+      },
+      {
+        "available": true,
+        "capability": "session_cancel",
+        "detail": "one OS process per session; cancel by signal",
+        "source": "process"
+      },
+      {
+        "available": true,
+        "capability": "tool_restriction",
+        "detail": "allow and deny lists (--allowedTools, --disallowedTools)",
+        "source": "detected"
+      },
+      {
+        "available": true,
+        "capability": "per_call_policy",
+        "detail": "PreToolUse can deny a call, from interlock's hooks plugin (--plugin-dir)",
+        "source": "detected"
+      },
+      {
+        "available": true,
+        "capability": "stop_guard",
+        "detail": "Stop can hold the agent from finishing, from interlock's hooks plugin (--plugin-dir)",
+        "source": "detected"
+      },
+      {
+        "available": true,
+        "capability": "model_selection",
+        "detail": "per session (--model)",
+        "source": "detected"
+      },
+      {
+        "available": true,
+        "capability": "custom_agents",
+        "detail": "custom agents defined per session (--agents)",
+        "source": "detected"
+      },
+      {
+        "available": true,
+        "capability": "parallel",
+        "detail": "independent processes",
+        "source": "process"
+      }
+    ],
+    "contract_version": 1,
+    "host": "claude-code",
+    "installed": true,
+    "notes": [
+      "the test host for this repository; pin its version for evaluation runs"
+    ],
+    "pin": {
+      "installed": "2.1.289",
+      "pinned": "2.1.289",
+      "status": "match"
+    },
+    "version": "2.1.289"
+  }
+]

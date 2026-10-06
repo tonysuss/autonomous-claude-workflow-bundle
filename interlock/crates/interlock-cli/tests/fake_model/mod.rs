@@ -115,7 +115,8 @@ fn text_of(m: &Value) -> String {
 fn respond(req: &Value, script: &Script, state: &Mutex<State>) -> Value {
     let msgs = req["messages"].as_array().cloned().unwrap_or_default();
     let all_text: String = msgs.iter().map(text_of).collect::<Vec<_>>().join("\n");
-    let role = if all_text.contains("independent verifier") { "verifier" } else { "worker" };
+    // The verifier's role instruction leads its prompt; a worker's brief may mention verifiers too.
+    let role = if all_text.contains("You are the independent verifier") { "verifier" } else { "worker" };
     let tools_done = msgs.iter().filter(|m| m["role"] == "tool").count();
     let blocked = msgs.iter().filter(|m| m["role"] == "user" && text_of(m).contains("Before you finish")).count();
 

@@ -236,11 +236,12 @@ impl Store {
         let determinate = !matches!(verdict, Verdict::Unknown { .. });
         let others_unknown =
             operations_of(&tx, Some(&task.id))?.iter().any(|o| o.id != op.id && o.state == OperationState::Unknown);
-        if determinate && !others_unknown {
-            if let Some(out) = delivery::resume(&task, now) {
-                moves.push(apply(&tx, v, &out, None, now)?);
-                task = out.task;
-            }
+        if determinate
+            && !others_unknown
+            && let Some(out) = delivery::resume(&task, now)
+        {
+            moves.push(apply(&tx, v, &out, None, now)?);
+            task = out.task;
         }
         let block = |task: &mut Task, reason: &str, moves: &mut Vec<Move>| -> Result<()> {
             if !task.state.is_terminal() && task.state != State::Blocked {

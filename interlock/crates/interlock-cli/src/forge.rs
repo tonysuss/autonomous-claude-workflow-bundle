@@ -13,6 +13,7 @@ use interlock_forge::deliver::parse_duration;
 use interlock_forge::{DeliverConfig, DeliverError, GhForge, MergeMethod, inside_attempt};
 use interlock_schema::State;
 use interlock_store::Store;
+use interlock_supervisor::ControllerLock;
 use serde_json::json;
 
 #[derive(Args)]
@@ -55,29 +56,10 @@ pub fn operator_only(command: &str) -> Result<()> {
     Ok(())
 }
 
-/// One controller per checkout: the same lock file `interlock run` takes.
-struct ControllerLock(PathBuf);
-
-impl ControllerLock {
-    fn acquire(db: &Path) -> Result<ControllerLock> {
-        let dir = db.parent().map(Path::to_path_buf).unwrap_or_else(|| PathBuf::from("."));
-        std::fs::create_dir_all(&dir)?;
-        let path = dir.join("supervisor.lock");
-        if let Ok(pid) = std::fs::read_to_string(&path) {
-            let pid = pid.trim();
-            if !pid.is_empty() && pid != std::process::id().to_string() && Path::new(&format!("/proc/{pid}")).exists() {
-                bail!("another controller (pid {pid}) is running; lock at {}", path.display());
-            }
-        }
-        std::fs::write(&path, std::process::id().to_string())?;
-        Ok(ControllerLock(path))
-    }
-}
-
-impl Drop for ControllerLock {
-    fn drop(&mut self) {
-        let _ = std::fs::remove_file(&self.0);
-    }
+/// One controller per checkout: the operating-system lock `interlock run` takes.
+fn controller_lock(db: &Path) -> Result<ControllerLock> {
+    let dir = db.parent().map(Path::to_path_buf).unwrap_or_else(|| PathBuf::from("."));
+    Ok(ControllerLock::acquire(&dir)?)
 }
 
 /// Store errors keep their own exit codes; everything else is a failure.
@@ -110,7 +92,7 @@ pub fn integrate_run(db: &Path, args: &IntegrateRun) -> Result<ExitCode> {
     forge.remote = args.remote.clone();
     forge.repo = args.repo.clone().or(forge.repo);
     forge.timeout = duration(&args.call_timeout)?;
-    let _lock = ControllerLock::acquire(db)?;
+    let _lock = controller_lock(db)?;
     let mut store = Store::open(db)?;
     let delivery = interlock_forge::integrate(&mut store, &repo, &forge, &cfg, &args.task, &AtomicBool::new(false))
         .map_err(deliver_err)?;
@@ -122,7 +104,7 @@ pub fn integrate_run(db: &Path, args: &IntegrateRun) -> Result<ExitCode> {
 pub fn reconcile(db: &Path, task: Option<&str>) -> Result<()> {
     operator_only("reconcile")?;
     let repo = repo_root()?;
-    let _lock = ControllerLock::acquire(db)?;
+    let _lock = controller_lock(db)?;
     let mut store = Store::open(db)?;
     let forge = GhForge::from_env(&repo);
     let reconciled = interlock_forge::reconcile(&mut store, &repo, &forge, task).map_err(deliver_err)?;
@@ -136,7 +118,7 @@ pub fn reconcile(db: &Path, task: Option<&str>) -> Result<()> {
 /// Returns the operations it settled.
 pub fn reconcile_on_start(db: &Path, repo: &Path) -> Result<Vec<String>> {
     operator_only("run")?;
-    let _lock = ControllerLock::acquire(db)?;
+    let _lock = controller_lock(db)?;
     let mut store = Store::open(db)?;
     if store.open_operations(None)?.is_empty() && store.pinned_landings(None)?.is_empty() {
         return Ok(vec![]);

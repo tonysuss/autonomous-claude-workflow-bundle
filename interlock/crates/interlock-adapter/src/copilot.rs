@@ -11,6 +11,25 @@ pub struct Copilot;
 
 const BINARY: &str = "copilot";
 
+/// What Copilot CLI prints when it cannot sign in, lowercased. Captured from 1.0.91.
+pub(crate) const AUTH_FAILURES: &[&str] = &["no authentication information found"];
+
+/// Variables that tie a process to a running Copilot session. Copilot hides
+/// them from its own children too.
+pub const SESSION_BINDING: &[&str] = &[
+    "COPILOT_LOADER_PID",
+    "COPILOT_SUPERVISED",
+    "COPILOT_RUN_APP",
+    "COPILOT_AGENT_SESSION_ID",
+    "COPILOT_CONNECTION_TOKEN",
+    "COPILOT_DETACHED_SESSION",
+    "COPILOT_DETACHED_PARENT_SESSION_ID",
+    "COPILOT_DETACHED_PARENT_ENGAGEMENT_ID",
+];
+
+/// The GitHub token variables Copilot reads for its own sign-in.
+pub const GITHUB_TOKENS: &[&str] = &["COPILOT_GITHUB_TOKEN", "GH_TOKEN", "GITHUB_TOKEN"];
+
 impl Copilot {
     /// Builds a report from captured output, so detection is testable without the binary.
     pub fn report(binary: Option<String>, version_out: &str, help: &str) -> HostReport {
@@ -34,6 +53,7 @@ impl Copilot {
             plugin_hook_capability(C::StopGuard, help, "Stop can hold the agent from finishing"),
             flag_capability(C::ModelSelection, help, &["--model"], "per session"),
             flag_capability(C::CustomAgents, help, &["--agent"], "custom agents as isolated sub-agents"),
+            flag_capability(C::EffortSelection, help, &["--reasoning-effort"], "reasoning effort per session"),
             process_capability(C::Parallel, headless, "independent processes; --fleet is optional"),
         ];
         HostReport {
@@ -72,6 +92,12 @@ impl Copilot {
         if let Some(m) = &spec.model {
             args.extend(["--model".into(), m.clone()]);
         }
+        if let Some(id) = &spec.session_id {
+            args.push(format!("--session-id={id}"));
+        }
+        if let Some(level) = &spec.effort {
+            args.push(format!("--reasoning-effort={level}"));
+        }
         let mut env = spec.env.clone();
         env.push(("COPILOT_AUTO_UPDATE".into(), "false".into()));
         CommandPlan { program: bin, args, stdin: None, env }
@@ -87,8 +113,8 @@ impl Host for Copilot {
         let Some(bin) = probe.locate(self.name(), BINARY) else {
             return HostReport::not_installed(self.name(), BINARY);
         };
-        let version = probe.run(&bin, &["--version"]).map(|(_, o)| o).unwrap_or_default();
-        let help = probe.run(&bin, &["--help"]).map(|(_, o)| o).unwrap_or_default();
+        let version = probe.query(&bin, &["--version"]).map(|(_, o)| o).unwrap_or_default();
+        let help = probe.query(&bin, &["--help"]).map(|(_, o)| o).unwrap_or_default();
         Copilot::report(Some(bin.display().to_string()), &version, &help)
     }
 
@@ -129,6 +155,8 @@ impl Host for Copilot {
                     saw_result = true;
                     s.session_id = e["sessionId"].as_str().map(str::to_string);
                     s.is_error = e["exitCode"].as_i64().is_some_and(|c| c != 0);
+                    s.premium_requests = e["usage"]["premiumRequests"].as_f64();
+                    s.finished = true;
                 }
                 _ => {}
             }
@@ -138,6 +166,18 @@ impl Host for Copilot {
             s.is_error = true;
         }
         s
+    }
+
+    fn passes_env(&self, name: &str) -> bool {
+        (name.starts_with("COPILOT_") && !SESSION_BINDING.contains(&name)) || GITHUB_TOKENS.contains(&name)
+    }
+
+    fn auth_failures(&self) -> &'static [&'static str] {
+        AUTH_FAILURES
+    }
+
+    fn effort_levels(&self) -> &'static [&'static str] {
+        &["none", "minimal", "low", "medium", "high", "xhigh", "max"]
     }
 
     fn tool_patterns(&self, tool: &str) -> Vec<String> {
@@ -168,7 +208,7 @@ mod tests {
     use super::*;
     use interlock_schema::ToolPolicy;
 
-    const HELP: &str = "  -p, --prompt <text>\n  --output-format <format>\n  --model <model>\n  --agent <agent>\n  --available-tools [<tools>...]\n  --allow-tool [<tools>...]\n  --deny-tool [<tools>...]\n  --plugin-dir <directory>\n  --fleet\n";
+    const HELP: &str = "  -p, --prompt <text>\n  --reasoning-effort <level>\n  --output-format <format>\n  --model <model>\n  --agent <agent>\n  --available-tools [<tools>...]\n  --allow-tool [<tools>...]\n  --deny-tool [<tools>...]\n  --plugin-dir <directory>\n  --fleet\n";
 
     #[test]
     fn detects_capabilities_from_help() {
@@ -183,6 +223,7 @@ mod tests {
             C::StopGuard,
             C::CustomAgents,
             C::ModelSelection,
+            C::EffortSelection,
         ] {
             assert!(caps.has(c), "{c:?}");
         }
@@ -211,6 +252,10 @@ mod tests {
             env: vec![("INTERLOCK_ATTEMPT".into(), "att-1".into())],
             timeout: std::time::Duration::from_secs(60),
             transcript: "/t.jsonl".into(),
+            session_id: Some("0cb916db-26aa-40f2-86b5-1ba81b225fd2".into()),
+            max_cost_usd: Some(1.0),
+            effort: Some("high".into()),
+            clear_env: true,
         };
         let plan = Copilot.plan_with("/bin/copilot".into(), &spec);
         assert_eq!(plan.args[1], "You are the worker.\n\nFix it");
@@ -219,6 +264,10 @@ mod tests {
         }
         assert!(plan.args.windows(2).any(|w| w == ["--plugin-dir", "/p"]));
         assert!(plan.env.iter().any(|(k, _)| k == "INTERLOCK_ATTEMPT"));
+        assert!(plan.args.iter().any(|a| a == "--session-id=0cb916db-26aa-40f2-86b5-1ba81b225fd2"));
+        // Copilot caps AI credits, not dollars, so a dollar budget is enforced by interlock alone.
+        assert!(!plan.args.iter().any(|a| a.contains("credits")));
+        assert!(plan.args.iter().any(|a| a == "--reasoning-effort=high"));
     }
 
     #[test]
@@ -230,7 +279,7 @@ mod tests {
             r#"{"type":"assistant.turn_end","data":{"turnId":"0"}}"#,
             r#"{"type":"assistant.message","data":{"content":"Fixed the retry."}}"#,
             r#"{"type":"assistant.turn_end","data":{"turnId":"1"}}"#,
-            r#"{"type":"result","sessionId":"s-1","exitCode":0,"usage":{}}"#,
+            r#"{"type":"result","sessionId":"s-1","exitCode":0,"usage":{"premiumRequests":2,"sessionDurationMs":317}}"#,
         ]
         .iter()
         .map(|s| s.to_string())
@@ -239,6 +288,7 @@ mod tests {
         assert_eq!(s.final_text.as_deref(), Some("Fixed the retry."));
         assert_eq!((s.denials, s.turns, s.is_error), (1, Some(2), false));
         assert_eq!(s.session_id.as_deref(), Some("s-1"));
+        assert_eq!(s.premium_requests, Some(2.0));
         assert!(Copilot.summarize(&lines[..5]).is_error, "no result event means the session did not finish");
     }
 }

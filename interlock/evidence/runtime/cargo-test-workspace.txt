@@ -1,0 +1,320 @@
+$ date -u
+Tue Oct  6 01:47:46 UTC 2026
+$ cargo --version
+cargo 1.97.0 (c980f4866 2026-06-30)
+$ cargo fmt --all --check
+exit 0
+$ cargo clippy --workspace --all-targets
+    Finished `dev` profile [unoptimized] target(s) in 0.21s
+exit 0
+$ cargo test --workspace
+   Compiling interlock-adapter v0.1.0 (/home/user/autonomous-claude-workflow-bundle/.claude/worktrees/agent-a015a201024863c38/interlock/crates/interlock-adapter)
+   Compiling interlock-supervisor v0.1.0 (/home/user/autonomous-claude-workflow-bundle/.claude/worktrees/agent-a015a201024863c38/interlock/crates/interlock-supervisor)
+   Compiling interlock-cli v0.1.0 (/home/user/autonomous-claude-workflow-bundle/.claude/worktrees/agent-a015a201024863c38/interlock/crates/interlock-cli)
+    Finished `test` profile [unoptimized] target(s) in 4.70s
+     Running unittests src/lib.rs (target/debug/deps/interlock_adapter-6d8b6baeef307412)
+
+running 36 tests
+test claude_code::tests::a_session_stopped_at_its_cost_cap_says_so ... ok
+test claude_code::tests::detects_capabilities_from_help ... ok
+test claude_code::tests::plans_a_session_with_the_prompt_on_stdin ... ok
+test copilot::tests::detects_capabilities_from_help ... ok
+test claude_code::tests::summarizes_the_result_event ... ok
+test copilot::tests::plans_a_session ... ok
+test copilot::tests::missing_flags_are_not_claimed ... ok
+test copilot::tests::summarizes_jsonl_output ... ok
+test env::tests::claude_code_sessions_get_the_allowlist_and_nothing_that_binds_them_to_a_parent ... ok
+test env::tests::copilot_sessions_get_their_provider_settings_and_github_tokens_only ... ok
+test hooks::tests::deny_carries_the_reason_for_both_hosts ... ok
+test env::tests::pass_patterns_are_exact_names_or_prefixes ... ok
+test hooks::tests::maps_tools_to_host_neutral_actions ... ok
+test hooks::tests::parses_claude_format_payloads_from_either_host ... ok
+test hooks::tests::parses_copilot_native_payloads ... ok
+test session::tests::a_cleared_environment_holds_only_what_the_plan_gives ... ok
+test session::tests::a_host_killed_by_a_signal_crashed ... ok
+test session::tests::a_missing_host_binary_is_a_host_error ... ok
+test session::tests::a_host_that_exits_97_is_not_mistaken_for_an_unreleased_gate ... ok
+test session::tests::a_non_zero_exit_is_a_failure ... ok
+test probe::tests::a_hung_probe_is_killed ... ok
+test session::tests::a_reused_pid_is_not_mistaken_for_the_session ... ok
+test session::tests::an_abandoned_gate_never_starts_the_host ... ok
+test session::tests::a_process_that_leaves_the_group_is_found_by_its_marker ... ok
+test session::tests::completes_and_keeps_the_transcript ... ok
+test session::tests::feeds_the_prompt_on_stdin ... ok
+test session::tests::plugin_hooks_point_at_the_binary ... ok
+test session::tests::a_reattached_host_that_dies_without_its_report_crashed ... ok
+test session::tests::stopping_a_session_stops_its_whole_group ... ok
+test probe::tests::a_query_that_hangs_once_is_tried_again ... ok
+test session::tests::sign_in_failures_and_host_cost_caps_are_told_apart ... ok
+test tests::both_hosts_are_registered_and_copilot_comes_first ... ok
+test tests::one_policy_translates_to_each_host ... ok
+test session::tests::times_out_and_cancels ... ok
+test session::tests::the_gate_holds_the_host_until_released ... ok
+test session::tests::attach_follows_a_session_another_supervisor_started ... ok
+
+test result: ok. 36 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 1.75s
+
+     Running unittests src/main.rs (target/debug/deps/interlock-292f253ea1365332)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/cli.rs (target/debug/deps/cli-2ca2a69295fe7970)
+
+running 10 tests
+test assessments_weaker_than_the_criterion_needs_come_back_with_a_warning ... ok
+test a_crash_mid_apply_loses_nothing_and_the_replay_applies_once ... ok
+test grants_reject_the_irreversible_class ... ok
+test a_bug_fix_runs_from_create_to_done ... ok
+test one_grant_translates_to_both_hosts ... ok
+test check_run_records_what_interlock_saw_and_baselines_catch_empty_checks ... ok
+test schema_validate_checks_files ... ok
+test policy_check_pauses_irreversible_actions_and_respects_grants ... ok
+test refusals_exit_2_with_a_json_reason ... ok
+test the_brief_is_built_from_records ... ok
+
+test result: ok. 10 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 1.23s
+
+     Running tests/run_copilot.rs (target/debug/deps/run_copilot-0aa1a4342f25ab32)
+
+running 6 tests
+test a_regression_check_that_tests_nothing_blocks_the_task_before_any_worker ... ok
+test a_bug_fix_runs_to_done_on_copilot ... ok
+test a_failed_verification_sends_the_work_back_and_the_rework_is_verified ... ok
+test a_reproduction_that_already_passes_blocks_the_task ... ok
+test a_worker_that_rewrites_the_check_is_rejected_and_the_next_must_really_fix_it ... ok
+test the_stop_guard_holds_the_worker_and_hooks_deny_what_it_was_not_granted ... ok
+
+test result: ok. 6 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 34.23s
+
+     Running tests/run_fake_host.rs (target/debug/deps/run_fake_host-d5ae911d8a1b9ef2)
+
+running 16 tests
+test a_dead_sessions_children_are_stopped_at_restart ... ok
+test a_bad_config_does_not_stand_in_the_way_of_recovery ... ok
+test a_restart_for_one_task_ends_sessions_left_by_another ... ok
+test a_signal_during_a_baseline_check_stops_it_and_the_first_signal_is_reported ... ok
+test an_effort_the_host_cannot_take_is_refused_before_anything_starts ... ok
+test budgets_must_be_finite_amounts ... ok
+test max_sessions_zero_runs_the_baseline_only ... ok
+test a_signal_while_the_host_is_inspected_opens_no_attempt ... ok
+test pausing_safely_keeps_work_the_worker_committed ... ok
+test processes_that_leave_the_session_are_stopped_when_it_ends ... ok
+test sessions_get_an_allowlisted_environment_and_the_effort_asked_for ... ok
+test sighup_stops_a_run_like_sigterm ... ok
+test task_cancel_stops_a_session_whose_supervisor_is_gone ... ok
+test a_reattached_session_leaves_no_strays ... ok
+test only_one_supervisor_gets_the_lock_however_many_race ... ok
+test an_escaped_worker_process_cannot_forge_the_verifiers_evidence ... ok
+
+test result: ok. 16 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 10.52s
+
+     Running tests/run_robustness.rs (target/debug/deps/run_robustness-07c09f24783f24f0)
+
+running 10 tests
+test a_host_version_that_differs_from_its_pin_blocks_the_run ... ok
+test a_session_timeout_retries_until_the_attempts_are_spent ... ok
+test a_session_that_died_with_its_supervisor_is_reconciled_and_retried ... ok
+test a_spent_cost_budget_fails_the_task ... ok
+test a_spent_wall_clock_budget_fails_the_task ... ok
+test sigterm_stops_a_run_the_same_way ... ok
+test a_verifier_session_is_reattached_too ... ok
+test sigint_cancels_the_session_and_the_exported_work_resumes ... ok
+test a_supervisor_killed_mid_session_reattaches_and_carries_on has been running for over 60 seconds
+test a_supervisor_killed_mid_session_reattaches_and_carries_on ... ok
+test task_cancel_from_another_terminal_stops_the_running_session ... ok
+
+test result: ok. 10 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 99.01s
+
+     Running unittests src/lib.rs (target/debug/deps/interlock_core-28bb3a946fd31ec5)
+
+running 16 tests
+test classify::tests::agents_cannot_run_operator_commands ... ok
+test classify::tests::classes ... ok
+test classify::tests::force_push_is_irreversible_wherever_the_flag_sits ... ok
+test classify::tests::chained_commands_take_the_highest_class ... ok
+test classify::tests::wrappers_and_substitutions_do_not_hide_the_command ... ok
+test grants::tests::grants_expire_and_are_scoped ... ok
+test grants::tests::effective_grant_is_an_intersection ... ok
+test grants::tests::host_deny_and_grant_deny_both_apply ... ok
+test classify::tests::options_before_the_subcommand_do_not_hide_it ... ok
+test grants::tests::irreversible_is_never_grantable ... ok
+test scope::tests::globs ... ok
+test tools::tests::families_and_prefixes ... ok
+test scope::tests::placement ... ok
+test vacuity::tests::empty_runs_are_recognized ... ok
+test tools::tests::deny_wins ... ok
+test vacuity::tests::real_runs_are_not ... ok
+
+test result: ok. 16 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/budget.rs (target/debug/deps/budget-bd52f2c1587942a9)
+
+running 3 tests
+test a_budget_is_exhausted_by_any_limit_it_sets ... ok
+test resuming_from_an_export_needs_a_ready_task ... ok
+test spending_sums_over_attempts_in_each_hosts_unit ... ok
+
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/checks.rs (target/debug/deps/checks-58884cd33c0124c9)
+
+running 8 tests
+test a_checked_criterion_needs_interlock_to_have_seen_the_check_pass ... ok
+test a_regression_guard_must_pass_and_test_something_on_the_input_snapshot ... ok
+test a_run_that_checked_nothing_never_counts ... ok
+test a_verifier_run_that_fails_fails_the_criterion_but_a_worker_run_does_not ... ok
+test a_reproduction_must_fail_on_the_input_snapshot ... ok
+test results_that_leave_the_scope_or_touch_the_checks_are_rejected ... ok
+test the_run_must_come_from_an_allowed_producer_and_this_tree ... ok
+test vacuous_runs_change_nothing ... ok
+
+test result: ok. 8 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.04s
+
+     Running tests/evidence_props.rs (target/debug/deps/evidence_props-a8b6b02367249bc7)
+
+running 6 tests
+test no_output_tree_means_not_yet ... ok
+test current_independent_failure_always_wins ... ok
+test claims_never_pass_independent_criteria ... ok
+test order_does_not_matter ... ok
+test a_new_policy_digest_invalidates_everything ... ok
+test stale_evidence_never_counts ... ok
+
+test result: ok. 6 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.29s
+
+     Running tests/lifecycle.rs (target/debug/deps/lifecycle-3314b27f688a7901)
+
+running 11 tests
+test creation_rejects_tasks_that_could_never_be_verified ... ok
+test bug_fix_happy_path_reaches_done_through_g7 ... ok
+test a_missing_independent_verifier_blocks_and_keeps_the_work ... ok
+test changing_a_criterion_changes_the_policy_digest ... ok
+test g1_waits_for_dependencies ... ok
+test g2_blocks_when_a_required_capability_has_no_fallback ... ok
+test failed_check_sends_work_back_through_r1_then_fails_when_budget_is_spent ... ok
+test g2_uses_declared_fallbacks_for_optional_capabilities ... ok
+test terminal_tasks_refuse_every_move ... ok
+test g5_without_landing_authority_blocks_at_verified ... ok
+test verifiers_cannot_claim_and_workers_cannot_assess ... ok
+
+test result: ok. 11 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running unittests src/lib.rs (target/debug/deps/interlock_schema-5ba1a4878a9ee918)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/conformance.rs (target/debug/deps/conformance-531ae04730c06da6)
+
+running 7 tests
+test budgets_may_limit_time_and_cost ... ok
+test every_record_kind_round_trips_through_its_schema ... ok
+test check_runs_conform_and_pass_only_when_they_checked_something ... ok
+test evidence_must_carry_a_full_currency_key ... ok
+test no_grant_can_cover_the_irreversible_class ... ok
+test session_handoff_end_and_spending_conform ... ok
+test unknown_fields_and_states_are_rejected ... ok
+
+test result: ok. 7 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.10s
+
+     Running unittests src/lib.rs (target/debug/deps/interlock_store-5ff9e933ad8107fa)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/invariants.rs (target/debug/deps/invariants-7c622d420e068fd2)
+
+running 15 tests
+test check_runs_take_their_producer_from_the_attempt_and_spot_empty_runs ... ok
+test a_failing_check_run_by_the_verifier_sends_the_work_back ... ok
+test cancel_leaves_no_attempt_running ... ok
+test every_transition_is_logged_in_order ... ok
+test check_output_is_kept_as_a_content_addressed_artifact ... ok
+test invariant_1_no_current_evidence_no_pass ... ok
+test invariant_2_records_cannot_be_rewritten_in_place ... ok
+test invariant_2_worker_cannot_override_a_verifier_failure ... ok
+test invariant_2_tokens_and_grants ... ok
+test invariant_4_a_late_worker_cannot_advance_the_task ... ok
+test invariant_5_a_failure_mid_apply_leaves_nothing_then_replay_applies_once ... ok
+test invariant_3_a_rebase_after_verification_sends_the_task_back ... ok
+test invariant_5_a_duplicate_event_is_a_no_op ... ok
+test results_outside_the_scope_are_rejected_and_the_attempt_may_try_again ... ok
+test reopening_a_file_store_keeps_everything ... ok
+
+test result: ok. 15 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.30s
+
+     Running tests/sessions.rs (target/debug/deps/sessions-2fa8e125c9908f60)
+
+running 8 tests
+test every_session_without_an_end_is_listed_whatever_its_status_or_task ... ok
+test an_attempt_gets_one_session_and_its_handoff_is_written_first ... ok
+test a_finished_task_leaves_no_attempt_open ... ok
+test resuming_sets_where_the_next_worker_starts ... ok
+test reconcile_attempt_ends_a_running_attempt_with_a_synthetic_report ... ok
+test session_ends_are_classified_and_recorded_once ... ok
+test reconcile_after_a_crash_finds_what_the_dead_controller_left ... ok
+test spending_is_summed_and_a_spent_budget_fails_the_task ... ok
+
+test result: ok. 8 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.16s
+
+     Running unittests src/lib.rs (target/debug/deps/interlock_supervisor-0a03a7684c067702)
+
+running 20 tests
+test config::tests::pins_are_read_from_the_config_and_compared_exactly ... ok
+test checks::tests::check_files_named_by_commands_are_protected ... ok
+test git::tests::attempt_worktrees_and_commits ... ok
+test git::tests::output_trees_include_new_files_and_leave_the_index_alone ... ok
+test checks::tests::a_check_that_hangs_times_out ... ok
+test checks::tests::base_and_output_runs_record_what_happened ... ok
+test hook::tests::a_missing_store_fails_closed ... ok
+test hook::tests::a_verifier_is_held_when_its_assessment_is_weaker_than_the_criterion_needs ... ok
+test hook::tests::edits_stay_inside_the_worktree_and_the_scope ... ok
+test hook::tests::interactive_sessions_ask_instead_of_deny ... ok
+test hook::tests::outside_an_attempt_the_hooks_do_nothing ... ok
+test hook::tests::the_stop_guard_also_wants_interlock_to_have_run_each_check ... ok
+test hook::tests::the_stop_guard_wants_a_claim_for_the_final_tree ... ok
+test hook::tests::interlocks_own_directory_tokens_and_other_environments_are_off_limits ... ok
+test lock::tests::a_stale_pid_in_the_file_does_not_hold_the_lock ... ok
+test lock::tests::the_lock_is_exclusive_and_released_on_drop ... ok
+test sessions::tests::a_session_whose_supervisor_still_runs_is_left_to_it ... ok
+test hook::tests::workers_may_not_commit ... ok
+test hook::tests::the_store_and_operator_commands_are_off_limits ... ok
+test git::tests::a_same_size_edit_in_the_second_of_checkout_is_seen_later ... ok
+
+test result: ok. 20 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 1.80s
+
+   Doc-tests interlock_adapter
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+   Doc-tests interlock_core
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+   Doc-tests interlock_schema
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+   Doc-tests interlock_store
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+   Doc-tests interlock_supervisor
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+exit 0

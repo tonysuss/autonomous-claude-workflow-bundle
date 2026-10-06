@@ -63,20 +63,18 @@ fn pre_tool_use(
     cwd: Option<PathBuf>,
 ) -> HookResponse {
     let action = action_of(tool_name, input);
-    if let Some(cmd) = &action.command {
-        let db = ctx.db.display().to_string();
-        if cmd.contains(&db) || cmd.contains("state.db") || touches_store_dir(cmd, &ctx.db) {
-            return HookResponse::deny("interlock's store is off limits; report through the interlock command");
-        }
-    }
-    if !action.governed {
-        return HookResponse::allow();
-    }
     let loaded = Store::open(&ctx.db).and_then(|s| {
         let attempt = s.attempt(attempt_id)?;
         let task = s.task(&attempt.task_id)?;
         Ok((attempt, task))
     });
+    let worktree = loaded.as_ref().ok().and_then(|(a, _)| a.worktree.clone()).map(PathBuf::from);
+    if let Some(reason) = forbidden(ctx, worktree.as_deref(), cwd.as_deref(), input) {
+        return HookResponse::deny(&reason);
+    }
+    if !action.governed {
+        return HookResponse::allow();
+    }
     let (attempt, task) = match loaded {
         Ok(v) => v,
         Err(e) => return HookResponse::deny(&format!("interlock could not load attempt {attempt_id}: {e}")),
@@ -115,15 +113,86 @@ fn pre_tool_use(
     }
 }
 
-/// Whether a command names interlock's own directory: the store, the
-/// controller lock, the hooks plugin. Attempt worktrees under it are fine.
-/// A string check, not a sandbox: a path built at run time gets past it.
-fn touches_store_dir(cmd: &str, db: &Path) -> bool {
-    let mut needles = vec![".interlock".to_string()];
-    if let Some(dir) = db.parent().map(|d| d.display().to_string()).filter(|d| !d.is_empty()) {
-        needles.push(dir);
+/// Input fields that name files, across both hosts' tools.
+const PATH_FIELDS: &[&str] = &["file_path", "path", "notebook_path", "pattern", "glob", "directory", "dir", "cwd"];
+
+/// Resolves `p` against `base` without touching the file: `.` and `..` are
+/// folded, and the longest prefix that exists is canonicalized, so symlinks
+/// cannot hide where a path really leads.
+fn resolve(base: &Path, p: &str) -> PathBuf {
+    let expanded = match p.strip_prefix('~') {
+        Some(rest) => PathBuf::from(std::env::var("HOME").unwrap_or_default()).join(rest.trim_start_matches('/')),
+        None => PathBuf::from(p),
+    };
+    let joined = if expanded.is_absolute() { expanded } else { base.join(expanded) };
+    let mut lexical = PathBuf::new();
+    for c in joined.components() {
+        match c {
+            std::path::Component::ParentDir => {
+                lexical.pop();
+            }
+            std::path::Component::CurDir => {}
+            other => lexical.push(other),
+        }
     }
-    needles.iter().any(|n| cmd.match_indices(n.as_str()).any(|(i, _)| !cmd[i + n.len()..].starts_with("/worktrees/")))
+    let mut existing = lexical.clone();
+    let mut rest = Vec::new();
+    while !existing.exists() {
+        match (existing.file_name().map(|n| n.to_os_string()), existing.parent().map(Path::to_path_buf)) {
+            (Some(name), Some(parent)) => {
+                rest.push(name);
+                existing = parent;
+            }
+            _ => return lexical,
+        }
+    }
+    let mut out = std::fs::canonicalize(&existing).unwrap_or(existing);
+    out.extend(rest.into_iter().rev());
+    out
+}
+
+fn canonical(p: &Path) -> PathBuf {
+    resolve(Path::new("/"), &p.display().to_string())
+}
+
+/// Why a tool call is refused for reaching interlock's own state: the store
+/// directory (outside this attempt's own worktree, which lives there), the
+/// directory holding attempt tokens, or another process's environment. Shell
+/// commands are split on whitespace and shell punctuation and every word that
+/// looks like a path is resolved; the split does not parse shell grammar, so
+/// this narrows what an agent can reach rather than containing it.
+pub fn forbidden(ctx: &HookContext, worktree: Option<&Path>, cwd: Option<&Path>, input: &Value) -> Option<String> {
+    let store_dir = canonical(ctx.db.parent().unwrap_or(Path::new("/")));
+    let tokens = canonical(&crate::sessions::token_dir(&store_dir));
+    let worktree = worktree.map(canonical);
+    let base = cwd.map(Path::to_path_buf).or_else(|| worktree.clone()).unwrap_or_else(|| PathBuf::from("/"));
+    let mut texts: Vec<&str> = PATH_FIELDS.iter().filter_map(|f| input[f].as_str()).collect();
+    let command = input["command"].as_str();
+    texts.extend(command);
+    for text in texts {
+        if text.contains("/proc/") && text.contains("environ") {
+            return Some("other processes' environments are off limits".into());
+        }
+        if text.contains("INTERLOCK_DB") || text.contains("state.db") {
+            return Some("interlock's store is off limits; report through the interlock command".into());
+        }
+        let words = text
+            .split(|c: char| c.is_whitespace() || ";|&<>()'\"`=,".contains(c))
+            .filter(|w| w.contains('/') || w.starts_with('.') || w.starts_with('~'));
+        for word in words {
+            let path = resolve(&base, word);
+            if path.starts_with(&tokens) {
+                return Some("interlock's attempt tokens are off limits".into());
+            }
+            if path.starts_with(&store_dir) && !worktree.as_ref().is_some_and(|w| path.starts_with(w)) {
+                return Some(format!(
+                    "{word} is inside interlock's own directory; work only in your worktree and report through the \
+                     interlock command"
+                ));
+            }
+        }
+    }
+    None
 }
 
 /// Holds an agent from finishing until it has recorded the evidence its role owes.
@@ -176,10 +245,45 @@ fn stop(ctx: &HookContext, attempt_id: &str, cwd: Option<PathBuf>) -> HookRespon
             missing_runs.push(c.id.as_str());
         }
     }
-    if missing_records.is_empty() && missing_runs.is_empty() {
+    // A verifier's passing assessment below what its criterion needs counts
+    // for nothing; say so while the verifier can still look again.
+    let mut weak = Vec::new();
+    if attempt.role == Role::Verifier {
+        for c in &owed {
+            let key = Currency {
+                tree: tree.clone(),
+                check_version: c.check_version.clone(),
+                environment: task.environment.clone(),
+                policy_digest: task.policy_digest.clone(),
+            };
+            let latest = records
+                .iter()
+                .rev()
+                .find(|e| e.attempt_id == attempt.id && e.criterion_id == c.id && same_currency(&e.currency, &key));
+            if let Some(e) = latest
+                && e.strength.pass_rank().is_some()
+                && !e.strength.satisfies(c.min_strength)
+            {
+                let had = serde_json::to_value(e.strength).ok().and_then(|v| v.as_str().map(str::to_string));
+                let needs = serde_json::to_value(c.min_strength).ok().and_then(|v| v.as_str().map(str::to_string));
+                let needs = needs.unwrap_or_default();
+                weak.push(format!(
+                    "{}: you recorded `{}`, but it needs `{needs}` or stronger ({}). Record `{needs}` only if that is \
+                     what you saw; otherwise record `failed` or `blocked`",
+                    c.id,
+                    had.unwrap_or_default(),
+                    crate::prompts::strength_meaning(c.min_strength)
+                ));
+            }
+        }
+    }
+    if missing_records.is_empty() && missing_runs.is_empty() && weak.is_empty() {
         return HookResponse::allow();
     }
     let mut steps = Vec::new();
+    if !weak.is_empty() {
+        steps.push(format!("look again at what each criterion needs. {}", weak.join(". ")));
+    }
     if !missing_runs.is_empty() {
         steps.push(format!(
             "have interlock run the check on your current files for: {} (interlock check run --criterion <id>)",
@@ -328,17 +432,146 @@ mod tests {
     }
 
     #[test]
+    fn interlocks_own_directory_tokens_and_other_environments_are_off_limits() {
+        let s = setup(true);
+        let store_dir = s.ctx.db.parent().unwrap().to_path_buf();
+        let denied = |tool: &str, input: Value| {
+            let r = pre(&s, tool, input.clone());
+            assert_eq!(r.exit_code, 2, "{tool} {input} should be denied");
+            r.stderr
+        };
+        // Reading or listing anything of interlock's outside this attempt's worktree.
+        denied("Read", json!({"file_path": store_dir.join("config.toml")}));
+        denied("Grep", json!({"pattern": "token", "path": "../"}));
+        denied("Glob", json!({"pattern": "../*/src/*.rs"}));
+        denied("Bash", json!({"command": "ls .."}));
+        denied("Bash", json!({"command": "cat ../../transcripts/att-1.jsonl"}));
+        denied("Bash", json!({"command": format!("cat {}/scratch/x", store_dir.display())}));
+        assert!(denied("Bash", json!({"command": "sqlite3 \"$INTERLOCK_DB\" .dump"})).contains("store"));
+        // Symlinks do not hide where a path leads.
+        std::os::unix::fs::symlink(&store_dir, s.worktree.join("src/link")).unwrap();
+        denied("Bash", json!({"command": "cat src/link/config.toml"}));
+        // Attempt tokens, wherever they are kept.
+        let tokens = crate::sessions::token_dir(&store_dir);
+        assert!(denied("Read", json!({"file_path": tokens.join("att-x.token")})).contains("tokens"));
+        // Other processes' environments, where a running session's token lives.
+        assert!(denied("Bash", json!({"command": "tr '\\0' '\\n' < /proc/4242/environ"})).contains("environments"));
+        denied("Read", json!({"file_path": "/proc/self/environ"}));
+        // The attempt's own worktree, though it sits inside .interlock/, is open.
+        assert_eq!(pre(&s, "Read", json!({"file_path": s.worktree.join("src/a.rs")})).exit_code, 0);
+        assert_eq!(pre(&s, "Bash", json!({"command": "cat src/a.rs ./README.md"})).exit_code, 0);
+        assert_eq!(pre(&s, "Grep", json!({"pattern": "fn", "path": "."})).exit_code, 0);
+    }
+
+    #[test]
+    fn workers_may_not_commit() {
+        let s = setup(true);
+        let r = pre(&s, "Bash", json!({"command": "git commit -am 'my fix'"}));
+        assert_eq!(r.exit_code, 2, "{}", r.stderr);
+        assert_eq!(pre(&s, "Bash", json!({"command": "git status"})).exit_code, 0);
+    }
+
+    #[test]
+    fn a_verifier_is_held_when_its_assessment_is_weaker_than_the_criterion_needs() {
+        let s = setup(true);
+        let mut store = Store::open(&s.ctx.db).unwrap();
+        let mut task = store.task("t1").unwrap();
+        task.criteria[0].min_strength = interlock_schema::MinStrength::Observed;
+        store
+            .connection()
+            .execute("UPDATE tasks SET record = ?1 WHERE id = 't1'", [serde_json::to_string(&task).unwrap()])
+            .unwrap();
+        let tree = git::worktree_tree(&s.worktree).unwrap();
+        let worker = s.ctx.attempt_id.clone().unwrap();
+        store
+            .submit_result(
+                interlock_store::SubmitResult {
+                    attempt_id: worker,
+                    token: s.token.clone(),
+                    epoch: 1,
+                    output_tree: tree.clone(),
+                    changed_paths: vec![],
+                    summary: "done".into(),
+                    open_questions: vec![],
+                    event_id: None,
+                },
+                Utc::now(),
+            )
+            .unwrap();
+        let caps: CapabilitySet = [
+            Capability::SessionStart,
+            Capability::SessionCollect,
+            Capability::SessionCancel,
+            Capability::PerCallPolicy,
+        ]
+        .into_iter()
+        .collect();
+        let Started::Yes { attempt, token, .. } = store
+            .start_attempt(
+                StartAttempt {
+                    task_id: "t1".into(),
+                    role: Role::Verifier,
+                    mode: Mode::Headless,
+                    host: HostRef { host: "test".into(), version: "0".into() },
+                    capabilities: caps,
+                    profile: Profile::Conservative,
+                    host_policy: HostPolicy::open(),
+                    agent: None,
+                    model: None,
+                    worktree: Some(s.worktree.display().to_string()),
+                },
+                Utc::now(),
+            )
+            .unwrap()
+        else {
+            panic!("no verifier")
+        };
+        let assess = |store: &mut Store, strength: Strength| {
+            store
+                .add_evidence(
+                    EvidenceKind::Assessment,
+                    AddEvidence {
+                        attempt_id: attempt.id.clone(),
+                        token: token.clone(),
+                        criterion_id: "tests".into(),
+                        strength,
+                        tree: tree.clone(),
+                        environment: None,
+                        evidence_refs: vec![],
+                        note: None,
+                        event_id: None,
+                    },
+                    Utc::now(),
+                )
+                .unwrap();
+        };
+        assess(&mut store, Strength::Tested);
+        let ctx = HookContext { attempt_id: Some(attempt.id.clone()), tree: Some(tree.clone()), ..s.ctx.clone() };
+        let payload = json!({"hook_event_name": "Stop", "stop_hook_active": false, "cwd": s.worktree});
+        let held = handle(&ctx, &payload, Utc::now());
+        assert!(
+            held.stdout.contains("tests: you recorded `tested`, but it needs `observed` or stronger"),
+            "the reason names the criterion and the gap: {}",
+            held.stdout
+        );
+        assess(&mut store, Strength::Observed);
+        assert_eq!(handle(&ctx, &payload, Utc::now()), HookResponse::allow());
+    }
+
+    #[test]
     fn everything_under_the_store_directory_but_worktrees_is_off_limits() {
         let s = setup(true);
         let dir = s.ctx.db.parent().unwrap().display().to_string();
+        // The controller lock and the hooks plugin, by absolute path and from
+        // the attempt's worktree (which lives two levels under the store dir).
         for cmd in [
             format!("rm {dir}/supervisor.lock"),
-            "echo 999 > .interlock/supervisor.lock".to_string(),
-            "cat ../../.interlock/plugin/hooks/hooks.json".to_string(),
+            "echo 999 > ../../supervisor.lock".to_string(),
+            "cat ../../plugin/hooks/hooks.json".to_string(),
         ] {
             let r = pre(&s, "Bash", json!({ "command": cmd }));
             assert_eq!(r.exit_code, 2, "{cmd}");
-            assert!(r.stderr.contains("store is off limits"), "{cmd}: {}", r.stderr);
+            assert!(r.stderr.contains("interlock's own directory"), "{cmd}: {}", r.stderr);
         }
         let own = format!("cat {}/src/a.rs", s.worktree.display());
         assert_eq!(pre(&s, "Bash", json!({ "command": own })).exit_code, 0, "the attempt's own worktree is fine");

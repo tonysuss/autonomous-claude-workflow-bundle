@@ -104,7 +104,8 @@ enum Command {
         timeout: String,
         #[arg(long, default_value_t = 80)]
         max_turns: u32,
-        /// Sessions this run may start, across workers and verifiers.
+        /// Sessions this run may start, across workers and verifiers. 0 runs
+        /// the baseline checks only.
         #[arg(long, default_value_t = 6)]
         max_sessions: u32,
         /// Keep each attempt's worktree for inspection.
@@ -113,6 +114,9 @@ enum Command {
         /// Declare capabilities instead of inspecting the host (comma-separated).
         #[arg(long, value_delimiter = ',')]
         capabilities: Option<Vec<String>>,
+        /// Reasoning effort for every session: Claude Code's --effort, Copilot CLI's --reasoning-effort.
+        #[arg(long)]
+        effort: Option<String>,
     },
     /// interlock runs a criterion's check itself and records what happened.
     #[command(subcommand)]
@@ -212,6 +216,22 @@ enum TaskCmd {
     /// The task's transition log.
     Log {
         task: String,
+    },
+    /// The task's events: results, evidence, and how each attempt's session ended.
+    Events {
+        task: String,
+    },
+    /// Pause safely: commit the current worker's worktree as a `wip:` commit on
+    /// interlock/wip/<task>, with a resume note built from records.
+    Export {
+        task: String,
+    },
+    /// Make an export the next worker's starting point. The task must be ready.
+    Resume {
+        task: String,
+        /// A commit or ref; defaults to interlock/wip/<task>.
+        #[arg(long)]
+        from: Option<String>,
     },
 }
 
@@ -521,6 +541,44 @@ fn open(cli: &Cli) -> Result<Store> {
     Ok(store)
 }
 
+/// After the operator ends a task's attempts, stops their sessions if no
+/// supervisor is left to do it (a live supervisor's watcher already does),
+/// and records why they ended. The move's JSON gains `stopped_sessions`.
+fn with_stopped_sessions(
+    cli: &Cli,
+    store: &mut Store,
+    task: &str,
+    mv: &interlock_core::lifecycle::Move,
+    context: &str,
+) -> Result<Value> {
+    let stopped = interlock_supervisor::sessions::end_unattended(store, &store_dir(cli), Some(task), context)?;
+    let mut out = serde_json::to_value(mv)?;
+    out["stopped_sessions"] = json!(stopped);
+    Ok(out)
+}
+
+/// A warning when evidence is weaker than its criterion needs, so the agent
+/// hears it while it can still look again.
+fn strength_warning(store: &Store, attempt: &str, criterion: &str, strength: Strength) -> Option<String> {
+    let task = store.task(&store.attempt(attempt).ok()?.task_id).ok()?;
+    let c = task.criteria.iter().find(|c| c.id == criterion)?;
+    if strength.pass_rank().is_none() || strength.satisfies(c.min_strength) {
+        return None;
+    }
+    let name = |v: serde_json::Result<Value>| v.ok().and_then(|v| v.as_str().map(str::to_string)).unwrap_or_default();
+    let (had, needs) = (name(serde_json::to_value(strength)), name(serde_json::to_value(c.min_strength)));
+    Some(format!(
+        "{criterion} needs {needs} or stronger ({}); {had} will not satisfy it",
+        interlock_supervisor::prompts::strength_meaning(c.min_strength)
+    ))
+}
+
+/// The directory beside the store: config, transcripts, worktrees, exports.
+fn store_dir(cli: &Cli) -> PathBuf {
+    let db = cli.db.clone().unwrap_or_else(default_db);
+    db.parent().map(Path::to_path_buf).unwrap_or_else(|| PathBuf::from(".interlock"))
+}
+
 fn profile(cli: &Cli) -> Profile {
     match cli.profile {
         ProfileArg::Conservative => Profile::Conservative,
@@ -679,10 +737,33 @@ fn run(cli: &Cli) -> Result<()> {
                 TaskCmd::Tree { task, tree } => print(&store.record_new_tree(task, tree, now()?)?),
                 TaskCmd::Block { task, reason } => print(&store.block(task, reason, now()?)?),
                 TaskCmd::Unblock { task } => print(&store.unblock(task, now()?)?),
-                TaskCmd::Retry { task, reason } => print(&store.retry(task, reason, now()?)?),
-                TaskCmd::Fail { task, reason } => print(&store.stop(task, false, reason, now()?)?),
-                TaskCmd::Cancel { task, reason } => print(&store.stop(task, true, reason, now()?)?),
+                TaskCmd::Retry { task, reason } => {
+                    let mv = store.retry(task, reason, now()?)?;
+                    print(&with_stopped_sessions(cli, &mut store, task, &mv, "`interlock task retry`")?)
+                }
+                TaskCmd::Fail { task, reason } => {
+                    let mv = store.stop(task, false, reason, now()?)?;
+                    print(&with_stopped_sessions(cli, &mut store, task, &mv, "`interlock task fail`")?)
+                }
+                TaskCmd::Cancel { task, reason } => {
+                    let mv = store.stop(task, true, reason, now()?)?;
+                    print(&with_stopped_sessions(cli, &mut store, task, &mv, "`interlock task cancel`")?)
+                }
                 TaskCmd::Log { task } => print(&store.transitions(task)?),
+                TaskCmd::Events { task } => print(&store.events(task)?),
+                TaskCmd::Export { task } => {
+                    let repo = interlock_supervisor::git::toplevel(&std::env::current_dir()?)?;
+                    let dir = store_dir(cli);
+                    print(&interlock_supervisor::export::export(&store, &repo, &dir, task, profile, now()?)?)
+                }
+                TaskCmd::Resume { task, from } => {
+                    let repo = interlock_supervisor::git::toplevel(&std::env::current_dir()?)?;
+                    let (commit, tree) =
+                        interlock_supervisor::export::resume(&mut store, &repo, task, from.as_deref(), now()?)?;
+                    print(
+                        &json!({"task": task, "resumes_from": commit, "tree": tree, "state": store.task(task)?.state}),
+                    )
+                }
             }
         }
         Command::Attempt(cmd) => {
@@ -737,7 +818,7 @@ fn run(cli: &Cli) -> Result<()> {
             let kind =
                 if matches!(cli.command, Command::Claim(_)) { EvidenceKind::Claim } else { EvidenceKind::Assessment };
             let mut store = open(cli)?;
-            print(&store.add_evidence(
+            let applied = store.add_evidence(
                 kind,
                 AddEvidence {
                     attempt_id: auth.attempt.clone(),
@@ -751,7 +832,12 @@ fn run(cli: &Cli) -> Result<()> {
                     event_id: auth.event_id.clone(),
                 },
                 now()?,
-            )?)
+            )?;
+            let mut out = serde_json::to_value(&applied)?;
+            if let Some(w) = strength_warning(&store, &auth.attempt, criterion, (*strength).into()) {
+                out["warning"] = json!(w);
+            }
+            print(&out)
         }
         Command::Status { task } => print(&status(&open(cli)?, task)?),
         Command::Advance { task } => {
@@ -840,7 +926,16 @@ fn run(cli: &Cli) -> Result<()> {
                         store.save_host_report(&r.host, &serde_json::to_value(r)?, now()?)?;
                     }
                 }
-                print(&reports)
+                // Each report says whether the installed version matches .interlock/config.toml's pin.
+                let config = interlock_supervisor::config::Config::load(&store_dir(cli)).map_err(|e| anyhow!(e))?;
+                let mut out = Vec::new();
+                for r in &reports {
+                    let mut v = serde_json::to_value(r)?;
+                    let pin = interlock_supervisor::config::PinStatus::of(config.pin(&r.host), r.version.as_deref());
+                    v["pin"] = serde_json::to_value(pin)?;
+                    out.push(v);
+                }
+                print(&out)
             }
             HostCmd::Tools { task, role, host } => {
                 let store = open(cli)?;
@@ -965,6 +1060,7 @@ fn run_task(
     max_sessions: u32,
     keep_worktrees: bool,
     capabilities: &Option<Vec<String>>,
+    effort: &Option<String>,
 ) -> Result<ExitCode> {
     let cwd = std::env::current_dir()?;
     let repo = interlock_supervisor::git::toplevel(&cwd)?;
@@ -979,13 +1075,41 @@ fn run_task(
         profile: profile(cli),
         interlock_bin: std::env::current_exe()?,
         capabilities: capabilities.as_deref().map(parse_capabilities).transpose()?,
+        effort: effort.clone(),
     };
     // Settle what a previous controller left open at the forge before anything else.
     let reconciled = forge::reconcile_on_start(&db, &repo)?;
     let mut supervisor = interlock_supervisor::Supervisor::new(repo, db, host_by_name(host)?, Probe::from_env(), cfg)?;
+    use signal_hook::consts::{SIGHUP, SIGINT, SIGTERM};
+    use std::sync::atomic::{AtomicUsize, Ordering};
+    // SIGINT, SIGTERM or SIGHUP stops the running session, cancels its attempt
+    // and leaves the task to resume. Further signals do nothing more: the host
+    // runs in its own process group, so exiting early would leave it running
+    // unseen, and stopping it takes at most a few seconds. The report names
+    // the first signal that arrived.
+    let first = std::sync::Arc::new(AtomicUsize::new(0));
+    let mut signals = signal_hook::iterator::Signals::new([SIGINT, SIGTERM, SIGHUP])?;
+    let (cancel, seen) = (supervisor.cancel.clone(), first.clone());
+    std::thread::spawn(move || {
+        for sig in signals.forever() {
+            let _ = seen.compare_exchange(0, sig as usize, Ordering::SeqCst, Ordering::SeqCst);
+            cancel.store(true, Ordering::SeqCst);
+        }
+    });
     let mut report = supervisor.run(task)?;
     report.reconciled.extend(reconciled);
     print(&report)?;
+    if report.interrupted {
+        let name = match first.load(Ordering::SeqCst) as i32 {
+            SIGINT => "SIGINT",
+            SIGTERM => "SIGTERM",
+            SIGHUP => "SIGHUP",
+            _ => "a signal",
+        };
+        let resume = format!("interlock run {task} --host {host}");
+        eprintln!("{}", json!({"interrupted": name, "final_state": report.final_state, "resume": resume}));
+        return Ok(ExitCode::from(6));
+    }
     Ok(if report.final_state == State::Done { ExitCode::SUCCESS } else { ExitCode::from(5) })
 }
 
@@ -996,8 +1120,8 @@ fn main() -> ExitCode {
         Command::Integrate(IntegrateCmd::Run(args)) => {
             forge::integrate_run(&cli.db.clone().unwrap_or_else(default_db), args)
         }
-        Command::Run { task, host, model, timeout, max_turns, max_sessions, keep_worktrees, capabilities } => {
-            run_task(&cli, task, host, model, timeout, *max_turns, *max_sessions, *keep_worktrees, capabilities)
+        Command::Run { task, host, model, timeout, max_turns, max_sessions, keep_worktrees, capabilities, effort } => {
+            run_task(&cli, task, host, model, timeout, *max_turns, *max_sessions, *keep_worktrees, capabilities, effort)
         }
         _ => run(&cli).map(|()| ExitCode::SUCCESS),
     };

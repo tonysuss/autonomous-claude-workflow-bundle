@@ -11,11 +11,22 @@ pub struct Probe {
     pub overrides: Vec<(String, PathBuf)>,
     /// How long one probe may take before it is killed.
     pub timeout: Duration,
+    /// How long one `--version` or `--help` query may take. These print and
+    /// exit in about a second, but Copilot CLI 1.0.91's `--help` was seen to
+    /// hang (once in 80 calls), so a query that times out is tried again.
+    pub query_timeout: Duration,
+    /// How many times a query is tried before it counts as failed.
+    pub query_tries: u32,
 }
 
 impl Default for Probe {
     fn default() -> Self {
-        Probe { overrides: vec![], timeout: Duration::from_secs(30) }
+        Probe {
+            overrides: vec![],
+            timeout: Duration::from_secs(30),
+            query_timeout: Duration::from_secs(10),
+            query_tries: 3,
+        }
     }
 }
 
@@ -38,10 +49,22 @@ impl Probe {
         std::env::split_paths(&path).map(|dir| dir.join(binary)).find(|p| p.is_file())
     }
 
+    /// Runs a read-only query such as `--version` or `--help`, trying again
+    /// when an attempt hangs past `query_timeout`. `None` only if every try
+    /// failed to start or hung.
+    pub fn query(&self, bin: &PathBuf, args: &[&str]) -> Option<(bool, String)> {
+        (0..self.query_tries.max(1)).find_map(|_| self.run_for(bin, args, self.query_timeout))
+    }
+
     /// Runs a command and returns stdout and stderr together. `None` if it
     /// could not start or did not finish within the timeout; a hung probe is
-    /// killed with its whole process group.
+    /// killed with its whole process group. Not retried, since it may do
+    /// work (the sign-in check calls the model).
     pub fn run(&self, bin: &PathBuf, args: &[&str]) -> Option<(bool, String)> {
+        self.run_for(bin, args, self.timeout)
+    }
+
+    fn run_for(&self, bin: &PathBuf, args: &[&str], timeout: Duration) -> Option<(bool, String)> {
         let mut cmd = Command::new(bin);
         cmd.args(args)
             .stdin(Stdio::null())
@@ -66,7 +89,7 @@ impl Probe {
             if let Some(status) = child.try_wait().ok()? {
                 break status;
             }
-            if started.elapsed() >= self.timeout {
+            if started.elapsed() >= timeout {
                 #[cfg(unix)]
                 let _ = Command::new("kill")
                     .args(["-s", "KILL", "--", &format!("-{}", child.id())])
@@ -97,5 +120,26 @@ mod tests {
         assert!(started.elapsed() < Duration::from_secs(5));
         let (ok, out) = probe.run(&PathBuf::from("/bin/sh"), &["-c", "echo hi; echo err >&2"]).unwrap();
         assert!(ok && out.contains("hi") && out.contains("err"));
+    }
+
+    /// Copilot CLI's `--help` hangs now and then; one hang must not make the
+    /// host look as if it lacked every flag.
+    #[test]
+    fn a_query_that_hangs_once_is_tried_again() {
+        let dir = tempfile::tempdir().unwrap();
+        let count = dir.path().join("count");
+        let script = format!(
+            "n=$(cat {c} 2>/dev/null || echo 0); echo $((n + 1)) > {c}; [ \"$n\" = 0 ] && sleep 30; echo '--prompt'",
+            c = count.display()
+        );
+        let probe = Probe { query_timeout: Duration::from_millis(500), ..Probe::default() };
+        let started = Instant::now();
+        let (ok, out) = probe.query(&PathBuf::from("/bin/sh"), &["-c", &script]).expect("the second try answers");
+        assert!(ok && out.contains("--prompt"), "{out}");
+        assert_eq!(std::fs::read_to_string(&count).unwrap().trim(), "2");
+        assert!(started.elapsed() < Duration::from_secs(10));
+
+        let never = Probe { query_timeout: Duration::from_millis(200), query_tries: 2, ..Probe::default() };
+        assert!(never.query(&PathBuf::from("/bin/sh"), &["-c", "sleep 30"]).is_none());
     }
 }

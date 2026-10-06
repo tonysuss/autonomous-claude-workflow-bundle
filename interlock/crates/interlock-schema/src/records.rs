@@ -213,9 +213,28 @@ pub struct Scope {
     pub description: Option<String>,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct Budget {
     pub max_attempts: u32,
+    /// Total wall-clock time the task's sessions may run, summed over its attempts.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub max_wall_secs: Option<u64>,
+    /// Total cost in US dollars, where the host reports it.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub max_cost_usd: Option<f64>,
+    /// Total premium requests, where the host reports them.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub max_premium_requests: Option<f64>,
+}
+
+/// Task creation rejects amounts that are not finite and positive, so equality is total.
+impl Eq for Budget {}
+
+impl Budget {
+    /// A budget that limits only the number of attempts.
+    pub fn attempts(max_attempts: u32) -> Budget {
+        Budget { max_attempts, max_wall_secs: None, max_cost_usd: None, max_premium_requests: None }
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -259,6 +278,106 @@ pub enum AttemptStatus {
     Completed,
 }
 
+/// Why an attempt's session ended.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum EndReason {
+    Completed,
+    /// The session finished, but its result changed files it may not change.
+    Rejected,
+    Timeout,
+    HostError,
+    AuthFailure,
+    /// The host process died, or the supervisor did while the session ran.
+    Crash,
+    Cancelled,
+    BudgetExhausted,
+}
+
+impl EndReason {
+    pub fn as_str(self) -> &'static str {
+        match self {
+            EndReason::Completed => "completed",
+            EndReason::Rejected => "rejected",
+            EndReason::Timeout => "timeout",
+            EndReason::HostError => "host_error",
+            EndReason::AuthFailure => "auth_failure",
+            EndReason::Crash => "crash",
+            EndReason::Cancelled => "cancelled",
+            EndReason::BudgetExhausted => "budget_exhausted",
+        }
+    }
+}
+
+impl std::fmt::Display for EndReason {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_str(self.as_str())
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct AttemptEnd {
+    pub reason: EndReason,
+    #[serde(default)]
+    pub detail: Option<String>,
+    /// Written by interlock because the session could not report its own end.
+    pub synthetic: bool,
+}
+
+/// What one attempt's session used. Hosts report cost differently, so each
+/// measure stays in the host's own unit.
+#[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
+pub struct Spent {
+    pub wall_ms: u64,
+    /// Claude Code's `total_cost_usd`.
+    #[serde(default)]
+    pub cost_usd: Option<f64>,
+    /// Copilot CLI's `usage.premiumRequests`.
+    #[serde(default)]
+    pub premium_requests: Option<f64>,
+    #[serde(default)]
+    pub turns: Option<u64>,
+}
+
+/// Spending comes from hosts' reports and sums of them; NaN never compares equal, so
+/// equality is total only for finite amounts, which is all a host reports.
+impl Eq for Spent {}
+
+/// Where a headless session's process can be found again after the
+/// supervisor restarts. Written before the session starts.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct Handoff {
+    pub host: String,
+    pub pid: u32,
+    pub pgid: u32,
+    /// The kernel's start time for the process, so a later process that reuses the pid is not mistaken for it.
+    #[serde(default)]
+    pub process_start: Option<u64>,
+    pub started_at: Timestamp,
+    /// When the session is stopped: its timeout, or the task's wall-clock budget, whichever comes first.
+    pub deadline: Timestamp,
+    /// The deadline comes from the task's wall-clock budget.
+    #[serde(default)]
+    pub budget_deadline: bool,
+    pub transcript: String,
+    #[serde(default)]
+    pub host_session_id: Option<String>,
+    pub supervisor_pid: u32,
+    /// The kernel's start time for the supervisor, to tell whether it still runs.
+    #[serde(default)]
+    pub supervisor_start: Option<u64>,
+    /// The commit the attempt's worktree was checked out at.
+    #[serde(default)]
+    pub start_commit: Option<String>,
+    /// Names of the environment variables the session was given, never their values.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub env: Vec<String>,
+    #[serde(default)]
+    pub effort: Option<String>,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub reattached_at: Vec<Timestamp>,
+}
+
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Attempt {
     pub id: Id,
@@ -278,6 +397,19 @@ pub struct Attempt {
     pub started_at: Timestamp,
     #[serde(default)]
     pub ended_at: Option<Timestamp>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub handoff: Option<Handoff>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub end: Option<AttemptEnd>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub spent: Option<Spent>,
+}
+
+impl AttemptStatus {
+    /// Running and submitted attempts are still open; every other status is final.
+    pub fn is_open(self) -> bool {
+        matches!(self, AttemptStatus::Running | AttemptStatus::Submitted)
+    }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
@@ -334,6 +466,10 @@ pub enum EventKind {
     AttemptFailed,
     #[serde(rename = "attempt.completed")]
     AttemptCompleted,
+    #[serde(rename = "attempt.cancelled")]
+    AttemptCancelled,
+    #[serde(rename = "task.resumed")]
+    TaskResumed,
 }
 
 impl EventKind {
@@ -344,6 +480,8 @@ impl EventKind {
             EventKind::AssessmentAdded => "assessment.added",
             EventKind::AttemptFailed => "attempt.failed",
             EventKind::AttemptCompleted => "attempt.completed",
+            EventKind::AttemptCancelled => "attempt.cancelled",
+            EventKind::TaskResumed => "task.resumed",
         }
     }
 }
