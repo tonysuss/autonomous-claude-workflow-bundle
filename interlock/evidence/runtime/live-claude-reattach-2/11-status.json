@@ -1,0 +1,63 @@
+{
+  "attempts": [
+    {
+      "epoch": 1,
+      "host": "claude-code",
+      "id": "att-d28b8d7fbcb54669",
+      "role": "worker",
+      "status": "completed"
+    },
+    {
+      "epoch": 1,
+      "host": "claude-code",
+      "id": "att-39aa318653194c0a",
+      "role": "verifier",
+      "status": "completed"
+    }
+  ],
+  "evidence": {
+    "all_pass": true,
+    "any_fail": false,
+    "criteria": [
+      {
+        "criterion_id": "fixed",
+        "current_assessments": 1,
+        "current_claims": 1,
+        "current_runs": 2,
+        "evidence_id": "clm-0db121a0eead4492",
+        "source": "claim",
+        "stale": 0,
+        "strength": "observed",
+        "verdict": "pass"
+      },
+      {
+        "criterion_id": "verified",
+        "current_assessments": 1,
+        "current_claims": 1,
+        "current_runs": 2,
+        "evidence_id": "asm-6beef9c95d334c3f",
+        "source": "assessment",
+        "stale": 0,
+        "strength": "observed",
+        "verdict": "pass"
+      }
+    ]
+  },
+  "next_moves": [],
+  "task": {
+    "attempts_used": 1,
+    "blocked_reason": null,
+    "current_attempt": "att-d28b8d7fbcb54669",
+    "current_tree": "0c5823a7788f8f8faa394bc3e9ab0fcd2b82cf5a",
+    "id": "fix-add",
+    "integration_required": false,
+    "intent": "add() returns the difference instead of the sum",
+    "lease_epoch": 1,
+    "max_attempts": 3,
+    "state": "done",
+    "workflow": {
+      "name": "bug-fix",
+      "version": 1
+    }
+  }
+}

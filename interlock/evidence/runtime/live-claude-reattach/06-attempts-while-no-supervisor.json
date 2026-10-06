@@ -10,7 +10,7 @@
     },
     "agent": "interlock-worker",
     "model": "haiku",
-    "worktree": "/tmp/claude-0/-home-user-autonomous-claude-workflow-bundle/533a7202-b2b1-5f9c-8fb9-d9bcdfeb7c84/scratchpad/live-demo/.interlock/worktrees/fix-add-worker-1",
+    "worktree": "<scratch>/live-demo/.interlock/worktrees/fix-add-worker-1",
     "effective_grant": {
       "action_classes": [
         "read",
@@ -41,7 +41,7 @@
       "started_at": "2026-10-06T00:08:31.938895553Z",
       "deadline": "2026-10-06T00:18:31.938895553Z",
       "budget_deadline": false,
-      "transcript": "/tmp/claude-0/-home-user-autonomous-claude-workflow-bundle/533a7202-b2b1-5f9c-8fb9-d9bcdfeb7c84/scratchpad/live-demo/.interlock/transcripts/att-1eec0a79aaa645d1.jsonl",
+      "transcript": "<scratch>/live-demo/.interlock/transcripts/att-1eec0a79aaa645d1.jsonl",
       "host_session_id": "3a0d88ab-2c1e-4104-a4a1-cf23c0fe2647",
       "supervisor_pid": 6931
     }

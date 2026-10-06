@@ -2,10 +2,10 @@
 # Runs one offline Copilot session against fake.py and prints what it reported.
 here=$(dirname "$0")
 cd "$here" || exit 1
-python3 fake.py 18765 &
+python3 copilot-probe-model.py 18765 &
 fake=$!
 sleep 1
-COP=/tmp/claude-0/-home-user-autonomous-claude-workflow-bundle/533a7202-b2b1-5f9c-8fb9-d9bcdfeb7c84/scratchpad/cop/node_modules/.bin/copilot
+COP=${COPILOT_BIN:?set COPILOT_BIN to the copilot binary}
 mkdir -p home
 COPILOT_HOME=$PWD/home COPILOT_OFFLINE=true COPILOT_MODEL=gpt-4.1 \
   COPILOT_PROVIDER_BASE_URL=http://127.0.0.1:18765/v1 NO_PROXY=127.0.0.1,localhost no_proxy=127.0.0.1,localhost \

@@ -176,3 +176,44 @@ pub fn end_unattended(
     }
     Ok(ended)
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn handoff(supervisor_pid: u32, supervisor_start: Option<u64>) -> Handoff {
+        Handoff {
+            host: "claude-code".into(),
+            pid: 0,
+            pgid: 0,
+            process_start: None,
+            started_at: Utc::now(),
+            deadline: Utc::now(),
+            budget_deadline: false,
+            transcript: String::new(),
+            host_session_id: None,
+            supervisor_pid,
+            supervisor_start,
+            start_commit: None,
+            env: vec![],
+            effort: None,
+            reattached_at: vec![],
+        }
+    }
+
+    /// A restarted supervisor, or `task cancel`, must not take over a session
+    /// whose own supervisor still runs; a reused pid is not that supervisor.
+    #[test]
+    fn a_session_whose_supervisor_still_runs_is_left_to_it() {
+        let mut other = std::process::Command::new("sleep").arg("30").spawn().unwrap();
+        let pid = other.id();
+        let start = interlock_adapter::process_start(pid);
+        assert!(start.is_some());
+        assert!(owned_by_live_supervisor(&handoff(pid, start)), "a live supervisor keeps its session");
+        assert!(!owned_by_live_supervisor(&handoff(pid, start.map(|s| s + 1))), "same pid, another process");
+        assert!(!owned_by_live_supervisor(&handoff(std::process::id(), None)), "this process is not another one");
+        other.kill().unwrap();
+        other.wait().unwrap();
+        assert!(!owned_by_live_supervisor(&handoff(pid, start)), "a dead supervisor owns nothing");
+    }
+}

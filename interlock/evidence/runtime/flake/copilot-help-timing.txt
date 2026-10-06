@@ -1,0 +1,54 @@
+copilot-help-timing.sh 40, run twice (Copilot CLI 1.0.91, October 6, 2026). Each line: exit status and milliseconds.
+Exit 124 is `timeout 40` killing a call that had not finished.
+
+Batch 1: only the eight slowest lines were kept (sorted by time):
+run 27 rc=0 ms=1036
+run 26 rc=0 ms=1041
+run 3 rc=0 ms=1048
+run 19 rc=0 ms=1054
+run 20 rc=0 ms=1064
+run 2 rc=0 ms=1098
+run 5 rc=0 ms=1114
+run 24 rc=124 ms=40007
+
+Batch 2, in full:
+run 1 rc=0 ms=1374
+run 2 rc=0 ms=1512
+run 3 rc=0 ms=1129
+run 4 rc=0 ms=1026
+run 5 rc=0 ms=1082
+run 6 rc=0 ms=1026
+run 7 rc=0 ms=1043
+run 8 rc=0 ms=954
+run 9 rc=0 ms=939
+run 10 rc=0 ms=924
+run 11 rc=0 ms=1081
+run 12 rc=0 ms=1013
+run 13 rc=0 ms=1146
+run 14 rc=0 ms=1062
+run 15 rc=0 ms=1155
+run 16 rc=0 ms=1142
+run 17 rc=0 ms=1089
+run 18 rc=0 ms=1119
+run 19 rc=0 ms=1113
+run 20 rc=0 ms=1372
+run 21 rc=0 ms=1270
+run 22 rc=0 ms=1294
+run 23 rc=0 ms=1122
+run 24 rc=0 ms=1245
+run 25 rc=0 ms=1123
+run 26 rc=0 ms=1166
+run 27 rc=0 ms=1163
+run 28 rc=0 ms=1278
+run 29 rc=0 ms=1134
+run 30 rc=0 ms=1236
+run 31 rc=0 ms=1209
+run 32 rc=0 ms=1284
+run 33 rc=0 ms=1404
+run 34 rc=0 ms=1300
+run 35 rc=0 ms=1414
+run 36 rc=0 ms=1612
+run 37 rc=0 ms=1486
+run 38 rc=0 ms=1147
+run 39 rc=0 ms=1137
+run 40 rc=0 ms=1064

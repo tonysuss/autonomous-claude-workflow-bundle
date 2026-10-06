@@ -1,0 +1,144 @@
+    Finished `test` profile [unoptimized] target(s) in 0.13s
+     Running tests/run_robustness.rs (target/debug/deps/run_robustness-e7d5c8d1982631db)
+
+running 1 test
+
+thread 'a_session_that_died_with_its_supervisor_is_reconciled_and_retried' (25210) panicked at crates/interlock-cli/tests/run_robustness.rs:364:5:
+assertion `left == right` failed: {
+  "baseline": [
+    {
+      "criterion_id": "fixed",
+      "exit_code": 1,
+      "problem": null,
+      "run_id": "run-64f4ee87b2d54e83",
+      "vacuous": null
+    },
+    {
+      "criterion_id": "verified",
+      "exit_code": 1,
+      "problem": null,
+      "run_id": "run-0f8aed004bba4d2c",
+      "vacuous": null
+    }
+  ],
+  "exports": [
+    {
+      "attempt_id": "att-5ef470c5a22b4163",
+      "base": "bfd3e2d00e3fc58c02a98b902baf9af7a4d50f8e",
+      "commit": "1e6a24a97b91da847c284fb214d585a1978a19f7",
+      "note": "/tmp/.tmpy2a19n/.interlock/exports/fix-add.md",
+      "reference": "refs/heads/interlock/wip/fix-add",
+      "source": "/tmp/.tmpy2a19n/.interlock/worktrees/fix-add-worker-1",
+      "task_id": "fix-add",
+      "tree": "087ca019f4fd90b4322743da7c505e27b9423230"
+    }
+  ],
+  "final_state": "blocked",
+  "host": "copilot",
+  "interrupted": false,
+  "pin": null,
+  "reattached": [],
+  "reconciled": [
+    "att-5ef470c5a22b4163"
+  ],
+  "sessions": [
+    {
+      "attempt_id": "att-b4ebe51630c547ef",
+      "cost_usd": null,
+      "denials": 0,
+      "duration_ms": 2416,
+      "end_detail": null,
+      "ended_because": "completed",
+      "epoch": 2,
+      "exit": {
+        "exit": "completed"
+      },
+      "export": null,
+      "host_session_id": "4a5f9335-d615-4c65-ae47-71cb5c97ad2b",
+      "moves": [
+        {
+          "from": "running",
+          "reason": "result accepted from attempt att-b4ebe51630c547ef at epoch 2",
+          "signal": "G3",
+          "to": "awaiting_verification"
+        }
+      ],
+      "premium_requests": 0.0,
+      "reattached": false,
+      "role": "worker",
+      "spent": {
+        "cost_usd": null,
+        "premium_requests": 0.0,
+        "turns": 4,
+        "wall_ms": 2416
+      },
+      "stopped_strays": [],
+      "summary": "worker finished after 3 commands.",
+      "transcript": "/tmp/.tmpy2a19n/.interlock/transcripts/att-b4ebe51630c547ef.jsonl"
+    },
+    {
+      "attempt_id": "",
+      "cost_usd": null,
+      "denials": 0,
+      "duration_ms": 0,
+      "end_detail": null,
+      "ended_because": null,
+      "epoch": 0,
+      "exit": {
+        "exit": "failed",
+        "reason": "no independent verifier: host is missing: tool restriction enforced by the host; start a headless session; collect the session's result; cancel the session"
+      },
+      "export": null,
+      "host_session_id": null,
+      "moves": [
+        {
+          "from": "awaiting_verification",
+          "reason": "no independent verifier: host is missing: tool restriction enforced by the host; start a headless session; collect the session's result; cancel the session",
+          "signal": "block",
+          "to": "blocked"
+        }
+      ],
+      "premium_requests": null,
+      "reattached": false,
+      "role": "verifier",
+      "spent": {
+        "cost_usd": null,
+        "premium_requests": null,
+        "turns": null,
+        "wall_ms": 0
+      },
+      "stopped_strays": [],
+      "summary": null,
+      "transcript": ""
+    }
+  ],
+  "spent": {
+    "cost_usd": null,
+    "premium_requests": 0.0,
+    "turns": 5,
+    "wall_ms": 4229
+  },
+  "stopped_because": "blocked: no independent verifier: host is missing: tool restriction enforced by the host; start a headless session; collect the session's result; cancel the session",
+  "task_id": "fix-add"
+}
+  left: 5
+ right: 0
+stack backtrace:
+   0: __rustc::rust_begin_unwind
+   1: core::panicking::panic_fmt
+   2: core::panicking::assert_failed_inner
+   3: core::panicking::assert_failed::<i32, i32>
+   4: run_robustness::a_session_that_died_with_its_supervisor_is_reconciled_and_retried
+   5: run_robustness::a_session_that_died_with_its_supervisor_is_reconciled_and_retried::{closure#0}
+   6: <run_robustness::a_session_that_died_with_its_supervisor_is_reconciled_and_retried::{closure#0} as core::ops::function::FnOnce<()>>::call_once
+note: Some details are omitted, run with `RUST_BACKTRACE=full` for a verbose backtrace.
+test a_session_that_died_with_its_supervisor_is_reconciled_and_retried ... FAILED
+
+failures:
+
+failures:
+    a_session_that_died_with_its_supervisor_is_reconciled_and_retried
+
+test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 9 filtered out; finished in 37.99s
+
+error: test failed, to rerun pass `-p interlock-cli --test run_robustness`

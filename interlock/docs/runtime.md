@@ -2,7 +2,7 @@
 
 This is how `interlock run` keeps every headless session accounted for when things go wrong: the supervisor dies, someone presses Ctrl-C, the operator cancels from another terminal, a session hangs, a task runs out of budget, or a session tries to leave its process group. It builds the supervisor patterns in design §2 (re-attach by run ID, mark orphans, write the handoff before the state change, deduplicate kickoffs, classify failures, plus lease epochs), §5 (resume from records; pause-safely's `wip:` commit plus resume note as the export format), §1 and §9 (pin the host version), and §12's P3 gate.
 
-Everything here works the same on Copilot CLI and Claude Code. Copilot's path is tested end to end on the real CLI, offline against a scripted model; most other paths are tested against a scripted stand-in for Claude Code; Claude Code itself was run live once (see the evidence).
+Everything here works the same on Copilot CLI and Claude Code. Copilot's path is tested end to end on the real CLI, offline against a scripted model; most other paths are tested against a scripted stand-in for Claude Code; Claude Code itself was run live twice, once before and once after the review fixes, with the supervisor killed mid-session each time (see the evidence).
 
 ## A session's handoff is written before it starts
 
@@ -186,6 +186,7 @@ All additions are optional, so earlier records still validate.
 | Pausing safely | `run_fake_host::pausing_safely_keeps_work_the_worker_committed` |
 | Environment and effort | `run_fake_host::sessions_get_an_allowlisted_environment_and_the_effort_asked_for`, `an_effort_the_host_cannot_take_is_refused_before_anything_starts`; `env::tests` |
 | Controller lock | `run_fake_host::only_one_supervisor_gets_the_lock_however_many_race`; `lock::tests` |
+| A live supervisor's session is left to it | `sessions::tests::a_session_whose_supervisor_still_runs_is_left_to_it` (a reused pid does not count); `run_robustness::task_cancel_from_another_terminal_stops_the_running_session` (`stopped_sessions` is empty) |
 | Verifier guidance | `hook::tests::a_verifier_is_held_when_its_assessment_is_weaker_than_the_criterion_needs`; `cli::assessments_weaker_than_the_criterion_needs_come_back_with_a_warning` |
 | Baseline only | `run_fake_host::max_sessions_zero_runs_the_baseline_only` |
 | A host query that hangs | `probe::tests::a_query_that_hangs_once_is_tried_again` |
@@ -195,7 +196,7 @@ All additions are optional, so earlier records still validate.
 
 Every `run_fake_host` test was also run against the build before these fixes (with `INTERLOCK_TEST_BIN`), where all of them fail; see the evidence.
 
-Recorded runs, including one live Claude Code session whose supervisor was killed and restarted, are in [`evidence/runtime/`](../evidence/runtime/README.md).
+Recorded runs are in [`evidence/runtime/`](../evidence/runtime/README.md). They include two live Claude Code sessions whose supervisor was killed and restarted. After the fixes, the second one re-attached and reached `done`: one worker, one verifier, $0.127.
 
 ## Limits
 

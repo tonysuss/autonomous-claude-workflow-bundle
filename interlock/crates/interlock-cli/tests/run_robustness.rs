@@ -307,6 +307,9 @@ fn a_supervisor_killed_mid_session_reattaches_and_carries_on() {
     assert_eq!(report["reconciled"], serde_json::json!([]));
     assert_eq!(report["sessions"][0]["reattached"], true);
     assert_eq!(report["sessions"][0]["ended_because"], "completed");
+    // Copilot reports premium requests (none offline) and no dollars.
+    assert_eq!(report["sessions"][0]["premium_requests"], 0.0, "{report:#}");
+    assert!(report["sessions"][0]["cost_usd"].is_null());
     assert_eq!(worker["handoff"]["reattached_at"].as_array().unwrap().len(), 1);
     // Exactly as if the supervisor had never died: one worker session, no retry.
     assert_eq!(f.signals(), ["G1", "G2", "G3", "G4", "G7"]);
@@ -494,6 +497,8 @@ fn task_cancel_from_another_terminal_stops_the_running_session() {
     let started = Instant::now();
     let (code, out) = f.interlock(&["task", "cancel", "fix-add", "--reason", "operator stopped it"], None);
     assert_eq!(code, 0, "{out:#}");
+    // The session's supervisor is alive, so `task cancel` leaves the session to it.
+    assert_eq!(out["stopped_sessions"], serde_json::json!([]), "{out:#}");
     let (code, report) = finish(run);
     assert!(started.elapsed() < Duration::from_secs(15), "the supervisor noticed promptly");
     assert_eq!(code, 5, "{report:#}");
@@ -608,6 +613,8 @@ fn a_spent_cost_budget_fails_the_task() {
     let why = report["stopped_because"].as_str().unwrap();
     assert!(why.contains("cost budget of $0.50 is spent ($0.6000 used)"), "{why}");
     assert_eq!(report["spent"]["cost_usd"], 0.6);
+    assert_eq!(report["sessions"][0]["cost_usd"], 0.6, "each session reports its cost: {report:#}");
+    assert!(report["sessions"][0]["premium_requests"].is_null(), "Claude Code reports no premium requests");
     assert_eq!(f.attempts()[0]["spent"]["cost_usd"], 0.6, "spending is recorded per attempt");
     assert_eq!(f.signals(), ["G1", "G2", "G3", "fail"]);
     // Claude Code also enforces what is left of the dollar budget itself.
