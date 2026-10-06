@@ -1,0 +1,109 @@
+{
+  "task_id": "py-csv-format",
+  "host": "claude-code",
+  "final_state": "done",
+  "stopped_because": "done",
+  "reconciled": [],
+  "reattached": [],
+  "interrupted": false,
+  "baseline": [
+    {
+      "criterion_id": "balances-csv",
+      "run_id": "run-44ae7a4f3f87446d",
+      "exit_code": 1,
+      "vacuous": null,
+      "problem": null
+    },
+    {
+      "criterion_id": "regression",
+      "run_id": "run-b0ce627df7914497",
+      "exit_code": 0,
+      "vacuous": null,
+      "problem": null
+    }
+  ],
+  "sessions": [
+    {
+      "role": "worker",
+      "attempt_id": "att-9cb2fcca62e841a5",
+      "epoch": 1,
+      "exit": {
+        "exit": "completed"
+      },
+      "duration_ms": 17338,
+      "summary": "I added `--format {text,csv}` to `balances` and `settle`, with `text` as the default. The CSV renderers are in `tally/report.py` and use Python's `csv` writer, so quoting and `\\n` line endings come from the module's defaults. I wired the option into `tally/cli.py`, added three tests to `tests/test_cli.py` and added a README line.\n\n- **Checks:** `checks/csv-format.sh` passes, and the 22 unit tests pass, including the new ones.\n- **Observed by hand:** `settle --format csv examples/trip.csv` prints the `from,to,amount` header and the two transfers.\n- **Covered by tests:** the `balances` CSV output, the `settle` CSV header and the exit status 2 for an unknown format.\n- **Not exercised:** the header-only output when there is nothing to list, and the quoting of a name with a comma. Both rely on the `csv` writer behaving as documented. My one empty-ledger attempt, `balances --format csv /dev/null`, was rejected for missing columns, so it never reached the formatter.\n\nI recorded claims for `balances-csv` (observed), `regression` (tested) and `spec` (observed, with the gaps above noted). `spec` and `balances-csv` still need the independent verifier.",
+      "denials": 0,
+      "transcript": "/tmp/agent-ws/a07b0f8ab8/tally/.interlock/transcripts/att-9cb2fcca62e841a5.jsonl",
+      "moves": [
+        {
+          "signal": "G3",
+          "from": "running",
+          "to": "awaiting_verification",
+          "reason": "result accepted from attempt att-9cb2fcca62e841a5 at epoch 1"
+        }
+      ],
+      "ended_because": "completed",
+      "end_detail": null,
+      "spent": {
+        "wall_ms": 17338,
+        "cost_usd": 0.0925946,
+        "premium_requests": null,
+        "turns": 5
+      },
+      "cost_usd": 0.0925946,
+      "premium_requests": null,
+      "host_session_id": "ae4c0811-9087-4c75-ab08-640ac091b1b1",
+      "reattached": false,
+      "stopped_strays": [],
+      "export": null
+    },
+    {
+      "role": "verifier",
+      "attempt_id": "att-fd810728907f4586",
+      "epoch": 1,
+      "exit": {
+        "exit": "completed"
+      },
+      "duration_ms": 13638,
+      "summary": "All three criteria hold on tree c1373b0, and I recorded an assessment for each.\n\n- **balances-csv**: holds, recorded as observed. `interlock check run --criterion balances-csv` passed on this tree with \"ok: balances --format csv\".\n- **spec**: holds, recorded as observed. I ran the CLI by hand and checked each rule.\n  - `settle --format csv examples/trip.csv` printed `from,to,amount` and the two transfers.\n  - A name with a comma was wrapped in double quotes in both commands.\n  - Every line ended in `\\n`, which I confirmed with `od`.\n  - An empty ledger (a header-only ledger file) gave the header line alone in both commands.\n  - Text output with no `--format` was identical to `--format text`.\n  - `--format xml` exited with status 2 in both commands.\n  - Only README.md, tally/cli.py, tally/report.py and tests/test_cli.py changed.\n- **regression**: holds, recorded as tested. `interlock check run --criterion regression` passed on this tree.",
+      "denials": 0,
+      "transcript": "/tmp/agent-ws/a07b0f8ab8/tally/.interlock/transcripts/att-fd810728907f4586.jsonl",
+      "moves": [
+        {
+          "signal": "G4",
+          "from": "awaiting_verification",
+          "to": "verified",
+          "reason": "every required criterion has current passing evidence"
+        },
+        {
+          "signal": "G7",
+          "from": "verified",
+          "to": "done",
+          "reason": "verified; the workflow needs no delivery"
+        }
+      ],
+      "ended_because": "completed",
+      "end_detail": null,
+      "spent": {
+        "wall_ms": 13638,
+        "cost_usd": 0.0784278,
+        "premium_requests": null,
+        "turns": 5
+      },
+      "cost_usd": 0.0784278,
+      "premium_requests": null,
+      "host_session_id": "7a698290-e54b-4f26-9514-58c77f9a2648",
+      "reattached": false,
+      "stopped_strays": [],
+      "export": null
+    }
+  ],
+  "pin": null,
+  "spent": {
+    "wall_ms": 30976,
+    "cost_usd": 0.17102240000000002,
+    "premium_requests": null,
+    "turns": 10
+  },
+  "exports": []
+}

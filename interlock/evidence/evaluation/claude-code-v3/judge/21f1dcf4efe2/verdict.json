@@ -1,0 +1,38 @@
+{
+ "anon_id": "21f1dcf4efe2",
+ "task": "go-duration-days",
+ "cases": [
+  {
+   "id": "existing_tests",
+   "pass": true,
+   "detail": "10 passed\n"
+  },
+  {
+   "id": "TestHiddenDays",
+   "pass": true,
+   "detail": ""
+  },
+  {
+   "id": "TestHiddenDaysWithOtherUnits",
+   "pass": false,
+   "detail": "=== RUN   TestHiddenDaysWithOtherUnits\n    zz_hidden_test.go:38: GetDuration(\"1d12h\") = 0s, kvconf: s.k: \"1d12h\" is not a duration; want 36h0m0s\n    zz_hidden_test.go:38: GetDuration(\"2d30m\") = 0s, kvconf: s.k: \"2d30m\" is not a duration; want 48h30m0s\n--- FAIL: TestHiddenDaysWithOtherUnits (0.00s)"
+  },
+  {
+   "id": "TestHiddenFractionalDays",
+   "pass": true,
+   "detail": ""
+  },
+  {
+   "id": "TestHiddenExistingFormsUnchanged",
+   "pass": true,
+   "detail": ""
+  },
+  {
+   "id": "TestHiddenInvalidValuesKeepTheirMessage",
+   "pass": true,
+   "detail": ""
+  }
+ ],
+ "pass": false,
+ "condition_words": []
+}

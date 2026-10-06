@@ -1,0 +1,9 @@
+`GetDuration` now accepts `d` for days of 24 hours, so `retention = 30d` gives `720h0m0s`. `go test ./...` passes and `checks/days.sh` prints `ok: 30d is 720h0m0s`.
+
+The change is a small `parseDuration` helper in `getters.go` that `GetDuration` calls in place of `time.ParseDuration`. A leading days part is converted to hours, and anything after it goes through the normal Go parser. Values without a leading `Nd` take the same path as before, so everything accepted today behaves as it did.
+
+Beyond plain `30d`, it also accepts `1.5d` (36 hours) and `1d12h` (36 hours). Inputs like `xd` or `99999999d` return the usual "is not a duration" error rather than overflowing.
+
+I added tests for `30d`, `1d12h` and `1.5d` and for the two failing inputs, in `getters_test.go`. I did not update `README.md`, which only lists the getter names.
+
+STATUS: DONE

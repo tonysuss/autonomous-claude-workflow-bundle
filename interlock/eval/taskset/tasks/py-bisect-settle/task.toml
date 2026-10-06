@@ -11,10 +11,10 @@ Find the commit that introduced this regression. This is an investigation: do no
 [budget]
 max_attempts = 3
 
-# interlock has no way to say "no file may change": an empty scope allows
-# every path. The investigation workflow denies edit tools instead; the
-# harness still counts any change as a scope violation, and tells the plain
-# condition, in its prompt, that no file may change.
+# No scope: no file may change. interlock rejects any change an
+# investigation's result makes; the harness counts one as a scope
+# violation, and tells the plain and skills conditions, in their prompt,
+# that no file may change.
 
 [[criterion]]
 id = "answer"

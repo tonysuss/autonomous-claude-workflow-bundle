@@ -1,0 +1,28 @@
+{
+ "exit_code": 0,
+ "stderr_tail": "",
+ "plugins": [
+  "interlock",
+  "cc-plugin-agents-md",
+  "cc-plugin-telemetry",
+  "cc-plugin-plugin-authoring"
+ ],
+ "plugin_skills_listed": [
+  "interlock:design",
+  "interlock:implement",
+  "interlock:investigate",
+  "interlock:review",
+  "interlock:route",
+  "interlock:verify"
+ ],
+ "agents": [
+  "claude",
+  "Explore",
+  "general-purpose",
+  "interlock:verifier",
+  "Plan",
+  "statusline-setup"
+ ],
+ "result": "ok",
+ "cost_usd": 0.026377
+}

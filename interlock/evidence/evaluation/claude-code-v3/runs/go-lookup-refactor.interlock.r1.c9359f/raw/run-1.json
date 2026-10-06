@@ -1,0 +1,102 @@
+{
+  "task_id": "go-lookup-refactor",
+  "host": "claude-code",
+  "final_state": "done",
+  "stopped_because": "done",
+  "reconciled": [],
+  "reattached": [],
+  "interrupted": false,
+  "baseline": [
+    {
+      "criterion_id": "regression",
+      "run_id": "run-3dafdc2a9bc44f02",
+      "exit_code": 0,
+      "vacuous": null,
+      "problem": null
+    }
+  ],
+  "sessions": [
+    {
+      "role": "worker",
+      "attempt_id": "att-bb6afd28da624629",
+      "epoch": 1,
+      "exit": {
+        "exit": "completed"
+      },
+      "duration_ms": 20451,
+      "summary": "I added `lookup(section, key string) (string, error)` to `getters.go`, and `Get`, `GetInt`, `GetBool` and `GetDuration` now all call it. Only `lookup` reads `c.sections` now.\n\n`GetBool` reports a missing key as `key %q not set`, while the other three say `no key %q`. To keep both wordings exact, `lookup` returns an unexported `noKeyError`, and `GetBool` detects it and rewrites the message.\n\n`go vet ./...` is clean and `go test ./...` passes (interlock run run-3e58ac7147e349d6). I recorded the `behaviour` claim as static only, so interlock warned it needs a tested claim. I did not add a test for the `GetBool` missing-key message, so that wording is checked by reading the code only.",
+      "denials": 0,
+      "transcript": "/tmp/agent-ws/3102ad7448/kvconf/.interlock/transcripts/att-bb6afd28da624629.jsonl",
+      "moves": [
+        {
+          "signal": "G3",
+          "from": "running",
+          "to": "awaiting_verification",
+          "reason": "result accepted from attempt att-bb6afd28da624629 at epoch 1"
+        }
+      ],
+      "ended_because": "completed",
+      "end_detail": null,
+      "spent": {
+        "wall_ms": 20451,
+        "cost_usd": 0.08450600000000001,
+        "premium_requests": null,
+        "turns": 5
+      },
+      "cost_usd": 0.08450600000000001,
+      "premium_requests": null,
+      "host_session_id": "b2b94016-5bb6-473d-9a2c-346975aa692d",
+      "reattached": false,
+      "stopped_strays": [],
+      "export": null
+    },
+    {
+      "role": "verifier",
+      "attempt_id": "att-a791e2e3aabd4be1",
+      "epoch": 1,
+      "exit": {
+        "exit": "completed"
+      },
+      "duration_ms": 25590,
+      "summary": "- **structure**: holds (static). `Get`, `GetInt`, `GetBool` and `GetDuration` all call `c.lookup`. The only `c.sections` read left in `getters.go` is inside `lookup` itself, at line 80. `go vet ./...` is clean.\n- **behaviour**: holds (tested). I wrote a scratch differential test in /tmp and ran it against the base `getters.go` and the new one. It covered 3 sections, 6 keys and all 4 getters. The two outputs are identical apart from the timing line, including the `key %q not set` wording from `GetBool`. The scratch test is not in the tree.\n- **regression**: holds (tested). `interlock check run --criterion regression` ran `go test ./...` on tree 83479ba, passed, and exited 0.",
+      "denials": 1,
+      "transcript": "/tmp/agent-ws/3102ad7448/kvconf/.interlock/transcripts/att-a791e2e3aabd4be1.jsonl",
+      "moves": [
+        {
+          "signal": "G4",
+          "from": "awaiting_verification",
+          "to": "verified",
+          "reason": "every required criterion has current passing evidence"
+        },
+        {
+          "signal": "G7",
+          "from": "verified",
+          "to": "done",
+          "reason": "verified; the workflow needs no delivery"
+        }
+      ],
+      "ended_because": "completed",
+      "end_detail": null,
+      "spent": {
+        "wall_ms": 25590,
+        "cost_usd": 0.11795500000000002,
+        "premium_requests": null,
+        "turns": 9
+      },
+      "cost_usd": 0.11795500000000002,
+      "premium_requests": null,
+      "host_session_id": "de8546c7-15f5-482d-a99a-8d2ef6f0af76",
+      "reattached": false,
+      "stopped_strays": [],
+      "export": null
+    }
+  ],
+  "pin": null,
+  "spent": {
+    "wall_ms": 46041,
+    "cost_usd": 0.20246100000000003,
+    "premium_requests": null,
+    "turns": 14
+  },
+  "exports": []
+}

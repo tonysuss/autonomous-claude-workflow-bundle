@@ -1,0 +1,7 @@
+`balances` and `settle` now print amounts with thousands separators, so `-121810.78` shows as `-121,810.78`. `checks/thousands.sh` passes, and so do all 20 tests, including one I added for the new formatter.
+
+I added `format_cents_grouped` in `tally/money.py` and switched `tally/report.py` to use it in both commands. I left `format_cents` as it was, because `export` still uses it. That keeps the CSV output free of commas, so other programs reading it aren't affected.
+
+The new test is in `tests/test_money.py`. I didn't run `settle` on `examples/big.csv` separately; it goes through the same formatter as `balances`.
+
+STATUS: DONE

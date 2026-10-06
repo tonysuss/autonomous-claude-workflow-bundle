@@ -1,0 +1,83 @@
+{
+ "base_commit": "89d6da274a486532b5d8579ffd9b04e3c7e2e421",
+ "criteria": [
+  {
+   "baseline": "it must fail on the input snapshot, reproducing the problem; interlock saw it fail there (run run-a5a54da77362439c)",
+   "check": "sh checks/date-filter.sh",
+   "id": "since",
+   "needs": "observed from independent",
+   "statement": "`balances --since 2026-06-02` counts only the trip's entries from that date on",
+   "status": "passes (Observed)"
+  },
+  {
+   "baseline": null,
+   "check": null,
+   "id": "spec",
+   "needs": "observed from independent",
+   "statement": "Every rule in the task holds for balances and settle: inclusive --since and --until, either alone, exit status 2 for an invalid DATE, the file-and-line error for an invalid entry date when filtering, and no change without the options",
+   "status": "passes (Observed)"
+  },
+  {
+   "baseline": "it must pass on the input snapshot, as a regression guard; interlock saw it pass there (run run-1dd7cca9f0a64819)",
+   "check": "python3 -m unittest discover -s tests -q",
+   "id": "regression",
+   "needs": "tested from self",
+   "statement": "The existing unit tests pass",
+   "status": "passes (Tested)"
+  }
+ ],
+ "current_tree": "5b590d5e287fc22fba61a9240a241ce36b0a5c83",
+ "failures_to_fix": [],
+ "goal": "Add `--since DATE` and `--until DATE` options to `python3 -m tally balances` and `python3 -m tally settle`, so that part of a trip can be looked at on its own. DATE is written `YYYY-MM-DD`.\n\n- Only entries dated on or after `--since` and on or before `--until` count. Either option may be given alone.\n- A DATE that is not a valid `YYYY-MM-DD` date is rejected by the argument parser, which exits with status 2.\n- When `--since` or `--until` is given, every entry's date must be a valid `YYYY-MM-DD` date. Otherwise the command fails with status 1 and an error that names the file and the line, like `tally: trip.csv:3: invalid date '2026-13-01'`.\n- Without these options, nothing changes.\n\n`checks/date-filter.sh` checks `balances --since 2026-06-02` for `examples/trip.csv`. The tests run with `python3 -m unittest discover -s tests -q`.\n",
+ "grant": {
+  "action_classes": [
+   "read",
+   "local_reversible"
+  ],
+  "grant_ids": [],
+  "landing_authority": "none",
+  "tools": {
+   "allow": [
+    "read",
+    "shell"
+   ],
+   "deny": [
+    "edit",
+    "shell:git push",
+    "shell:git commit"
+   ]
+  }
+ },
+ "next_moves": [],
+ "previous_result": {
+  "attempt_id": "att-95be6e13d85a4e79",
+  "changed_paths": [
+   "README.md",
+   "tally/cli.py",
+   "tally/csvio.py",
+   "tally/ledger.py",
+   "tests/test_cli.py"
+  ],
+  "open_questions": [],
+  "output_tree": "5b590d5e287fc22fba61a9240a241ce36b0a5c83",
+  "summary": "`balances` and `settle` now take `--since DATE` and `--until DATE`, and both bounds are inclusive. The date-filter check and the 22 unit tests (19 existing plus 3 new) pass on the final tree.\n\n- **Option dates:** an invalid `DATE` is rejected by the argument parser with status 2. Only strict `YYYY-MM-DD` is accepted, so `2026-6-2` is rejected too.\n- **Entry dates:** when either option is given, an invalid entry date fails with status 1 and an error like `/tmp/b.csv:2: invalid date '2026-13-01'`. Without the options, nothing changes.\n- **Code and docs:** the changes are in `tally/cli.py`, `tally/csvio.py` and `tally/ledger.py` (`Entry` gains a `line` field), plus tests in `tests/test_cli.py` and a short README note. `export` is untouched.\n\nI recorded claims for all three criteria. The `spec` criterion needs `observed` strength from an independent verifier, so my `tested` claim won't satisfy it. `spec` is still open until a verifier runs."
+ },
+ "protected": [
+  "checks/date-filter.sh"
+ ],
+ "role": "verifier",
+ "scope": [
+  "tally/**",
+  "tests/**",
+  "README.md"
+ ],
+ "state": "done",
+ "task_id": "py-date-filter",
+ "verifier_bindings": [
+  {
+   "attempt": "att-415bd9edabfc49dd (verifier, completed)",
+   "bound": "launched by interlock"
+  }
+ ],
+ "workflow": "feature v1"
+}

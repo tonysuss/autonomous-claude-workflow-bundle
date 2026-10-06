@@ -1,0 +1,7 @@
+`kvconf get` now reads keys in dotted sections. `go run ./cmd/kvconf get app.conf db.eu.host` prints `db1.example.org`, `checks/dotted.sh` passes, and `go test ./...` passes.
+
+Two places split the name on the first dot: `splitName` in `cmd/kvconf/main.go` and `Config.Lookup` in `config.go`. Both now split on the last dot, so `db.eu.host` is the key `host` in the section `db.eu`. A name with no dot is still a key in the unnamed section.
+
+I also added `TestLookupDottedSection` to `getters_test.go`. It covers both the dotted-section lookup and an unnamed-section key.
+
+STATUS: DONE

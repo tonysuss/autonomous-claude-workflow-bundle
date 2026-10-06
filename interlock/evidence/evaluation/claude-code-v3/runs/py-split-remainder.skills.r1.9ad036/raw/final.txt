@@ -1,0 +1,7 @@
+I fixed `split_evenly` in `tally/money.py`. `split_evenly(100, 3)` now returns `[34, 33, 33]`, so the balances for that ledger sum to zero. The full test suite passes (23 tests), and `checks/split-repro.sh` prints its `ok` line.
+
+- **Splitting:** It splits the absolute total, so earlier shares take the extra cents and no two shares differ by more than one cent. A negative total gets the same split with the sign flipped: `split_evenly(-100, 3) == [-34, -33, -33]`.
+- **Bad `n`:** `n` of zero or below now raises `ValueError`.
+- **Tests:** I added tests in `tests/test_money.py` for the remainder order, the negative case, shares summing to the total (every total from -50 to 50 with `n` from 1 to 7), and the `ValueError`.
+
+STATUS: DONE

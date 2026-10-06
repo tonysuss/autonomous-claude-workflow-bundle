@@ -1,0 +1,7 @@
+The first failing commit is 91a6a15 ("ledger: tidy settle loop").
+
+I ran `checks/settle-repro.sh` against a clean `git archive` export of each commit, so nothing in the repo changed. The script passes at a16f8ab and every earlier commit. It fails at 91a6a15 and every later commit, so 91a6a15 is the one that introduced the regression. I didn't read the diff to see why that tidy-up produces the 0.00 transfer.
+
+ANSWER: 91a6a159d5c7e295504c4280c17ca9f883bdcaa9
+
+STATUS: DONE

@@ -1,0 +1,7 @@
+`balances` and `settle` now print amounts with thousands separators, so `-121810.78` prints as `-121,810.78`. Both interlock checks pass on the final tree. I didn't add any new tests.
+
+I added `format_cents_grouped` in `tally/money.py` and switched `tally/report.py` to use it. I left `format_cents` alone because `export` uses it, and the export output has to stay ungrouped so the CSV round-trips.
+
+- **Checks:** `checks/thousands.sh` passes, and the 19 unit tests pass.
+- **By hand:** I ran both commands on `examples/big.csv`. `settle` printed `Bea -> Ann  121,810.78`, and `balances` printed `Bea  -121,810.78`.
+- **Claims:** I recorded claims for `balances`, `regression` and `spec`. The independent verifier still has to confirm `balances` and `spec`.

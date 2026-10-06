@@ -1,0 +1,105 @@
+{
+ "attempts": [
+  {
+   "binding": {
+    "agent_type": null,
+    "host_agent": null,
+    "host_session": null,
+    "interactive": false,
+    "via": "interlock_launched"
+   },
+   "bound": "launched by interlock",
+   "epoch": 1,
+   "host": "claude-code",
+   "id": "att-d1b2ea0095e746d4",
+   "role": "worker",
+   "status": "failed"
+  },
+  {
+   "binding": {
+    "agent_type": null,
+    "host_agent": null,
+    "host_session": null,
+    "interactive": false,
+    "via": "interlock_launched"
+   },
+   "bound": "launched by interlock",
+   "epoch": 2,
+   "host": "claude-code",
+   "id": "att-95be6e13d85a4e79",
+   "role": "worker",
+   "status": "completed"
+  },
+  {
+   "binding": {
+    "agent_type": null,
+    "host_agent": null,
+    "host_session": null,
+    "interactive": false,
+    "via": "interlock_launched"
+   },
+   "bound": "launched by interlock",
+   "epoch": 2,
+   "host": "claude-code",
+   "id": "att-415bd9edabfc49dd",
+   "role": "verifier",
+   "status": "completed"
+  }
+ ],
+ "evidence": {
+  "all_pass": true,
+  "any_fail": false,
+  "criteria": [
+   {
+    "criterion_id": "since",
+    "current_assessments": 1,
+    "current_claims": 1,
+    "current_runs": 2,
+    "evidence_id": "asm-70175f7811a5461b",
+    "source": "assessment",
+    "stale": 0,
+    "strength": "observed",
+    "verdict": "pass"
+   },
+   {
+    "criterion_id": "spec",
+    "current_assessments": 1,
+    "current_claims": 1,
+    "current_runs": 0,
+    "evidence_id": "asm-915c24ecb0d346f5",
+    "source": "assessment",
+    "stale": 0,
+    "strength": "observed",
+    "verdict": "pass"
+   },
+   {
+    "criterion_id": "regression",
+    "current_assessments": 1,
+    "current_claims": 1,
+    "current_runs": 2,
+    "evidence_id": "asm-2b9e0cc8649346d9",
+    "source": "assessment",
+    "stale": 0,
+    "strength": "tested",
+    "verdict": "pass"
+   }
+  ]
+ },
+ "next_moves": [],
+ "task": {
+  "attempts_used": 2,
+  "blocked_reason": null,
+  "current_attempt": "att-95be6e13d85a4e79",
+  "current_tree": "5b590d5e287fc22fba61a9240a241ce36b0a5c83",
+  "id": "py-date-filter",
+  "integration_required": false,
+  "intent": "Add `--since DATE` and `--until DATE` options to `python3 -m tally balances` and `python3 -m tally settle`, so that part of a trip can be looked at on its own. DATE is written `YYYY-MM-DD`.\n\n- Only entries dated on or after `--since` and on or before `--until` count. Either option may be given alone.\n- A DATE that is not a valid `YYYY-MM-DD` date is rejected by the argument parser, which exits with status 2.\n- When `--since` or `--until` is given, every entry's date must be a valid `YYYY-MM-DD` date. Otherwise the command fails with status 1 and an error that names the file and the line, like `tally: trip.csv:3: invalid date '2026-13-01'`.\n- Without these options, nothing changes.\n\n`checks/date-filter.sh` checks `balances --since 2026-06-02` for `examples/trip.csv`. The tests run with `python3 -m unittest discover -s tests -q`.\n",
+  "lease_epoch": 2,
+  "max_attempts": 3,
+  "state": "done",
+  "workflow": {
+   "name": "feature",
+   "version": 1
+  }
+ }
+}

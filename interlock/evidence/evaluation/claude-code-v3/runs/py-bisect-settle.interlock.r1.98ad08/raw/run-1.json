@@ -1,0 +1,94 @@
+{
+  "task_id": "py-bisect-settle",
+  "host": "claude-code",
+  "final_state": "done",
+  "stopped_because": "done",
+  "reconciled": [],
+  "reattached": [],
+  "interrupted": false,
+  "baseline": [],
+  "sessions": [
+    {
+      "role": "worker",
+      "attempt_id": "att-aacd14f9dd0440fe",
+      "epoch": 1,
+      "exit": {
+        "exit": "completed"
+      },
+      "duration_ms": 15637,
+      "summary": "I found the regression: it was introduced by commit 91a6a15 (\"ledger: tidy settle loop\"). I did not record an interlock claim. `interlock check run --criterion answer` returned \"criterion answer has no check to run\", so the criterion has no check for me to run. The worktree is unchanged.\n\nTo confirm it, I exported each of the 10 commits into a temporary directory with `git archive`. I then ran `checks/settle-repro.sh` (taken from 7e2bd53) in each one, in history order. It passes at 36f883f, fe5d349, 2a854cc, bcd34a9 and a16f8ab. It fails at 91a6a15 and at every later commit. So 91a6a15 is the first failing commit, and its parent a16f8ab passes.\n\nANSWER: 91a6a159d5c7e295504c4280c17ca9f883bdcaa9",
+      "denials": 0,
+      "transcript": "/tmp/agent-ws/3d57a3f497/tally/.interlock/transcripts/att-aacd14f9dd0440fe.jsonl",
+      "moves": [
+        {
+          "signal": "G3",
+          "from": "running",
+          "to": "awaiting_verification",
+          "reason": "result accepted from attempt att-aacd14f9dd0440fe at epoch 1"
+        }
+      ],
+      "ended_because": "completed",
+      "end_detail": null,
+      "spent": {
+        "wall_ms": 15637,
+        "cost_usd": 0.0660672,
+        "premium_requests": null,
+        "turns": 5
+      },
+      "cost_usd": 0.0660672,
+      "premium_requests": null,
+      "host_session_id": "0d6ffe72-3d94-4d53-a61f-77d944e602b9",
+      "reattached": false,
+      "stopped_strays": [],
+      "export": null
+    },
+    {
+      "role": "verifier",
+      "attempt_id": "att-3bbd7d94b5054a22",
+      "epoch": 1,
+      "exit": {
+        "exit": "completed"
+      },
+      "duration_ms": 12431,
+      "summary": "answer: verified. I exported commits with `git archive` and ran `checks/settle-repro.sh` in each. It passes at a16f8ab, the parent of 91a6a15. It fails at 91a6a15 with `zero-amount transfers: [('Dan', 'Cal', 0)]`, and it fails again at 87736b4. I did not rerun the earlier commits (36f883f, fe5d349, 2a854cc, bcd34a9). The worker reports they pass. `interlock check run --criterion answer` returned \"criterion answer has no check to run\", so this rests on my own runs. I recorded an `observed` assessment.\n\nANSWER: 91a6a159d5c7e295504c4280c17ca9f883bdcaa9",
+      "denials": 0,
+      "transcript": "/tmp/agent-ws/3d57a3f497/tally/.interlock/transcripts/att-3bbd7d94b5054a22.jsonl",
+      "moves": [
+        {
+          "signal": "G4",
+          "from": "awaiting_verification",
+          "to": "verified",
+          "reason": "every required criterion has current passing evidence"
+        },
+        {
+          "signal": "G7",
+          "from": "verified",
+          "to": "done",
+          "reason": "verified; the workflow needs no delivery"
+        }
+      ],
+      "ended_because": "completed",
+      "end_detail": null,
+      "spent": {
+        "wall_ms": 12431,
+        "cost_usd": 0.0598488,
+        "premium_requests": null,
+        "turns": 4
+      },
+      "cost_usd": 0.0598488,
+      "premium_requests": null,
+      "host_session_id": "38a6a3ce-1fd2-418e-b9cc-ca22f3fa07c3",
+      "reattached": false,
+      "stopped_strays": [],
+      "export": null
+    }
+  ],
+  "pin": null,
+  "spent": {
+    "wall_ms": 28068,
+    "cost_usd": 0.125916,
+    "premium_requests": null,
+    "turns": 9
+  },
+  "exports": []
+}

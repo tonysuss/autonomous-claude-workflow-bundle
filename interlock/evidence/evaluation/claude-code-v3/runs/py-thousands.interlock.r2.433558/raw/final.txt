@@ -1,0 +1,5 @@
+`balances` and `settle` now print amounts with thousands separators, so `settle` shows `-121,810.78` style values (for example `Bea -> Ann  121,810.78` on `examples/big.csv`).
+
+I added an opt-in `thousands` parameter to `format_cents` in `tally/money.py`, and `tally/report.py` passes it for both commands. It defaults to off, so the CSV export, which also uses `format_cents`, is unchanged.
+
+`interlock check run` passed for `balances` (`checks/thousands.sh`) and `regression` (19 unit tests). I ran `settle` on `examples/big.csv` by hand to confirm its output. I recorded claims for all three criteria. I didn't add a unit test or touch the README.

@@ -1,0 +1,80 @@
+{
+ "base_commit": "3a45596929955f561b4791aaea6eaceb5e1e60f9",
+ "criteria": [
+  {
+   "baseline": "it must fail on the input snapshot, reproducing the problem; interlock saw it fail there (run run-fc968f8dea7b41fb)",
+   "check": "sh checks/quoted-hash.sh",
+   "id": "repro",
+   "needs": "observed from independent",
+   "statement": "`kvconf get` prints `Issue #42: retry` for the reported file",
+   "status": "passes (Observed)"
+  },
+  {
+   "baseline": null,
+   "check": null,
+   "id": "spec",
+   "needs": "tested from independent",
+   "statement": "Every quoting rule in the task holds: a # inside quotes is kept, an unquoted value ends at #, a comment may follow the closing quote, and \\\" and \\\\ are escapes inside quotes",
+   "status": "passes (Tested)"
+  },
+  {
+   "baseline": "it must pass on the input snapshot, as a regression guard; interlock saw it pass there (run run-95820085abea4fca)",
+   "check": "go test ./...",
+   "id": "regression",
+   "needs": "tested from self",
+   "statement": "The existing Go tests pass",
+   "status": "passes (Tested)"
+  }
+ ],
+ "current_tree": "e4b35cd96e74558e51d0506fc6cad927701063b2",
+ "failures_to_fix": [],
+ "goal": "`kvconf get` fails on a value that has a `#` inside double quotes. With this file:\n\n```\n[app]\ntitle = \"Issue #42: retry\"\n```\n\n`go run ./cmd/kvconf get app.conf app.title` prints `kvconf: line 2: unterminated quoted value` instead of `Issue #42: retry`.\n\nA `#` inside a double-quoted value is part of the value. The other quoting rules in the README must keep working:\n\n- an unquoted value still ends at the first `#`: `port = 8080 # http` gives `8080`;\n- after the closing quote, `# ...` is a comment: `title = \"x\" # note` gives `x`;\n- inside quotes, `\\\"` is a double quote and `\\\\` is a single backslash: `path = \"C:\\\\temp\"` gives `C:\\temp`.\n\n`checks/quoted-hash.sh` reproduces the problem. The tests run with `go test ./...`.\n",
+ "grant": {
+  "action_classes": [
+   "read",
+   "local_reversible"
+  ],
+  "grant_ids": [],
+  "landing_authority": "none",
+  "tools": {
+   "allow": [
+    "read",
+    "shell"
+   ],
+   "deny": [
+    "edit",
+    "shell:git push",
+    "shell:git commit"
+   ]
+  }
+ },
+ "next_moves": [],
+ "previous_result": {
+  "attempt_id": "att-530bc82194c74635",
+  "changed_paths": [
+   "parser.go",
+   "parser_test.go"
+  ],
+  "open_questions": [],
+  "output_tree": "e4b35cd96e74558e51d0506fc6cad927701063b2",
+  "summary": "The fix is in and I've recorded my claims; the spec and repro criteria still need the independent verifier.\n\nI rewrote `parseValue` in `parser.go`. A value that starts with a double quote is now scanned up to its closing unescaped quote, so a `#` inside the quotes stays in the value. After the closing quote, only a `# ...` comment or nothing is allowed; any other trailing text now returns an error. Unquoted values still end at the first `#`. I added `TestQuotedHash` in `parser_test.go`, covering all four README cases.\n\ninterlock's runs of `checks/quoted-hash.sh` (it prints `Issue #42: retry`) and `go test ./...` both passed on the final tree. I recorded claims for repro (observed), regression (tested) and spec (tested). I did not commit."
+ },
+ "protected": [
+  "checks/quoted-hash.sh"
+ ],
+ "role": "verifier",
+ "scope": [
+  "parser.go",
+  "*_test.go",
+  "testdata/**"
+ ],
+ "state": "done",
+ "task_id": "go-quoted-hash",
+ "verifier_bindings": [
+  {
+   "attempt": "att-aa32f7e333954453 (verifier, completed)",
+   "bound": "launched by interlock"
+  }
+ ],
+ "workflow": "bug-fix v1"
+}

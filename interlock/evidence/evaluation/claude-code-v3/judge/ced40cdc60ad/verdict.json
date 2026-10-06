@@ -1,0 +1,33 @@
+{
+ "anon_id": "ced40cdc60ad",
+ "task": "go-dotted-section",
+ "cases": [
+  {
+   "id": "existing_tests",
+   "pass": true,
+   "detail": "10 passed\n"
+  },
+  {
+   "id": "TestHiddenLookupDottedSection",
+   "pass": false,
+   "detail": "=== RUN   TestHiddenLookupDottedSection\n    zz_hidden_test.go:27: Lookup(\"db.eu.host\") = \"\", kvconf: no section \"db\"; want \"db1.example.org\"\n    zz_hidden_test.go:27: Lookup(\"a.b.c.d\") = \"\", kvconf: no section \"a\"; want \"deep\"\n--- FAIL: TestHiddenLookupDottedSection (0.00s)\n    zz_hidden_test.go:41: Lookup(db.eu.missing) error = kvconf: no section \"db\""
+  },
+  {
+   "id": "TestHiddenLookupPlainNames",
+   "pass": false,
+   "detail": "    zz_hidden_test.go:27: Lookup(\"db.eu.host\") = \"\", kvconf: no section \"db\"; want \"db1.example.org\"\n    zz_hidden_test.go:27: Lookup(\"a.b.c.d\") = \"\", kvconf: no section \"a\"; want \"deep\"\n=== RUN   TestHiddenLookupPlainNames\n    zz_hidden_test.go:41: Lookup(db.eu.missing) error = kvconf: no section \"db\"\n--- FAIL: TestHiddenLookupPlainNames (0.00s)"
+  },
+  {
+   "id": "cli_get_dotted_section",
+   "pass": true,
+   "detail": "exit 0 'db1.example.org\\n'"
+  },
+  {
+   "id": "cli_get_plain_names",
+   "pass": true,
+   "detail": "server.port: 0 '8080\\n'; name: 0 'demo\\n'"
+  }
+ ],
+ "pass": false,
+ "condition_words": []
+}

@@ -1,0 +1,12 @@
+`balances` and `settle` now take `--format text|csv`. The default is `text`, which is unchanged. The unit tests pass (22 tests) and `checks/csv-format.sh` prints `ok`.
+
+- **CSV output:** it uses Python's `csv` writer with `\n` line endings. The two commands have their headers (`person,balance` and `from,to,amount`) and print the header alone when there is nothing to list. Rows keep the text output's order and number format.
+- **Unknown formats:** the argument parser rejects them and exits with status 2.
+- **Settle example:** on `examples/trip.csv`, `settle --format csv` prints `Bea,Cal,40.00` and `Dan,Ann,36.00` under the header.
+- **Edge cases not run:** I didn't test a name containing a comma, or a ledger with no entries.
+
+I added the CSV renderers in `tally/report.py` and the option in `tally/cli.py`. `export` doesn't get the option. I also added three tests to `tests/test_cli.py` and a short note in `README.md`. The new tests check `balances` CSV output, the `settle` CSV header, and the rejection of a bad format.
+
+I haven't committed anything.
+
+STATUS: DONE

@@ -1,0 +1,5 @@
+`kvconf get app.conf db.eu.host` now reads `host` in the section `db.eu`. The name is split at the last dot, and a name with no dot is still a key in the unnamed section.
+
+I made the change in two places, `Config.Lookup` in `config.go` and `splitName` in `cmd/kvconf/main.go`, both of which used the first dot. I also added `TestSplitNameDottedSection` in `cmd/kvconf/main_test.go`. I did not add a test for `Config.Lookup` itself.
+
+`interlock check run` passes for `repro` (`checks/dotted.sh` prints `db1.example.org`) and for `regression` (`go test ./...`). I recorded claims for `repro` and `regression` as observed and for `spec` as tested. `repro` and `spec` still need independent verification.

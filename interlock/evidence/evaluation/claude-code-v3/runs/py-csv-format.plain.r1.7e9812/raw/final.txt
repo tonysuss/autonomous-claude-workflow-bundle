@@ -1,0 +1,9 @@
+`balances` and `settle` now take `--format text|csv`. The default is `text`, so today's output is unchanged. An unknown format makes the argument parser exit with status 2.
+
+The unit tests pass, `checks/csv-format.sh` passes, and `settle --format csv examples/trip.csv` prints the `from,to,amount` header followed by `Bea,Cal,40.00` and `Dan,Ann,36.00`.
+
+- **Code:** the two new CSV renderers are in `tally/report.py`. The option is wired up in `tally/cli.py`.
+- **Quoting and empty output:** the renderers use Python's `csv` writer with `\n` line endings, so names with commas get quoted and an empty result prints only the header. I didn't add tests for those two cases.
+- **Tests and docs:** three new tests in `tests/test_cli.py` cover `balances --format csv`, the `settle --format csv` header, and the rejected format. `README.md` documents the option.
+
+STATUS: DONE

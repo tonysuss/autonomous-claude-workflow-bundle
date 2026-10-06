@@ -1,0 +1,5 @@
+`GetDuration` now accepts `d` as 24-hour days, so `30d` reads as 720h. It also accepts a day count followed by normal Go duration syntax, such as `1d12h`.
+
+The days parsing runs only after the existing seconds and `time.ParseDuration` paths fail. Anything accepted before behaves as it did, because Go's own syntax never contains `d`. Day counts must be whole numbers, so `1.5d` is rejected. I added `TestGetDurationDays` in `getters_test.go`, updated the doc comment in `getters.go`, and added a note to `README.md`.
+
+interlock ran `checks/days.sh`, which reports `ok: 30d is 720h0m0s`, and `go test ./...`, which passes. I recorded claims for `repro`, `regression` and `spec` against that tree. The independent verifier hasn't looked at `repro` or `spec` yet.

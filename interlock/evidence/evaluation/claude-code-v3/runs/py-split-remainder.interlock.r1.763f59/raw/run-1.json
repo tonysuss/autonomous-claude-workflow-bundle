@@ -1,0 +1,109 @@
+{
+  "task_id": "py-split-remainder",
+  "host": "claude-code",
+  "final_state": "done",
+  "stopped_because": "done",
+  "reconciled": [],
+  "reattached": [],
+  "interrupted": false,
+  "baseline": [
+    {
+      "criterion_id": "repro",
+      "run_id": "run-40a6b1b45d8b444e",
+      "exit_code": 1,
+      "vacuous": null,
+      "problem": null
+    },
+    {
+      "criterion_id": "regression",
+      "run_id": "run-432a2bcb99f44dc8",
+      "exit_code": 0,
+      "vacuous": null,
+      "problem": null
+    }
+  ],
+  "sessions": [
+    {
+      "role": "worker",
+      "attempt_id": "att-947b9c4a97b74c89",
+      "epoch": 1,
+      "exit": {
+        "exit": "completed"
+      },
+      "duration_ms": 15541,
+      "summary": "I fixed `split_evenly` in `tally/money.py`, and the repro check and the unit tests both pass on my files. It now gives the earlier shares the extra cents, mirrors negative totals, and raises `ValueError` when `n <= 0`. So `split_evenly(100, 3)` returns `[34, 33, 33]` and `split_evenly(-100, 3)` returns `[-34, -33, -33]`.\n\nI added tests in `tests/test_money.py` for the remainder order, the negative mirror and the `ValueError` case. They also check that shares sum to the total and differ by at most one cent for totals from -50 to 50 and `n` from 1 to 7.\n\nI ran `sh checks/split-repro.sh` and the full suite (23 tests) through `interlock check run`, and both passed. I recorded claims for all three criteria: repro as observed, regression as tested, and spec as tested. The independent verifier still has to confirm repro and spec.",
+      "denials": 0,
+      "transcript": "/tmp/agent-ws/45098fe7d3/tally/.interlock/transcripts/att-947b9c4a97b74c89.jsonl",
+      "moves": [
+        {
+          "signal": "G3",
+          "from": "running",
+          "to": "awaiting_verification",
+          "reason": "result accepted from attempt att-947b9c4a97b74c89 at epoch 1"
+        }
+      ],
+      "ended_because": "completed",
+      "end_detail": null,
+      "spent": {
+        "wall_ms": 15541,
+        "cost_usd": 0.08964200000000001,
+        "premium_requests": null,
+        "turns": 8
+      },
+      "cost_usd": 0.08964200000000001,
+      "premium_requests": null,
+      "host_session_id": "c70a66f4-9d11-4492-848c-6c96b85705fe",
+      "reattached": false,
+      "stopped_strays": [],
+      "export": null
+    },
+    {
+      "role": "verifier",
+      "attempt_id": "att-d8e5fdb31e504ad6",
+      "epoch": 1,
+      "exit": {
+        "exit": "completed"
+      },
+      "duration_ms": 10524,
+      "summary": "- **repro**: observed. interlock ran `sh checks/split-repro.sh` on tree 01e43005 and it passed.\n- **spec**: tested. My own script checked totals from -200 to 200 with n from 1 to 11. Shares sum to the total and differ by at most one cent. Earlier shares take the extra cents, and negative totals mirror positive ones. n of 0 or -1 raises `ValueError`. The diff against the base touches only `tally/money.py` and `tests/test_money.py`.\n- **regression**: tested. interlock ran the unit tests on this tree: 23 tests, all OK.",
+      "denials": 0,
+      "transcript": "/tmp/agent-ws/45098fe7d3/tally/.interlock/transcripts/att-d8e5fdb31e504ad6.jsonl",
+      "moves": [
+        {
+          "signal": "G4",
+          "from": "awaiting_verification",
+          "to": "verified",
+          "reason": "every required criterion has current passing evidence"
+        },
+        {
+          "signal": "G7",
+          "from": "verified",
+          "to": "done",
+          "reason": "verified; the workflow needs no delivery"
+        }
+      ],
+      "ended_because": "completed",
+      "end_detail": null,
+      "spent": {
+        "wall_ms": 10524,
+        "cost_usd": 0.070936,
+        "premium_requests": null,
+        "turns": 4
+      },
+      "cost_usd": 0.070936,
+      "premium_requests": null,
+      "host_session_id": "7c76a91b-eea9-4324-a6cf-1c77ac0e18eb",
+      "reattached": false,
+      "stopped_strays": [],
+      "export": null
+    }
+  ],
+  "pin": null,
+  "spent": {
+    "wall_ms": 26065,
+    "cost_usd": 0.160578,
+    "premium_requests": null,
+    "turns": 12
+  },
+  "exports": []
+}

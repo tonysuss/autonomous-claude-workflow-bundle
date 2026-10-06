@@ -1,0 +1,5 @@
+I found the regression: it was introduced by commit 91a6a15 ("ledger: tidy settle loop"). I did not record an interlock claim. `interlock check run --criterion answer` returned "criterion answer has no check to run", so the criterion has no check for me to run. The worktree is unchanged.
+
+To confirm it, I exported each of the 10 commits into a temporary directory with `git archive`. I then ran `checks/settle-repro.sh` (taken from 7e2bd53) in each one, in history order. It passes at 36f883f, fe5d349, 2a854cc, bcd34a9 and a16f8ab. It fails at 91a6a15 and at every later commit. So 91a6a15 is the first failing commit, and its parent a16f8ab passes.
+
+ANSWER: 91a6a159d5c7e295504c4280c17ca9f883bdcaa9

@@ -1,0 +1,12 @@
+`kvconf get app.conf app.title` now prints `Issue #42: retry` for your example. `go test ./...` passes, and `checks/quoted-hash.sh` prints `ok: Issue #42: retry`.
+
+The fix is in `parseValue` in `parser.go`. A value that starts with `"` is now read character by character up to the closing quote, so a `#` inside the quotes stays part of the value. Unquoted values still end at the first `#`.
+
+The other quoting rules still hold. I covered them with a new test, `TestQuotedHashAndComments`, in `parser_test.go`:
+- `port = 8080 # http` gives `8080`.
+- `title = "x" # note` gives `x`.
+- `path = "C:\\temp"` gives `C:\temp`.
+
+One behavior I added: anything after the closing quote other than a `#` comment is now an error (`unexpected text after quoted value`). The old code reported such a line as an unterminated quoted value. Say if you'd rather it be lenient.
+
+STATUS: DONE

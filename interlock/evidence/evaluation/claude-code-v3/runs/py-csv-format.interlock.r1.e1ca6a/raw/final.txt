@@ -1,0 +1,8 @@
+I added `--format {text,csv}` to `balances` and `settle`, with `text` as the default. The CSV renderers are in `tally/report.py` and use Python's `csv` writer, so quoting and `\n` line endings come from the module's defaults. I wired the option into `tally/cli.py`, added three tests to `tests/test_cli.py` and added a README line.
+
+- **Checks:** `checks/csv-format.sh` passes, and the 22 unit tests pass, including the new ones.
+- **Observed by hand:** `settle --format csv examples/trip.csv` prints the `from,to,amount` header and the two transfers.
+- **Covered by tests:** the `balances` CSV output, the `settle` CSV header and the exit status 2 for an unknown format.
+- **Not exercised:** the header-only output when there is nothing to list, and the quoting of a name with a comma. Both rely on the `csv` writer behaving as documented. My one empty-ledger attempt, `balances --format csv /dev/null`, was rejected for missing columns, so it never reached the formatter.
+
+I recorded claims for `balances-csv` (observed), `regression` (tested) and `spec` (observed, with the gaps above noted). `spec` and `balances-csv` still need the independent verifier.

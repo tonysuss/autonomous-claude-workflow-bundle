@@ -1,0 +1,8 @@
+`GetDuration` now accepts a `d` unit, so `retention = 30d` reads as 720 hours. `go test ./...` passes and `checks/days.sh` prints `ok: 30d is 720h0m0s`.
+
+- **`getters.go`:** I added a `parseDuration` helper, and `GetDuration` now calls it instead of `time.ParseDuration`. It only does something new when the value starts with a day count such as `30d`, `1.5d`, `-2d` or `1d12h`. Any other value goes straight to `time.ParseDuration`, as before. Plain seconds like `90` are still handled before that point.
+- **Limits of `d`:** it only works as the first unit, so `1h2d` is still rejected. A sign after the day count, like `1d-2h`, is rejected too.
+- **`getters_test.go`:** I added cases for `30d`, `1d12h`, `-2d` and the rejected `1d-2h`. The existing cases are unchanged.
+- **`README.md`:** the getters line now mentions the day syntax.
+
+STATUS: DONE

@@ -37,7 +37,8 @@ print(json.dumps({
     "exit_code": p.returncode,
     "stderr_tail": p.stderr[-300:],
     "plugins": [x.get("name") for x in init.get("plugins", [])],
-    "skill_listed": [s for s in init.get("skills", []) if "eval-dummy" in s],
+    "plugin_skills_listed": [s for s in init.get("skills", []) if ":" in s and not s.startswith("cc-plugin")],
+    "agents": init.get("agents"),
     "result": result.get("result"),
     "cost_usd": result.get("total_cost_usd"),
 }, indent=1))

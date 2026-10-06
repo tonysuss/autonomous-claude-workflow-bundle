@@ -1,6 +1,6 @@
 {
  "harness_version": "2",
- "at": "2026-10-06T01:35:20+00:00",
+ "at": "2026-10-06T02:31:32+00:00",
  "lock": {
   "version": 2,
   "judgelib_sha256": "97dfb93a6aee6a9280fcbe5ae1a368368b23fc81ac5b8b404870f0a83d3ec6cd",
@@ -27,7 +27,7 @@
    },
    "py-bisect-settle": {
     "base_commit": "7e2bd5330c09b7b41ba3a3a24635453a47c4af48",
-    "task_dir_sha256": "ddad02d4c682850195723485638381b35d445202b4cc3c399666eb60e17185d7"
+    "task_dir_sha256": "bd3890032b81a2461301dbb4628861d167cc2e93ae5bd9e6632a3da9cae5047f"
    },
    "py-csv-format": {
     "base_commit": "c934fc209d4ecd5395e423c165cb502527d39eac",

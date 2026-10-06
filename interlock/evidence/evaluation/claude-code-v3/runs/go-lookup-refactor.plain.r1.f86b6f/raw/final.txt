@@ -1,0 +1,5 @@
+All four getters now go through `lookup`, and the only remaining read of `c.sections` in `getters.go` is inside `lookup` itself. `go vet` and `go test ./...` pass, and `getters.go` is the only file changed.
+
+`GetBool` words its missing-key error differently from the others: `key %q not set` instead of `no key %q`. To keep every message identical, `lookup` returns a small unexported error type, `missingKeyError`, for a missing key. `GetBool` checks for it and rebuilds its own message. The other three getters pass `lookup`'s error through unchanged.
+
+STATUS: DONE

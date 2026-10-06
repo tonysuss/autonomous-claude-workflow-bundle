@@ -1,0 +1,7 @@
+`kvconf get app.conf db.eu.host` now prints `db1.example.org`. `checks/dotted.sh` passes and `go test ./...` passes.
+
+The split on the first dot was done in two places: `splitName` in `cmd/kvconf/main.go` and `Config.Lookup` in `config.go`. Both now split on the last dot, so the key is the part after it and the section is everything before it. A name with no dot is still a key in the unnamed section.
+
+I added `TestSplitNameDottedSection` to `cmd/kvconf/main_test.go`. It covers `host`, `db.host` and `db.eu.host`. I did not add a test for `Lookup` itself, and I left `README.md` alone. It has nothing about dots in section names.
+
+STATUS: DONE

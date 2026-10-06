@@ -1,0 +1,9 @@
+`split_evenly` in `tally/money.py` now keeps every cent. `split_evenly(100, 3)` returns `[34, 33, 33]`, and `split_evenly(-100, 3)` returns `[-34, -33, -33]`. The full test suite passes (23 tests), and `checks/split-repro.sh` now prints its "ok" line, so the ledger balances sum to zero.
+
+- **How it splits:** each share gets the base amount, and the earlier shares take the leftover cents, so no two shares differ by more than a cent. A negative total is split as its absolute value and then negated.
+- **Invalid `n`:** it raises `ValueError` when `n` is zero or negative.
+- **Tests:** I added cases to `tests/test_money.py` for the remainder order, the refund case, a sum-to-total check over many totals and share counts, and the `ValueError`.
+
+I changed only `tally/money.py` and `tests/test_money.py`.
+
+STATUS: DONE

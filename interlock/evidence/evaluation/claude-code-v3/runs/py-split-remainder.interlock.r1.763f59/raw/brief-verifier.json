@@ -1,0 +1,79 @@
+{
+ "base_commit": "b1a14fd111d2780c83421179a6608ad485eb90ff",
+ "criteria": [
+  {
+   "baseline": "it must fail on the input snapshot, reproducing the problem; interlock saw it fail there (run run-40a6b1b45d8b444e)",
+   "check": "sh checks/split-repro.sh",
+   "id": "repro",
+   "needs": "observed from independent",
+   "statement": "Splitting 1.00 three ways gives [34, 33, 33] and the ledger's balances sum to zero",
+   "status": "passes (Observed)"
+  },
+  {
+   "baseline": null,
+   "check": null,
+   "id": "spec",
+   "needs": "tested from independent",
+   "statement": "split_evenly meets every rule in the task: shares sum to the total and differ by at most one cent, earlier shares take the extra cents, negative totals mirror positive ones, and n <= 0 raises ValueError",
+   "status": "passes (Tested)"
+  },
+  {
+   "baseline": "it must pass on the input snapshot, as a regression guard; interlock saw it pass there (run run-432a2bcb99f44dc8)",
+   "check": "python3 -m unittest discover -s tests -q",
+   "id": "regression",
+   "needs": "tested from self",
+   "statement": "The existing unit tests pass",
+   "status": "passes (Tested)"
+  }
+ ],
+ "current_tree": "01e43005d57a2dc22d266ad03b0607307afb8523",
+ "failures_to_fix": [],
+ "goal": "Splitting an expense loses cents. `split_evenly(100, 3)` in `tally/money.py` returns `[33, 33, 33]`, which adds up to 99, so the balances for a ledger with such an expense no longer sum to zero.\n\nExpected behaviour of `split_evenly(total, n)`:\n\n- The shares always add up to `total`, and no two shares differ by more than one cent.\n- The earlier shares (participants are in the order given) take the extra cents: `split_evenly(100, 3) == [34, 33, 33]`.\n- A negative total (a refund) mirrors the positive case: `split_evenly(-100, 3) == [-34, -33, -33]`.\n- `n` must be positive; otherwise `split_evenly` raises `ValueError`.\n\n`checks/split-repro.sh` reproduces the problem. The tests run with `python3 -m unittest discover -s tests -q`.\n",
+ "grant": {
+  "action_classes": [
+   "read",
+   "local_reversible"
+  ],
+  "grant_ids": [],
+  "landing_authority": "none",
+  "tools": {
+   "allow": [
+    "read",
+    "shell"
+   ],
+   "deny": [
+    "edit",
+    "shell:git push",
+    "shell:git commit"
+   ]
+  }
+ },
+ "next_moves": [],
+ "previous_result": {
+  "attempt_id": "att-947b9c4a97b74c89",
+  "changed_paths": [
+   "tally/money.py",
+   "tests/test_money.py"
+  ],
+  "open_questions": [],
+  "output_tree": "01e43005d57a2dc22d266ad03b0607307afb8523",
+  "summary": "I fixed `split_evenly` in `tally/money.py`, and the repro check and the unit tests both pass on my files. It now gives the earlier shares the extra cents, mirrors negative totals, and raises `ValueError` when `n <= 0`. So `split_evenly(100, 3)` returns `[34, 33, 33]` and `split_evenly(-100, 3)` returns `[-34, -33, -33]`.\n\nI added tests in `tests/test_money.py` for the remainder order, the negative mirror and the `ValueError` case. They also check that shares sum to the total and differ by at most one cent for totals from -50 to 50 and `n` from 1 to 7.\n\nI ran `sh checks/split-repro.sh` and the full suite (23 tests) through `interlock check run`, and both passed. I recorded claims for all three criteria: repro as observed, regression as tested, and spec as tested. The independent verifier still has to confirm repro and spec."
+ },
+ "protected": [
+  "checks/split-repro.sh"
+ ],
+ "role": "verifier",
+ "scope": [
+  "tally/money.py",
+  "tests/**"
+ ],
+ "state": "done",
+ "task_id": "py-split-remainder",
+ "verifier_bindings": [
+  {
+   "attempt": "att-d8e5fdb31e504ad6 (verifier, completed)",
+   "bound": "launched by interlock"
+  }
+ ],
+ "workflow": "bug-fix v1"
+}
