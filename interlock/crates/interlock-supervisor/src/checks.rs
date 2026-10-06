@@ -19,7 +19,7 @@ pub struct CheckRequest<'a> {
     pub target: RunTarget,
     /// The attempt's id and token; `None` for the operator or supervisor.
     pub attempt: Option<(String, String)>,
-    /// For `Output`, the worktree to check. For `Base`, any directory in the repository.
+    /// For `Output`, the worktree whose tree is checked. For `Base`, any directory in the repository.
     pub dir: &'a Path,
     /// Where base worktrees and temporary output files go.
     pub scratch: &'a Path,
@@ -52,20 +52,33 @@ pub fn run_check_cancellable(
     std::fs::create_dir_all(req.scratch).map_err(|e| RunError::Other(e.to_string()))?;
     let id = uuid::Uuid::new_v4().simple().to_string();
 
-    let (workdir, tree, cleanup): (PathBuf, String, Option<PathBuf>) = match req.target {
-        RunTarget::Output => (req.dir.to_path_buf(), git::worktree_tree(req.dir)?, None),
+    // Every check runs in a fresh checkout of exactly the tree it is recorded
+    // against. Run in the agent's own worktree, files the tree leaves out
+    // (ignored or generated ones, such as a planted `.pyc`) could change the
+    // result while it still counted for that tree. Base runs always worked
+    // this way, so a task's checks already have to run from a clean checkout.
+    let base = task.input_snapshot.as_ref().map(|s| s.base_commit.clone());
+    let (commit, tree, at) = match req.target {
+        RunTarget::Output => {
+            let tree = git::worktree_tree(req.dir)?;
+            let commit = git::commit_tree(req.dir, &tree, base.as_deref(), "interlock: tree under check")?;
+            // Run from the same place inside the tree as the caller's directory.
+            let root = git::toplevel(req.dir)?;
+            let within =
+                req.dir.canonicalize().ok().and_then(|d| {
+                    root.canonicalize().ok().and_then(|r| d.strip_prefix(&r).ok().map(Path::to_path_buf))
+                });
+            (commit, tree, within.unwrap_or_default())
+        }
         RunTarget::Base => {
-            let base = task
-                .input_snapshot
-                .as_ref()
-                .map(|s| s.base_commit.clone())
-                .ok_or_else(|| RunError::Other("the task has no input snapshot yet".into()))?;
-            let wt = req.scratch.join(format!("base-{id}"));
-            git::worktree_add(req.dir, &wt, &base)?;
+            let base = base.ok_or_else(|| RunError::Other("the task has no input snapshot yet".into()))?;
             let tree = git::tree_of(req.dir, &base)?;
-            (wt.clone(), tree, Some(wt))
+            (base, tree, PathBuf::new())
         }
     };
+    let wt = req.scratch.join(format!("check-{id}"));
+    git::worktree_add(req.dir, &wt, &commit)?;
+    let (workdir, cleanup) = (wt.join(at), Some(wt));
 
     let transcript = req.scratch.join(format!("check-{id}.out"));
     let plan = CommandPlan {
@@ -147,6 +160,7 @@ mod tests {
     use super::*;
     use interlock_core::lifecycle::TaskSpec;
     use interlock_schema::{RunProducer, Snapshot};
+    use std::process::Command;
 
     fn setup() -> (tempfile::TempDir, Store, String) {
         let repo = git::tests::repo_with(&[
@@ -224,9 +238,32 @@ mod tests {
                 .join(".interlock/scratch")
                 .read_dir()
                 .unwrap()
-                .any(|e| { e.unwrap().file_name().to_string_lossy().starts_with("base-") }),
-            "base worktrees are cleaned up"
+                .any(|e| { e.unwrap().file_name().to_string_lossy().starts_with("check-") }),
+            "check worktrees are cleaned up"
         );
+    }
+
+    #[test]
+    fn files_the_tree_leaves_out_cannot_change_an_output_check() {
+        // A verifier plants bytecode compiled from a fixed `calc.py` beside the
+        // buggy source, with the source's size and mtime, so Python would load
+        // the fix. The tree, which leaves bytecode out, still holds the bug.
+        let (repo, mut store, _) = setup();
+        let p = repo.path();
+        let src = p.join("calc.py");
+        let stamp = std::fs::metadata(&src).unwrap().modified().unwrap();
+        std::fs::write(&src, "def add(a, b):\n    return a + b\n").unwrap();
+        std::fs::File::options().write(true).open(&src).unwrap().set_modified(stamp).unwrap();
+        let compiled = Command::new("python3").args(["-m", "py_compile", "calc.py"]).current_dir(p).status().unwrap();
+        assert!(compiled.success());
+        std::fs::write(&src, "def add(a, b):\n    return a - b\n").unwrap();
+        std::fs::File::options().write(true).open(&src).unwrap().set_modified(stamp).unwrap();
+        let planted = Command::new("sh").args(["-c", "sh ./checks/add.sh"]).current_dir(p).status().unwrap();
+        assert!(planted.success(), "in the live worktree the planted bytecode makes the check pass");
+
+        let run = check(&mut store, p, "repro", RunTarget::Output, p);
+        assert!(run.failed(), "interlock checks the tree, which holds the bug: {}", run.output_tail);
+        assert_eq!(run.tree, git::worktree_tree(p).unwrap(), "and records it against that tree");
     }
 
     #[test]
