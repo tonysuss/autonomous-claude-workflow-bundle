@@ -688,26 +688,31 @@ impl Supervisor {
     /// ended, and whether this worktree holds exported work in progress.
     fn worker_context(&self, task: &Task) -> Result<String> {
         let mut out = String::new();
+        let resumed = match &task.current_tree {
+            Some(tree) => {
+                let results = self.store.results(&task.id)?;
+                !results.iter().any(|r| r.status == ResultStatus::Accepted && &r.output_tree == tree)
+            }
+            None => false,
+        };
         let attempts = self.store.attempts(&task.id)?;
         if let Some(last) = attempts.iter().rev().find(|a| a.role == Role::Worker)
             && let Some(end) = &last.end
             && !matches!(end.reason, EndReason::Completed | EndReason::Rejected)
         {
             let detail = end.detail.as_deref().map(|d| format!(": {d}")).unwrap_or_default();
+            let kept = if resumed { "" } else { " Its changes are not in this worktree." };
             out.push_str(&format!(
-                "\n## The previous attempt\n\nAttempt {} ended without a result ({}{detail}). Its changes are not in \
-                 this worktree.\n",
+                "\n## The previous attempt\n\nAttempt {} ended without a result ({}{detail}).{kept}\n",
                 last.id, end.reason
             ));
         }
-        if let Some(tree) = &task.current_tree {
-            let accepted = self.store.results(&task.id)?;
-            if !accepted.iter().any(|r| r.status == ResultStatus::Accepted && &r.output_tree == tree) {
-                out.push_str(&format!(
-                    "\n## Resuming\n\nThis worktree starts from exported work in progress (tree {tree}), not from an \
-                     accepted result. Read what is there before you continue.\n"
-                ));
-            }
+        if resumed {
+            out.push_str(&format!(
+                "\n## Resuming\n\nThis worktree starts from exported work in progress (tree {}), not from an \
+                 accepted result. Read what is there before you continue.\n",
+                task.current_tree.as_deref().unwrap_or_default()
+            ));
         }
         Ok(out)
     }
