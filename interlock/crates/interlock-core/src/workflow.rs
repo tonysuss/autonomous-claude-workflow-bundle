@@ -103,7 +103,8 @@ fn changing_worker() -> RoleSpec {
     requires.extend(optional_extras());
     RoleSpec {
         action_classes: vec![ActionClass::Read, ActionClass::LocalReversible],
-        tools: policy(&[tools::READ, tools::EDIT, tools::SHELL], &["shell:git push"]),
+        // interlock records the worktree's files; a worker's own commits are not its output.
+        tools: policy(&[tools::READ, tools::EDIT, tools::SHELL], &["shell:git push", "shell:git commit"]),
         requires,
     }
 }

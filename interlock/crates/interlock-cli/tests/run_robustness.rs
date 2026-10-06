@@ -195,14 +195,6 @@ impl Fixture {
         self.interlock(&["task", "show", "fix-add"], None).1
     }
 
-    /// The running worker's handoff, once its session has started.
-    fn live_handoff(&self) -> Option<Value> {
-        self.attempts()
-            .into_iter()
-            .find(|a| a["status"] == "running" && a["role"] == "worker" && a["handoff"].is_object())
-            .map(|a| a["handoff"].clone())
-    }
-
     /// P3's gate: every started attempt reconciles to a terminal row.
     fn assert_every_attempt_ended(&self) {
         for a in self.attempts() {
@@ -234,13 +226,53 @@ fn worker_sessions(model: &FakeModel) -> usize {
     model.requests().iter().filter(|r| r["role"] == "worker" && r["tools_done"] == 0).count()
 }
 
-/// Blocks until the worker has run `n` commands and asked for the next.
-fn wait_for_worker_step(model: &FakeModel, n: u64) {
-    wait_until("the worker reaches its long step", Duration::from_secs(90), || {
-        model.requests().iter().any(|r| r["role"] == "worker" && r["tools_done"].as_u64() >= Some(n))
-    });
-    // Let the host start the step it was given.
-    std::thread::sleep(Duration::from_millis(1500));
+/// Live processes of a session, found by the marker interlock puts in every
+/// session's environment, with their command lines.
+fn session_processes(attempt: &str) -> Vec<(u64, String)> {
+    let marker = format!("INTERLOCK_SESSION={attempt}");
+    let Ok(dir) = std::fs::read_dir("/proc") else { return vec![] };
+    dir.filter_map(|e| e.ok()?.file_name().to_str()?.parse::<u64>().ok())
+        .filter(|pid| running(*pid))
+        .filter(|pid| {
+            std::fs::read(format!("/proc/{pid}/environ"))
+                .is_ok_and(|env| env.split(|b| *b == 0).any(|kv| kv == marker.as_bytes()))
+        })
+        .filter_map(|pid| {
+            let cmd = std::fs::read(format!("/proc/{pid}/cmdline")).ok()?;
+            Some((pid, String::from_utf8_lossy(&cmd).replace('\0', " ").trim().to_string()))
+        })
+        .collect()
+}
+
+/// Blocks until a session of `role` is running its `sleep` step: a
+/// deterministic point mid-session, whatever the machine's load. Fails at
+/// once, with the run's output, if `interlock run` exits first.
+fn wait_for_sleep(f: &Fixture, run: &mut Child, role: &str) -> Value {
+    let start = Instant::now();
+    loop {
+        if let Some(status) = run.try_wait().unwrap() {
+            let mut out = String::new();
+            let mut err = String::new();
+            if let Some(mut s) = run.stdout.take() {
+                let _ = std::io::Read::read_to_string(&mut s, &mut out);
+            }
+            if let Some(mut s) = run.stderr.take() {
+                let _ = std::io::Read::read_to_string(&mut s, &mut err);
+            }
+            panic!("interlock run exited ({status}) before the {role} reached its sleep step:\n{out}\n{err}");
+        }
+        let attempt = f
+            .attempts()
+            .into_iter()
+            .find(|a| a["role"] == role && a["status"] == "running" && a["handoff"].is_object());
+        if let Some(a) = attempt
+            && session_processes(a["id"].as_str().unwrap()).iter().any(|(_, cmd)| cmd.starts_with("sleep"))
+        {
+            return a["handoff"].clone();
+        }
+        assert!(start.elapsed() < Duration::from_secs(240), "gave up waiting for the {role}'s sleep step");
+        std::thread::sleep(Duration::from_millis(200));
+    }
 }
 
 #[test]
@@ -252,8 +284,7 @@ fn a_supervisor_killed_mid_session_reattaches_and_carries_on() {
         on_block: vec![],
     });
     let mut first = f.spawn_run(&model);
-    wait_for_worker_step(&model, 1);
-    let handoff = f.live_handoff().expect("the handoff is recorded before the session runs");
+    let handoff = wait_for_sleep(&f, &mut first, "worker");
     let host_pid = handoff["pid"].as_u64().unwrap();
     assert!(running(host_pid));
     assert!(handoff["host_session_id"].is_string(), "the host's session id is known before it starts");
@@ -297,10 +328,7 @@ fn a_verifier_session_is_reattached_too() {
         on_block: vec![],
     });
     let mut first = f.spawn_run(&model);
-    wait_until("the verifier reaches its long step", Duration::from_secs(120), || {
-        model.requests().iter().any(|r| r["role"] == "verifier" && r["tools_done"].as_u64() >= Some(1))
-    });
-    std::thread::sleep(Duration::from_millis(1500));
+    wait_for_sleep(&f, &mut first, "verifier");
     let verifier = f.attempts().into_iter().find(|a| a["role"] == "verifier").unwrap();
     assert_eq!(verifier["status"], "running");
     kill(&first.id().to_string(), "KILL");
@@ -325,8 +353,7 @@ fn a_session_that_died_with_its_supervisor_is_reconciled_and_retried() {
         on_block: vec![],
     });
     let mut first = f.spawn_run(&model);
-    wait_for_worker_step(&model, 1);
-    let handoff = f.live_handoff().unwrap();
+    let handoff = wait_for_sleep(&f, &mut first, "worker");
     kill(&first.id().to_string(), "KILL");
     let _ = first.wait();
     // The session dies too, while no supervisor is watching.
@@ -367,9 +394,8 @@ fn sigint_cancels_the_session_and_the_exported_work_resumes() {
         on_block: vec![],
     });
     let head = git(f.repo.path(), &["rev-parse", "HEAD"]);
-    let run = f.spawn_run(&model);
-    wait_for_worker_step(&model, 1);
-    let handoff = f.live_handoff().unwrap();
+    let mut run = f.spawn_run(&model);
+    let handoff = wait_for_sleep(&f, &mut run, "worker");
     let started = Instant::now();
     kill(&run.id().to_string(), "INT");
     // An impatient second Ctrl-C must not orphan the host.
@@ -399,9 +425,19 @@ fn sigint_cancels_the_session_and_the_exported_work_resumes() {
     assert_eq!(git(f.repo.path(), &["branch", "--show-current"]), "main");
     assert!(std::fs::read_to_string(f.repo.path().join("calc.py")).unwrap().contains("a - b"));
 
+    // Work that does not descend from this task's base is not this task's to resume.
+    let empty = git(f.repo.path(), &["hash-object", "-t", "tree", "/dev/null"]);
+    let stranger = git(f.repo.path(), &["commit-tree", &empty, "-m", "unrelated"]);
+    let (code, refused) = f.interlock(&["task", "resume", "fix-add", "--from", &stranger], None);
+    assert_ne!(code, 0);
+    assert!(refused.to_string().contains("does not descend from task fix-add's base commit"), "{refused:#}");
     let (code, resumed) = f.interlock(&["task", "resume", "fix-add"], None);
     assert_eq!(code, 0, "{resumed:#}");
     assert_eq!(resumed["resumes_from"], export["commit"]);
+    let (_, events) = f.interlock(&["task", "events", "fix-add"], None);
+    let audit =
+        events.as_array().unwrap().iter().find(|e| e["type"] == "task.resumed").expect("the resume is on record");
+    assert_eq!(audit["outcome"]["commit"], export["commit"]);
     let (code, report) = f.run(&model, "120s");
     assert_eq!(code, 0, "{report:#}");
     assert_eq!(report["final_state"], "done");
@@ -421,9 +457,8 @@ fn sigint_cancels_the_session_and_the_exported_work_resumes() {
 fn sigterm_stops_a_run_the_same_way() {
     let Some(f) = Fixture::new("max_attempts = 3") else { return };
     let model = FakeModel::start(Script { worker: vec![steps(&["sleep 60"])], verifier: vec![], on_block: vec![] });
-    let run = f.spawn_run(&model);
-    wait_for_worker_step(&model, 0);
-    let handoff = f.live_handoff().unwrap();
+    let mut run = f.spawn_run(&model);
+    let handoff = wait_for_sleep(&f, &mut run, "worker");
     kill(&run.id().to_string(), "TERM");
     let out = run.wait_with_output().unwrap();
     assert_eq!(out.status.code(), Some(6));
@@ -443,9 +478,8 @@ fn task_cancel_from_another_terminal_stops_the_running_session() {
         verifier: vec![verifier_pass()],
         on_block: vec![],
     });
-    let run = f.spawn_run(&model);
-    wait_for_worker_step(&model, 1);
-    let handoff = f.live_handoff().unwrap();
+    let mut run = f.spawn_run(&model);
+    let handoff = wait_for_sleep(&f, &mut run, "worker");
 
     // Export by hand while the session runs: the live worktree's tree, as a wip: commit.
     let (code, export) = f.interlock(&["task", "export", "fix-add"], None);
@@ -578,7 +612,7 @@ fn a_spent_cost_budget_fails_the_task() {
     assert_eq!(f.signals(), ["G1", "G2", "G3", "fail"]);
     // Claude Code also enforces what is left of the dollar budget itself.
     let logged = std::fs::read_to_string(bin.path().join("args.log")).unwrap();
-    assert!(logged.contains("--max-budget-usd 0.5000"), "{logged}");
+    assert!(logged.contains("--max-budget-usd 0.5"), "{logged}");
     assert!(logged.contains("--session-id"), "{logged}");
     f.assert_every_attempt_ended();
 }

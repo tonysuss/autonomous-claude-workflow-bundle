@@ -6,7 +6,10 @@ pub mod config;
 pub mod export;
 pub mod git;
 pub mod hook;
+mod lock;
 pub mod prompts;
 mod run;
+pub mod sessions;
 
+pub use lock::ControllerLock;
 pub use run::{RunConfig, RunError, RunReport, SessionReport, Supervisor};

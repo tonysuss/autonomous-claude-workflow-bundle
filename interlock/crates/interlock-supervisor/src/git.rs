@@ -108,6 +108,23 @@ pub fn resolve_commit(repo: &Path, rev: &str) -> Result<(String, String)> {
     Ok((commit, tree))
 }
 
+/// Whether `ancestor` is `commit` or one of its ancestors.
+pub fn is_ancestor(repo: &Path, ancestor: &str, commit: &str) -> Result<bool> {
+    let status = Command::new("git")
+        .args(["merge-base", "--is-ancestor", ancestor, commit])
+        .current_dir(repo)
+        .status()
+        .map_err(|e| GitError { args: "merge-base --is-ancestor".into(), message: e.to_string() })?;
+    match status.code() {
+        Some(0) => Ok(true),
+        Some(1) => Ok(false),
+        _ => Err(GitError {
+            args: format!("merge-base --is-ancestor {ancestor} {commit}"),
+            message: "git could not compare the commits".into(),
+        }),
+    }
+}
+
 /// Points interlock's own ref `name` (under refs/heads/interlock/) at `commit`.
 /// Never used for the user's branches.
 pub fn update_interlock_ref(repo: &Path, name: &str, commit: &str, message: &str) -> Result<()> {

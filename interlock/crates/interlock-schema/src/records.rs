@@ -227,7 +227,7 @@ pub struct Budget {
     pub max_premium_requests: Option<f64>,
 }
 
-/// Amounts are finite and positive (the schema enforces it), so equality is total.
+/// Task creation rejects amounts that are not finite and positive, so equality is total.
 impl Eq for Budget {}
 
 impl Budget {
@@ -339,7 +339,8 @@ pub struct Spent {
     pub turns: Option<u64>,
 }
 
-/// Amounts are finite and non-negative (the schema enforces it), so equality is total.
+/// Spending comes from hosts' reports and sums of them; NaN never compares equal, so
+/// equality is total only for finite amounts, which is all a host reports.
 impl Eq for Spent {}
 
 /// Where a headless session's process can be found again after the
@@ -362,6 +363,17 @@ pub struct Handoff {
     #[serde(default)]
     pub host_session_id: Option<String>,
     pub supervisor_pid: u32,
+    /// The kernel's start time for the supervisor, to tell whether it still runs.
+    #[serde(default)]
+    pub supervisor_start: Option<u64>,
+    /// The commit the attempt's worktree was checked out at.
+    #[serde(default)]
+    pub start_commit: Option<String>,
+    /// Names of the environment variables the session was given, never their values.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub env: Vec<String>,
+    #[serde(default)]
+    pub effort: Option<String>,
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub reattached_at: Vec<Timestamp>,
 }
@@ -456,6 +468,8 @@ pub enum EventKind {
     AttemptCompleted,
     #[serde(rename = "attempt.cancelled")]
     AttemptCancelled,
+    #[serde(rename = "task.resumed")]
+    TaskResumed,
 }
 
 impl EventKind {
@@ -467,6 +481,7 @@ impl EventKind {
             EventKind::AttemptFailed => "attempt.failed",
             EventKind::AttemptCompleted => "attempt.completed",
             EventKind::AttemptCancelled => "attempt.cancelled",
+            EventKind::TaskResumed => "task.resumed",
         }
     }
 }

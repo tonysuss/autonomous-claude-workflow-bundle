@@ -5,7 +5,7 @@ members = ["crates/*"]
 [workspace.package]
 version = "0.1.0"
 edition = "2024"
-rust-version = "1.85"
+rust-version = "1.89"
 license = "MIT"
 repository = "https://github.com/tonysuss/autonomous-claude-workflow-bundle"
 
@@ -21,13 +21,14 @@ chrono = { version = "0.4", default-features = false, features = ["serde", "cloc
 clap = { version = "4", features = ["derive", "env"] }
 hex = "0.4"
 jsonschema = { version = "0.58", default-features = false }
+nix = { version = "0.31", default-features = false, features = ["process", "signal", "user"] }
 proptest = "1"
 rand = "0.10"
 rusqlite = { version = "0.40", features = ["bundled"] }
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 sha2 = "0.11"
-signal-hook = { version = "0.4", default-features = false }
+signal-hook = { version = "0.4", default-features = false, features = ["iterator"] }
 tempfile = "3"
 thiserror = "2"
 toml = "1"

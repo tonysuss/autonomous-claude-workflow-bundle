@@ -12,6 +12,7 @@ interlock-adapter.workspace = true
 interlock-core.workspace = true
 interlock-schema.workspace = true
 interlock-store.workspace = true
+nix.workspace = true
 serde.workspace = true
 serde_json.workspace = true
 thiserror.workspace = true

@@ -64,14 +64,18 @@ pub fn export(
     }
 }
 
-/// Exports one attempt's worktree, if it changed anything since the attempt
-/// started. Used when a worker is cancelled or found orphaned.
+/// Exports one attempt's worktree, if its files differ from the commit the
+/// attempt started at. Used when a worker is cancelled or found orphaned.
+/// The comparison is with `start_commit`, not the worktree's `HEAD`, so work
+/// the agent committed itself is exported too.
+#[allow(clippy::too_many_arguments)]
 pub fn salvage(
     store: &Store,
     repo: &Path,
     dir: &Path,
     attempt: &Attempt,
     wt: &Path,
+    start_commit: &str,
     profile: Profile,
     now: Timestamp,
 ) -> Result<Option<Export>> {
@@ -79,7 +83,7 @@ pub fn salvage(
         return Ok(None);
     }
     let tree = git::worktree_tree(wt)?;
-    if git::tree_of(wt, "HEAD")? == tree {
+    if git::tree_of(repo, start_commit)? == tree {
         return Ok(None);
     }
     write(store, repo, dir, &attempt.task_id, Some(attempt), &tree, &wt.display().to_string(), profile, now).map(Some)
@@ -149,6 +153,17 @@ pub fn resume(
 ) -> Result<(String, String)> {
     let rev = from.map(str::to_string).unwrap_or_else(|| wip_ref(task_id));
     let (commit, tree) = git::resolve_commit(repo, &rev)?;
-    store.resume_from(task_id, &tree, now)?;
+    let task = store.task(task_id)?;
+    let base = task
+        .input_snapshot
+        .as_ref()
+        .map(|s| s.base_commit.clone())
+        .ok_or_else(|| RunError::Other(format!("task {task_id} has no input snapshot to resume on")))?;
+    if !git::is_ancestor(repo, &base, &commit)? {
+        return Err(RunError::Other(format!(
+            "{rev} ({commit}) does not descend from task {task_id}'s base commit {base}; it is not this task's work"
+        )));
+    }
+    store.resume_from(task_id, &commit, &tree, now)?;
     Ok((commit, tree))
 }

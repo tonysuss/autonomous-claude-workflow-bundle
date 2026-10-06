@@ -11,6 +11,10 @@ pub struct ClaudeCode;
 
 const BINARY: &str = "claude";
 
+/// What Claude Code prints when it cannot sign in, lowercased.
+pub(crate) const AUTH_FAILURES: &[&str] =
+    &["invalid api key", "please run /login", "not logged in", "oauth token has expired", "authentication_failed"];
+
 impl ClaudeCode {
     /// Builds a report from captured output, so detection is testable without the binary.
     pub fn report(binary: Option<String>, version_out: &str, help: &str) -> HostReport {
@@ -26,6 +30,7 @@ impl ClaudeCode {
             plugin_hook_capability(C::StopGuard, help, "Stop can hold the agent from finishing"),
             flag_capability(C::ModelSelection, help, &["--model"], "per session"),
             flag_capability(C::CustomAgents, help, &["--agents"], "custom agents defined per session"),
+            flag_capability(C::EffortSelection, help, &["--effort"], "effort level per session"),
             process_capability(C::Parallel, headless, "independent processes"),
         ];
         HostReport {
@@ -84,8 +89,12 @@ impl ClaudeCode {
             args.extend(["--session-id".into(), id.clone()]);
         }
         // Claude Code stops itself at a dollar cap, ending with `error_max_budget_usd`.
+        // Shortest exact decimal, so a small remainder is not rounded to zero.
         if let Some(usd) = spec.max_cost_usd {
-            args.extend(["--max-budget-usd".into(), format!("{usd:.4}")]);
+            args.extend(["--max-budget-usd".into(), format!("{usd}")]);
+        }
+        if let Some(level) = &spec.effort {
+            args.extend(["--effort".into(), level.clone()]);
         }
         CommandPlan { program: bin, args, stdin: Some(spec.prompt.clone()), env: spec.env.clone() }
     }
@@ -125,6 +134,7 @@ impl Host for ClaudeCode {
     fn summarize(&self, lines: &[String]) -> SessionSummary {
         let mut s = SessionSummary { events: lines.len() as u64, is_error: true, ..Default::default() };
         for e in json_lines(lines).filter(|e| e["type"] == "result") {
+            s.finished = true;
             s.is_error = e["is_error"].as_bool().unwrap_or(true);
             s.final_text = e["result"].as_str().map(str::to_string);
             s.session_id = e["session_id"].as_str().map(str::to_string);
@@ -141,6 +151,18 @@ impl Host for ClaudeCode {
             }
         }
         s
+    }
+
+    fn passes_env(&self, name: &str) -> bool {
+        name.starts_with("ANTHROPIC_") || name.starts_with("CLAUDE_CODE_USE_")
+    }
+
+    fn auth_failures(&self) -> &'static [&'static str] {
+        AUTH_FAILURES
+    }
+
+    fn effort_levels(&self) -> &'static [&'static str] {
+        &["low", "medium", "high", "xhigh", "max"]
     }
 
     fn tool_patterns(&self, tool: &str) -> Vec<String> {
@@ -169,15 +191,22 @@ mod tests {
     use super::*;
     use interlock_schema::ToolPolicy;
 
-    const HELP: &str = "  -p, --print\n  --output-format <format> (choices: \"text\", \"json\", \"stream-json\")\n  --allowedTools, --allowed-tools <tools...>\n  --disallowedTools, --disallowed-tools <tools...>\n  --model <model>\n  --agents <json-or-file>\n  --plugin-dir <path>\n";
+    const HELP: &str = "  -p, --print\n  --effort <level>\n  --output-format <format> (choices: \"text\", \"json\", \"stream-json\")\n  --allowedTools, --allowed-tools <tools...>\n  --disallowedTools, --disallowed-tools <tools...>\n  --model <model>\n  --agents <json-or-file>\n  --plugin-dir <path>\n";
 
     #[test]
     fn detects_capabilities_from_help() {
         let r = ClaudeCode::report(None, "2.1.289 (Claude Code)\n", HELP);
         assert_eq!(r.version.as_deref(), Some("2.1.289"));
         let caps = r.capability_set();
-        for c in [C::SessionStart, C::EventStream, C::ToolRestriction, C::PerCallPolicy, C::StopGuard, C::CustomAgents]
-        {
+        for c in [
+            C::SessionStart,
+            C::EventStream,
+            C::ToolRestriction,
+            C::PerCallPolicy,
+            C::StopGuard,
+            C::CustomAgents,
+            C::EffortSelection,
+        ] {
             assert!(caps.has(c), "{c:?}");
         }
     }
@@ -196,7 +225,9 @@ mod tests {
             timeout: std::time::Duration::from_secs(60),
             transcript: "/t.jsonl".into(),
             session_id: Some("6f1c0b8e-3a2d-4c5e-9f00-1a2b3c4d5e6f".into()),
-            max_cost_usd: Some(0.25),
+            max_cost_usd: Some(0.00004),
+            effort: Some("low".into()),
+            clear_env: true,
         };
         let plan = ClaudeCode.plan_with("/bin/claude".into(), &spec);
         assert_eq!(plan.stdin.as_deref(), Some("Fix it"));
@@ -208,7 +239,8 @@ mod tests {
         assert!(joined.contains("--permission-mode dontAsk"));
         assert!(plan.args.windows(2).any(|w| w == ["--max-turns", "30"]));
         assert!(plan.args.windows(2).any(|w| w == ["--session-id", "6f1c0b8e-3a2d-4c5e-9f00-1a2b3c4d5e6f"]));
-        assert!(plan.args.windows(2).any(|w| w == ["--max-budget-usd", "0.2500"]));
+        assert!(plan.args.windows(2).any(|w| w == ["--max-budget-usd", "0.00004"]), "not rounded to zero");
+        assert!(plan.args.windows(2).any(|w| w == ["--effort", "low"]));
     }
 
     #[test]

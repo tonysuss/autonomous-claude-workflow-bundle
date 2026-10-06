@@ -30,6 +30,8 @@ pub enum Capability {
     CustomAgents,
     /// Run several sessions at once.
     Parallel,
+    /// Choose the reasoning effort per session.
+    EffortSelection,
 }
 
 #[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]

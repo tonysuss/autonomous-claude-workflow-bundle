@@ -28,6 +28,17 @@ pub struct CheckRequest<'a> {
 
 /// Runs one criterion's check and records what happened.
 pub fn run_check(store: &mut Store, req: CheckRequest<'_>) -> Result<CheckRun> {
+    run_check_cancellable(store, req, &AtomicBool::new(false))?
+        .ok_or_else(|| RunError::Other("the check was cancelled".into()))
+}
+
+/// Like [`run_check`], but stops the check's process group when `cancel` is
+/// set. A cancelled run is not recorded, so it never counts as a failure.
+pub fn run_check_cancellable(
+    store: &mut Store,
+    req: CheckRequest<'_>,
+    cancel: &AtomicBool,
+) -> Result<Option<CheckRun>> {
     let task = store.task(req.task_id)?;
     let criterion = task
         .criteria
@@ -77,8 +88,10 @@ pub fn run_check(store: &mut Store, req: CheckRequest<'_>) -> Result<CheckRun> {
         transcript: transcript.clone(),
         session_id: None,
         max_cost_usd: None,
+        effort: None,
+        clear_env: false,
     };
-    let outcome = interlock_adapter::run(&plan, &spec, &AtomicBool::new(false), |_| SessionSummary::default());
+    let outcome = interlock_adapter::run(&plan, &spec, cancel, |_| SessionSummary::default());
     let stderr_path = transcript.with_extension("stderr.txt");
     let mut output = std::fs::read(&transcript).unwrap_or_default();
     output.extend(std::fs::read(&stderr_path).unwrap_or_default());
@@ -87,6 +100,9 @@ pub fn run_check(store: &mut Store, req: CheckRequest<'_>) -> Result<CheckRun> {
     if let Some(wt) = cleanup {
         let _ = git::worktree_remove(req.dir, &wt);
         let _ = std::fs::remove_dir_all(&wt);
+    }
+    if outcome.exit == Exit::Cancelled {
+        return Ok(None);
     }
 
     let run = store.record_check_run(
@@ -103,7 +119,7 @@ pub fn run_check(store: &mut Store, req: CheckRequest<'_>) -> Result<CheckRun> {
         },
         Utc::now(),
     )?;
-    Ok(run)
+    Ok(Some(run))
 }
 
 /// Files in the base tree that a criterion's check command names. A result

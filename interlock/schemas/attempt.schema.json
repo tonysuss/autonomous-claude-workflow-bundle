@@ -61,6 +61,21 @@
         "transcript": { "type": "string", "minLength": 1 },
         "host_session_id": { "type": ["string", "null"] },
         "supervisor_pid": { "type": "integer", "minimum": 1 },
+        "supervisor_start": {
+          "description": "The kernel's start time for the supervisor, so a restarted one can tell whether the supervisor that owns the session is still alive.",
+          "type": ["integer", "null"],
+          "minimum": 0
+        },
+        "start_commit": {
+          "description": "The commit the attempt's worktree was checked out at. Unfinished work is exported relative to it.",
+          "oneOf": [{ "$ref": "common.schema.json#/$defs/object_id" }, { "type": "null" }]
+        },
+        "env": {
+          "description": "Names of the environment variables the session was given. Never their values.",
+          "type": "array",
+          "items": { "type": "string", "minLength": 1 }
+        },
+        "effort": { "type": ["string", "null"] },
         "reattached_at": {
           "description": "Each time a restarted supervisor re-attached to the session.",
           "type": "array",

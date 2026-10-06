@@ -1,6 +1,8 @@
 //! Role instructions for headless sessions. They tell the agent how to report
 //! through interlock; the hooks enforce what the instructions ask.
 
+use interlock_schema::{Criterion, MinStrength};
+
 pub const WORKER_SYSTEM: &str = "You are the worker on an interlock task. interlock records your evidence and \
 decides whether the work is done; you cannot mark anything done yourself. Report only through the `interlock` \
 command. If a tool call is denied, the reason says why: do not try to work around it.";
@@ -9,9 +11,45 @@ pub const VERIFIER_SYSTEM: &str = "You are the independent verifier on an interl
 work. You decide, with evidence you observed yourself, whether each criterion holds for the exact files in your \
 working directory. Report only through the `interlock` command.";
 
-const STRENGTHS: &str = "Strengths: `observed` (you saw the behavior on the real surface: UI, CLI or API), \
+const STRENGTHS: &str = "Strengths: `observed` (you saw the behavior itself on a real surface: UI, CLI or API; \
+watching interlock run a criterion's check on this tree and pass counts when the check exercises the behavior), \
 `tested` (a targeted test exercises the change and passes), `static` (only types or the build pass), `failed` \
 (the check ran and the criterion does not hold), `blocked` (the check could not run).";
+
+/// What a minimum strength asks for, in words.
+pub fn strength_meaning(min: MinStrength) -> &'static str {
+    match min {
+        MinStrength::Observed => {
+            "you saw the behavior itself on a real surface (UI, CLI or API); watching interlock run this criterion's \
+             check on this tree and pass counts when the check exercises the behavior"
+        }
+        MinStrength::Tested => "a targeted test exercises the changed path and passes",
+        MinStrength::Static => "type checks or the build pass",
+    }
+}
+
+fn strength_name(min: MinStrength) -> &'static str {
+    match min {
+        MinStrength::Observed => "observed",
+        MinStrength::Tested => "tested",
+        MinStrength::Static => "static",
+    }
+}
+
+/// One line per criterion: the least the verifier must record for it to count.
+pub fn verifier_requirements(criteria: &[Criterion]) -> String {
+    let mut out = String::from("\n## What each criterion needs from you\n\n");
+    for c in criteria {
+        let min = strength_name(c.min_strength);
+        out.push_str(&format!(
+            "- **{}**: you must record at least `{min}`. `{min}` means {}. Anything lower will not satisfy this \
+             criterion. If it does not hold, record `failed`; if you could not check it, `blocked`.\n",
+            c.id,
+            strength_meaning(c.min_strength)
+        ));
+    }
+    out
+}
 
 pub fn worker(brief: &str) -> String {
     format!(

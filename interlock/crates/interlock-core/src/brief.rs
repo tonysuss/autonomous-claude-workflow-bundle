@@ -40,6 +40,7 @@ pub struct BriefCriterion {
 #[derive(Debug, Clone, Serialize)]
 pub struct PreviousResult {
     pub attempt_id: String,
+    pub output_tree: String,
     pub summary: String,
     pub changed_paths: Vec<String>,
     pub open_questions: Vec<String>,
@@ -143,6 +144,7 @@ pub fn build(
         criteria,
         previous_result: last_accepted.map(|r| PreviousResult {
             attempt_id: r.attempt_id.clone(),
+            output_tree: r.output_tree.clone(),
             summary: r.summary.clone(),
             changed_paths: r.changed_paths.clone(),
             open_questions: r.open_questions.clone(),
@@ -174,7 +176,15 @@ impl Brief {
             line(format!("Base commit: {base}"));
         }
         if let Some(tree) = &self.current_tree {
-            line(format!("Tree under verification: {tree}"));
+            let accepted = self.previous_result.as_ref().is_some_and(|r| &r.output_tree == tree);
+            let judged = matches!(self.state.as_str(), "awaiting_verification" | "verified" | "integrating");
+            line(match (accepted, judged) {
+                (true, true) => format!("Tree under verification: {tree}"),
+                (true, false) => format!("Starting tree, the last accepted result: {tree}"),
+                (false, _) => {
+                    format!("Starting tree, exported work in progress that no result has been accepted for: {tree}")
+                }
+            });
         }
         line(String::new());
         line("## Criteria".into());

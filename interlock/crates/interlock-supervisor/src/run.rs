@@ -8,16 +8,16 @@
 //! and carries on as if it had never stopped, and ends one that is gone with
 //! a synthetic failure report before retrying (R3).
 
-use std::collections::HashMap;
+use std::collections::{BTreeSet, HashMap};
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::time::{Duration, Instant};
 
-use chrono::{DateTime, Utc};
-use interlock_adapter::{Exit, Host, HostReport, Probe, SessionOutcome, SessionSpec, Target, write_hooks_plugin};
+use chrono::Utc;
+use interlock_adapter::{Exit, Host, HostReport, Probe, SessionOutcome, SessionSpec, write_hooks_plugin};
 use interlock_core::budget;
-use interlock_core::capability::CapabilitySet;
+use interlock_core::capability::{Capability, CapabilitySet};
 use interlock_core::evidence;
 use interlock_core::grants::{HostPolicy, Profile};
 use interlock_core::lifecycle::Move;
@@ -31,6 +31,8 @@ use serde::Serialize;
 
 use crate::config::{Config, PinStatus};
 use crate::export::{self, Export};
+use crate::lock::ControllerLock;
+use crate::sessions::{self, Tokens};
 use crate::{checks, git, prompts};
 
 #[derive(Debug, thiserror::Error)]
@@ -51,13 +53,16 @@ pub struct RunConfig {
     pub timeout: Duration,
     pub max_turns: Option<u32>,
     pub keep_worktrees: bool,
-    /// Sessions to run before giving up, across workers and verifiers.
+    /// Sessions to run before giving up, across workers and verifiers. Zero
+    /// runs the baseline checks and stops.
     pub max_sessions: u32,
     pub profile: Profile,
     /// The interlock binary the hooks and agents call.
     pub interlock_bin: PathBuf,
     /// Declared capabilities, instead of inspecting the host.
     pub capabilities: Option<CapabilitySet>,
+    /// The reasoning effort for every session, for hosts that have one.
+    pub effort: Option<String>,
 }
 
 #[derive(Debug, Clone, Serialize)]
@@ -75,9 +80,15 @@ pub struct SessionReport {
     pub ended_because: Option<EndReason>,
     pub end_detail: Option<String>,
     pub spent: Spent,
+    /// The session's cost in dollars, where the host reports it.
+    pub cost_usd: Option<f64>,
+    /// The session's premium requests, where the host reports them.
+    pub premium_requests: Option<f64>,
     pub host_session_id: Option<String>,
     /// A restarted supervisor followed this session to its end.
     pub reattached: bool,
+    /// Processes the session left behind that interlock stopped when it ended.
+    pub stopped_strays: Vec<u32>,
     /// Where a stopped worker's unfinished work was exported.
     pub export: Option<Export>,
 }
@@ -88,7 +99,8 @@ pub struct RunReport {
     pub host: String,
     pub final_state: State,
     pub stopped_because: String,
-    /// Attempts a previous supervisor left running whose sessions were gone.
+    /// Attempts, of any task, whose sessions a previous supervisor left
+    /// without a recorded end and which this run ended.
     pub reconciled: Vec<String>,
     /// Attempts whose sessions were still running and were followed to their end.
     pub reattached: Vec<String>,
@@ -114,48 +126,6 @@ pub struct BaselineRun {
     pub problem: Option<String>,
 }
 
-/// One controller per repository checkout. The lock file is created
-/// atomically; a holder that is gone (checked through /proc) is replaced.
-struct Lock(PathBuf);
-
-impl Lock {
-    fn acquire(path: PathBuf) -> Result<Lock> {
-        for _ in 0..2 {
-            match std::fs::OpenOptions::new().write(true).create_new(true).open(&path) {
-                Ok(mut f) => {
-                    std::io::Write::write_all(&mut f, std::process::id().to_string().as_bytes())
-                        .map_err(|e| RunError::Other(format!("cannot write {}: {e}", path.display())))?;
-                    return Ok(Lock(path));
-                }
-                Err(e) if e.kind() == std::io::ErrorKind::AlreadyExists => {
-                    let holder = std::fs::read_to_string(&path).unwrap_or_default();
-                    // A file naming this very process is left from a dead holder whose pid was reused.
-                    let live = holder
-                        .trim()
-                        .parse::<u32>()
-                        .is_ok_and(|pid| pid != std::process::id() && interlock_adapter::alive(pid, None));
-                    if live {
-                        return Err(RunError::Other(format!(
-                            "another supervisor (pid {}) is running; lock at {}",
-                            holder.trim(),
-                            path.display()
-                        )));
-                    }
-                    let _ = std::fs::remove_file(&path);
-                }
-                Err(e) => return Err(RunError::Other(format!("cannot create {}: {e}", path.display()))),
-            }
-        }
-        Err(RunError::Other(format!("another supervisor took the lock at {} first", path.display())))
-    }
-}
-
-impl Drop for Lock {
-    fn drop(&mut self) {
-        let _ = std::fs::remove_file(&self.0);
-    }
-}
-
 /// Stops a session when the run is interrupted, the task is cancelled or
 /// fails, or someone else ends the attempt, for example with
 /// `interlock task cancel` from another terminal.
@@ -176,6 +146,15 @@ impl Drop for Watch {
 
 const WATCH_EVERY: Duration = Duration::from_millis(250);
 
+/// What opening an attempt came to.
+#[allow(clippy::large_enum_variant)] // short-lived return value
+enum Opened {
+    Yes(Attempt, String),
+    Blocked(Move),
+    /// The run was interrupted before the attempt was opened.
+    Interrupted,
+}
+
 pub struct Supervisor {
     pub repo: PathBuf,
     pub db: PathBuf,
@@ -183,6 +162,9 @@ pub struct Supervisor {
     host: Box<dyn Host>,
     probe: Probe,
     cfg: RunConfig,
+    config: Config,
+    /// This process adopts orphans its sessions leave (Linux).
+    subreaper: bool,
     /// Set by a signal handler (or anyone) to stop the run: the running
     /// session is stopped, its attempt cancelled, and the task left to resume.
     pub cancel: Arc<AtomicBool>,
@@ -191,11 +173,29 @@ pub struct Supervisor {
 impl Supervisor {
     pub fn new(repo: PathBuf, db: PathBuf, host: Box<dyn Host>, probe: Probe, cfg: RunConfig) -> Result<Supervisor> {
         let store = Store::open(&db)?;
-        Ok(Supervisor { repo, db, store, host, probe, cfg, cancel: Arc::new(AtomicBool::new(false)) })
+        Ok(Supervisor {
+            repo,
+            db,
+            store,
+            host,
+            probe,
+            cfg,
+            config: Config::default(),
+            subreaper: false,
+            cancel: Arc::new(AtomicBool::new(false)),
+        })
     }
 
     fn dir(&self) -> PathBuf {
         self.db.parent().map(Path::to_path_buf).unwrap_or_else(|| self.repo.join(".interlock"))
+    }
+
+    fn tokens(&self) -> Tokens {
+        Tokens::new(&self.dir())
+    }
+
+    fn interrupted(&self) -> bool {
+        self.cancel.load(Ordering::SeqCst)
     }
 
     fn capabilities(&mut self) -> Result<(CapabilitySet, String)> {
@@ -211,17 +211,40 @@ impl Supervisor {
         Ok((report.capability_set(), report.version.unwrap_or_default()))
     }
 
+    /// Refuses an effort level the host cannot take, before anything starts.
+    fn check_effort(&self) -> Result<()> {
+        let Some(level) = &self.cfg.effort else { return Ok(()) };
+        let name = self.host.name();
+        let has_flag = match &self.cfg.capabilities {
+            Some(c) => c.has(Capability::EffortSelection),
+            None => self.host.inspect(&self.probe).capability_set().has(Capability::EffortSelection),
+        };
+        if !has_flag || self.host.effort_levels().is_empty() {
+            return Err(RunError::Other(format!(
+                "{name} has no effort setting (its --help shows no effort flag), so --effort cannot be honored"
+            )));
+        }
+        if !self.host.effort_levels().contains(&level.as_str()) {
+            return Err(RunError::Other(format!(
+                "{name} takes --effort {}, not {level}",
+                self.host.effort_levels().join(", ")
+            )));
+        }
+        Ok(())
+    }
+
     /// Drives a task until it is done, blocked, failed, needs the operator,
     /// the session budget runs out, or the run is interrupted.
     pub fn run(&mut self, task_id: &str) -> Result<RunReport> {
+        self.check_effort()?;
         let dir = self.dir();
         std::fs::create_dir_all(&dir).map_err(|e| RunError::Other(e.to_string()))?;
         let ignore = dir.join(".gitignore");
         if !ignore.exists() {
             let _ = std::fs::write(&ignore, "*\n");
         }
-        let _lock = Lock::acquire(dir.join("supervisor.lock"))?;
-        let config = Config::load(&dir).map_err(RunError::Other)?;
+        let _lock = ControllerLock::acquire(&dir)?;
+        self.subreaper = interlock_adapter::become_subreaper();
         let plugin = dir.join("plugin");
         write_hooks_plugin(&plugin, &self.cfg.interlock_bin).map_err(|e| RunError::Other(e.to_string()))?;
 
@@ -241,8 +264,10 @@ impl Supervisor {
         };
 
         self.restart_reconcile(task_id, &mut report)?;
+        // Read only now, so a bad config never stands in the way of recovery.
+        self.config = Config::load(&dir).map_err(RunError::Other)?;
 
-        if let Some(pinned) = config.pin(self.host.name()) {
+        if let Some(pinned) = self.config.pin(self.host.name()) {
             let installed = self.host.inspect(&self.probe).version;
             let pin = PinStatus::of(Some(pinned), installed.as_deref());
             let state = self.store.task(task_id)?.state;
@@ -259,7 +284,7 @@ impl Supervisor {
         let mut baseline_checked = false;
         let mut sessions = 0;
         let stopped = loop {
-            if self.cancel.load(Ordering::SeqCst) {
+            if self.interrupted() {
                 report.interrupted = true;
                 let state = self.store.task(task_id)?.state;
                 break format!(
@@ -285,12 +310,10 @@ impl Supervisor {
                         break format!("cannot start: {e}");
                     }
                 }
-                State::Ready | State::AwaitingVerification if sessions >= self.cfg.max_sessions => {
-                    break format!("used all {} sessions this run allows", self.cfg.max_sessions);
-                }
                 State::Ready if !baseline_checked => {
+                    let Some(runs) = self.baseline(task_id)? else { continue };
                     baseline_checked = true;
-                    report.baseline = self.baseline(task_id)?;
+                    report.baseline = runs;
                     let problems: Vec<String> = report
                         .baseline
                         .iter()
@@ -304,10 +327,17 @@ impl Supervisor {
                         )?;
                     }
                 }
+                State::Ready | State::AwaitingVerification if self.cfg.max_sessions == 0 => {
+                    break "baseline only: --max-sessions 0 starts no session".to_string();
+                }
+                State::Ready | State::AwaitingVerification if sessions >= self.cfg.max_sessions => {
+                    break format!("used all {} sessions this run allows", self.cfg.max_sessions);
+                }
                 State::Ready => {
                     sessions += 1;
-                    let s = self.worker_session(task_id, &plugin)?;
-                    report.sessions.push(s);
+                    if let Some(s) = self.worker_session(task_id, &plugin)? {
+                        report.sessions.push(s);
+                    }
                 }
                 State::AwaitingVerification => {
                     let tree = task.current_tree.clone().unwrap_or_default();
@@ -322,8 +352,9 @@ impl Supervisor {
                     }
                     *runs += 1;
                     sessions += 1;
-                    let s = self.verifier_session(task_id, &plugin)?;
-                    report.sessions.push(s);
+                    if let Some(s) = self.verifier_session(task_id, &plugin)? {
+                        report.sessions.push(s);
+                    }
                 }
                 State::Running => {
                     self.store.retry(task_id, "found running without a live session", Utc::now())?;
@@ -349,65 +380,88 @@ impl Supervisor {
         Ok(report)
     }
 
-    /// Whatever a previous controller left running: follow a session that is
-    /// still alive to its end; end one that is gone with a synthetic failure
-    /// report and salvage its worktree. Then R3 if the task is still running.
+    /// Accounts for every session a previous supervisor left without a
+    /// recorded end, in any task: a running session of this task is followed
+    /// to its end; every other one is stopped if it still runs, its end is
+    /// recorded with a synthetic report, its token dropped, and a worker's
+    /// unfinished work salvaged. Then R3 for any task left running.
     fn restart_reconcile(&mut self, task_id: &str, report: &mut RunReport) -> Result<()> {
-        let running: Vec<Attempt> =
-            self.store.attempts(task_id)?.into_iter().filter(|a| a.status == AttemptStatus::Running).collect();
-        for attempt in running {
-            let id = attempt.id.clone();
-            let handoff = attempt.handoff.clone();
-            let gone = match &handoff {
-                Some(h) if interlock_adapter::alive(h.pid, h.process_start) => match self.load_token(&id) {
-                    Some(token) => {
-                        let s = self.reattach(task_id, &attempt, &token, h)?;
-                        report.reattached.push(id.clone());
-                        report.sessions.push(s);
-                        None
-                    }
-                    None => {
-                        // A session that cannot report is stopped rather than left to run unseen.
-                        interlock_adapter::attach(&target_of(h), &AtomicBool::new(true), |_| Default::default());
-                        Some(format!(
-                            "the session (pid {}) was running, but its credentials were lost; stopped it",
-                            h.pid
-                        ))
-                    }
-                },
-                Some(h) => {
-                    Some(format!("the session's process (pid {}) was gone when the supervisor restarted", h.pid))
+        let tokens = self.tokens();
+        let mut touched: BTreeSet<String> = BTreeSet::new();
+        for attempt in self.store.unended_sessions()? {
+            let Some(h) = attempt.handoff.clone() else { continue };
+            if sessions::owned_by_live_supervisor(&h) {
+                if attempt.task_id == task_id && attempt.status == AttemptStatus::Running {
+                    return Err(RunError::Other(format!(
+                        "attempt {}'s session belongs to a supervisor that is still running (pid {}); \
+                         not starting another",
+                        attempt.id, h.supervisor_pid
+                    )));
                 }
-                None => Some("the supervisor stopped before the session started".to_string()),
-            };
-            let Some(detail) = gone else { continue };
-            let spent = handoff.as_ref().map(salvage_spent);
-            self.store.reconcile_attempt(&id, EndReason::Crash, &detail, spent, Utc::now())?;
-            self.forget_token(&id);
-            report.reconciled.push(id);
-            if let Some(wt) = attempt.worktree.as_deref().map(PathBuf::from) {
-                if attempt.role == Role::Worker
-                    && let Ok(Some(e)) = export::salvage(
-                        &self.store,
-                        &self.repo,
-                        &self.dir(),
-                        &attempt,
-                        &wt,
-                        self.cfg.profile,
-                        Utc::now(),
-                    )
-                {
-                    report.exports.push(e);
-                }
-                if !self.cfg.keep_worktrees {
-                    let _ = git::worktree_remove(&self.repo, &wt);
+                continue;
+            }
+            let live = interlock_adapter::alive(h.pid, h.process_start);
+            if live
+                && attempt.task_id == task_id
+                && attempt.status == AttemptStatus::Running
+                && let Some(token) = tokens.load(&attempt.id)
+            {
+                let s = self.reattach(task_id, &attempt, &token, &h)?;
+                report.reattached.push(attempt.id.clone());
+                report.sessions.push(s);
+                continue;
+            }
+            let was_live = sessions::stop(&attempt.id, &h);
+            let (reason, detail) = sessions::unattended_end(&attempt, &h, was_live, "a restarted supervisor");
+            self.store.reconcile_attempt(
+                &attempt.id,
+                reason,
+                &detail,
+                Some(sessions::salvage_spent(&h)),
+                Utc::now(),
+            )?;
+            tokens.forget(&attempt.id);
+            report.reconciled.push(attempt.id.clone());
+            touched.insert(attempt.task_id.clone());
+            self.salvage_worktree(&attempt, h.start_commit.as_deref(), &mut report.exports);
+        }
+        // An attempt of this task opened just before the old supervisor died,
+        // with no session started yet.
+        for attempt in self.store.attempts(task_id)? {
+            if attempt.status == AttemptStatus::Running && attempt.handoff.is_none() {
+                let detail = "the supervisor stopped before the session started";
+                self.store.reconcile_attempt(&attempt.id, EndReason::Crash, detail, None, Utc::now())?;
+                tokens.forget(&attempt.id);
+                report.reconciled.push(attempt.id.clone());
+                touched.insert(task_id.to_string());
+                if let Some(wt) = attempt.worktree.as_deref().filter(|_| !self.cfg.keep_worktrees) {
+                    let _ = git::worktree_remove(&self.repo, Path::new(wt));
                 }
             }
         }
-        if self.store.task(task_id)?.state == State::Running {
-            self.store.retry(task_id, "the worker's session was gone after a supervisor restart", Utc::now())?;
+        touched.insert(task_id.to_string());
+        for t in touched {
+            let running = self.store.attempts(&t)?.iter().any(|a| a.status == AttemptStatus::Running);
+            if !running && self.store.task(&t)?.state == State::Running {
+                self.store.retry(&t, "the worker's session was gone after a supervisor restart", Utc::now())?;
+            }
         }
         Ok(())
+    }
+
+    /// Exports a reconciled worker's unfinished work, then removes its worktree.
+    fn salvage_worktree(&self, attempt: &Attempt, start_commit: Option<&str>, exports: &mut Vec<Export>) {
+        let Some(wt) = attempt.worktree.as_deref().map(PathBuf::from) else { return };
+        if attempt.role == Role::Worker
+            && let Some(start) = start_commit
+            && let Ok(Some(e)) =
+                export::salvage(&self.store, &self.repo, &self.dir(), attempt, &wt, start, self.cfg.profile, Utc::now())
+        {
+            exports.push(e);
+        }
+        if !self.cfg.keep_worktrees {
+            let _ = git::worktree_remove(&self.repo, &wt);
+        }
     }
 
     /// Follows a session a previous supervisor started, then finishes it
@@ -417,24 +471,22 @@ impl Supervisor {
         let host =
             interlock_adapter::host(&h.host).ok_or_else(|| RunError::Other(format!("unknown host {}", h.host)))?;
         let watch = self.watch(task_id, &attempt.id);
-        let outcome = interlock_adapter::attach(&target_of(h), &watch.stop, |l| host.summarize(l));
+        let outcome = interlock_adapter::attach(&sessions::target_of(h), &watch.stop, |l| host.summarize(l));
         drop(watch);
+        // Orphans of a supervisor that died went to init, not here; its marker still finds them.
+        let strays = interlock_adapter::contain(&attempt.id, Some(h.pgid), None);
         let wt = PathBuf::from(attempt.worktree.clone().unwrap_or_default());
-        let session = h.host_session_id.clone();
+        let ended =
+            Ended { outcome, budget_deadline: h.budget_deadline, host_session_id: h.host_session_id.clone(), strays };
         let mut s = match attempt.role {
             Role::Worker => {
-                let task = self.store.task(task_id)?;
-                let base = task
-                    .input_snapshot
-                    .as_ref()
-                    .map(|s| s.base_commit.clone())
-                    .ok_or_else(|| RunError::Other("no snapshot".into()))?;
-                let base_tree = git::tree_of(&self.repo, &base)?;
-                self.finish_worker(task_id, attempt, token, &wt, &base_tree, outcome, h.budget_deadline, session)?
+                let start = match &h.start_commit {
+                    Some(c) => c.clone(),
+                    None => self.store.task(task_id)?.input_snapshot.map(|s| s.base_commit).unwrap_or_default(),
+                };
+                self.finish_worker(task_id, attempt, token, &wt, &start, ended)?
             }
-            Role::Verifier | Role::Reviewer => {
-                self.finish_verifier(task_id, attempt, token, &wt, outcome, h.budget_deadline, session)?
-            }
+            Role::Verifier | Role::Reviewer => self.finish_verifier(task_id, attempt, token, &wt, ended)?,
         };
         s.reattached = true;
         Ok(s)
@@ -443,7 +495,8 @@ impl Supervisor {
     /// Runs each baseline check on the input snapshot, once per task, before
     /// any worker spends effort: a reproduction that already passes, or a
     /// regression guard that fails or tests nothing, makes the task unsound.
-    fn baseline(&mut self, task_id: &str) -> Result<Vec<BaselineRun>> {
+    /// `None` when the run was interrupted; nothing partial is kept.
+    fn baseline(&mut self, task_id: &str) -> Result<Option<Vec<BaselineRun>>> {
         let task = self.store.task(task_id)?;
         let existing = self.store.check_runs(task_id)?;
         let scratch = self.dir().join("scratch");
@@ -454,18 +507,26 @@ impl Supervisor {
                 .find(|r| r.criterion_id == c.id && r.target == RunTarget::Base && r.check_version == c.check_version);
             let run = match done {
                 Some(r) => r.clone(),
-                None => checks::run_check(
-                    &mut self.store,
-                    checks::CheckRequest {
-                        task_id,
-                        criterion_id: &c.id,
-                        target: RunTarget::Base,
-                        attempt: None,
-                        dir: &self.repo,
-                        scratch: &scratch,
-                        timeout: self.cfg.timeout,
-                    },
-                )?,
+                None => {
+                    let cancel = self.cancel.clone();
+                    let ran = checks::run_check_cancellable(
+                        &mut self.store,
+                        checks::CheckRequest {
+                            task_id,
+                            criterion_id: &c.id,
+                            target: RunTarget::Base,
+                            attempt: None,
+                            dir: &self.repo,
+                            scratch: &scratch,
+                            timeout: self.cfg.timeout,
+                        },
+                        &cancel,
+                    )?;
+                    match ran {
+                        Some(r) => r,
+                        None => return Ok(None),
+                    }
+                }
             };
             let runs = self.store.check_runs(task_id)?;
             out.push(BaselineRun {
@@ -476,16 +537,15 @@ impl Supervisor {
                 problem: evidence::baseline_problem(&task, c, &runs),
             });
         }
-        Ok(out)
+        Ok(Some(out))
     }
 
-    fn start(
-        &mut self,
-        task_id: &str,
-        role: Role,
-        worktree: &Path,
-    ) -> Result<std::result::Result<(interlock_schema::Attempt, String), Move>> {
+    fn start(&mut self, task_id: &str, role: Role, worktree: &Path) -> Result<Opened> {
         let (capabilities, version) = self.capabilities()?;
+        // Inspecting the host takes time; a signal in the meantime opens nothing.
+        if self.interrupted() {
+            return Ok(Opened::Interrupted);
+        }
         let started = self.store.start_attempt(
             StartAttempt {
                 task_id: task_id.into(),
@@ -502,22 +562,28 @@ impl Supervisor {
             Utc::now(),
         )?;
         Ok(match started {
-            Started::Yes { attempt, token, .. } => Ok((attempt, token)),
-            Started::Blocked { moved } => Err(moved),
+            Started::Yes { attempt, token, .. } => Opened::Yes(attempt, token),
+            Started::Blocked { moved } => Opened::Blocked(moved),
         })
     }
 
+    /// The session's environment: the allowlist (see `interlock_adapter::env`),
+    /// plus interlock's own variables for this attempt and the session marker.
     fn env(&self, attempt_id: &str, token: &str, tree: Option<&str>) -> Vec<(String, String)> {
+        let mut env =
+            interlock_adapter::env::session_env(self.host.as_ref(), std::env::vars_os(), &self.config.env.pass);
+        let parent_path = env.iter().find(|(k, _)| k == "PATH").map(|(_, v)| v.clone()).unwrap_or_default();
+        env.retain(|(k, _)| k != "PATH");
         let bin_dir = self.cfg.interlock_bin.parent().map(|p| p.display().to_string()).unwrap_or_default();
-        let path = format!("{bin_dir}:{}", std::env::var("PATH").unwrap_or_default());
-        let mut env = vec![
+        env.extend([
+            ("PATH".to_string(), format!("{bin_dir}:{parent_path}")),
             ("INTERLOCK_DB".to_string(), self.db.display().to_string()),
             ("INTERLOCK_ATTEMPT".to_string(), attempt_id.to_string()),
             ("INTERLOCK_TOKEN".to_string(), token.to_string()),
             ("INTERLOCK_MODE".to_string(), "headless".to_string()),
             ("INTERLOCK_HOST".to_string(), self.host.name().to_string()),
-            ("PATH".to_string(), path),
-        ];
+            (interlock_adapter::SESSION_MARKER.to_string(), attempt_id.to_string()),
+        ]);
         if let Some(t) = tree {
             env.push(("INTERLOCK_TREE".to_string(), t.to_string()));
         }
@@ -561,12 +627,14 @@ impl Supervisor {
             transcript: self.dir().join("transcripts").join(format!("{}.jsonl", attempt.id)),
             session_id: Some(uuid::Uuid::new_v4().to_string()),
             max_cost_usd,
+            effort: self.cfg.effort.clone(),
+            clear_env: true,
         }
     }
 
     /// Starts a session in three steps: spawn the session's process group
     /// held at its gate, record the handoff in its own transaction, and only
-    /// then let the host start.
+    /// then let the host start. When it ends, anything it left behind is stopped.
     fn launch(
         &mut self,
         task_id: &str,
@@ -574,7 +642,8 @@ impl Supervisor {
         token: &str,
         spec: &SessionSpec,
         budget_deadline: bool,
-    ) -> SessionOutcome {
+        start_commit: &str,
+    ) -> Ended {
         let failed = |reason: String| SessionOutcome {
             exit: Exit::Failed { reason },
             exit_code: None,
@@ -583,19 +652,28 @@ impl Supervisor {
             summary: Default::default(),
             transcript: spec.transcript.clone(),
         };
+        let ended = |outcome: SessionOutcome, strays: Vec<u32>| Ended {
+            outcome,
+            budget_deadline,
+            host_session_id: spec.session_id.clone(),
+            strays,
+        };
         let plan = match self.host.plan(&self.probe, spec) {
             Ok(p) => p,
-            Err(reason) => return failed(format!("could not start the host: {reason}")),
+            Err(reason) => return ended(failed(format!("could not start the host: {reason}")), vec![]),
         };
         let mut spawned = match interlock_adapter::spawn(&plan, spec) {
             Ok(s) => s,
-            Err(outcome) => return *outcome,
+            Err(outcome) => return ended(*outcome, vec![]),
         };
         let now = Utc::now();
         let deadline = chrono::Duration::from_std(spec.timeout)
             .ok()
             .and_then(|d| now.checked_add_signed(d))
             .unwrap_or_else(|| now + chrono::Duration::days(365));
+        let mut names: Vec<String> = plan.env.iter().map(|(k, _)| k.clone()).collect();
+        names.sort();
+        names.dedup();
         let handoff = Handoff {
             host: self.host.name().into(),
             pid: spawned.pid,
@@ -607,18 +685,34 @@ impl Supervisor {
             transcript: spec.transcript.display().to_string(),
             host_session_id: spec.session_id.clone(),
             supervisor_pid: std::process::id(),
+            supervisor_start: interlock_adapter::process_start(std::process::id()),
+            start_commit: Some(start_commit.to_string()),
+            env: names,
+            effort: spec.effort.clone(),
             reattached_at: vec![],
         };
         if let Err(e) = self.store.record_handoff(&attempt.id, token, handoff) {
             spawned.abandon();
-            return failed(format!("could not start the host: the handoff was not recorded: {e}"));
+            return ended(failed(format!("could not start the host: the handoff was not recorded: {e}")), vec![]);
+        }
+        // A signal while the handoff was written: the host never starts.
+        if self.interrupted() {
+            spawned.abandon();
+            let mut out = failed(String::new());
+            out.exit = Exit::Cancelled;
+            return ended(out, vec![]);
         }
         if let Err(e) = spawned.release() {
-            return failed(format!("could not start the host: {e}"));
+            return ended(failed(format!("could not start the host: {e}")), vec![]);
         }
+        let (pgid, leader_start) = (spawned.pgid, spawned.process_start);
         let watch = self.watch(task_id, &attempt.id);
         let host = &self.host;
-        spawned.wait(spec, &watch.stop, |l| host.summarize(l))
+        let outcome = spawned.wait(spec, &watch.stop, |l| host.summarize(l));
+        drop(watch);
+        let adopted = if self.subreaper { leader_start.or(Some(0)) } else { None };
+        let strays = interlock_adapter::contain(&attempt.id, Some(pgid), adopted);
+        ended(outcome, strays)
     }
 
     fn watch(&self, task_id: &str, attempt_id: &str) -> Watch {
@@ -650,36 +744,6 @@ impl Supervisor {
             }
         });
         Watch { stop, done, thread: Some(thread) }
-    }
-
-    fn token_path(&self, attempt_id: &str) -> PathBuf {
-        self.dir().join("sessions").join(format!("{attempt_id}.token"))
-    }
-
-    /// Keeps an attempt's token beside the store, readable only by this
-    /// user, so a restarted supervisor can finish the attempt. The store
-    /// itself keeps only its hash.
-    fn save_token(&self, attempt_id: &str, token: &str) -> Result<()> {
-        let path = self.token_path(attempt_id);
-        let io = |e: std::io::Error| RunError::Other(format!("cannot write {}: {e}", path.display()));
-        std::fs::create_dir_all(path.parent().expect("token path has a parent")).map_err(io)?;
-        let mut options = std::fs::OpenOptions::new();
-        options.write(true).create(true).truncate(true);
-        #[cfg(unix)]
-        std::os::unix::fs::OpenOptionsExt::mode(&mut options, 0o600);
-        let mut f = options.open(&path).map_err(io)?;
-        std::io::Write::write_all(&mut f, token.as_bytes()).map_err(io)
-    }
-
-    fn load_token(&self, attempt_id: &str) -> Option<String> {
-        std::fs::read_to_string(self.token_path(attempt_id))
-            .ok()
-            .map(|t| t.trim().to_string())
-            .filter(|t| !t.is_empty())
-    }
-
-    fn forget_token(&self, attempt_id: &str) {
-        let _ = std::fs::remove_file(self.token_path(attempt_id));
     }
 
     fn end(
@@ -727,7 +791,7 @@ impl Supervisor {
         Ok(out)
     }
 
-    fn worker_session(&mut self, task_id: &str, plugin: &Path) -> Result<SessionReport> {
+    fn worker_session(&mut self, task_id: &str, plugin: &Path) -> Result<Option<SessionReport>> {
         let task = self.store.task(task_id)?;
         let base = task
             .input_snapshot
@@ -741,47 +805,49 @@ impl Supervisor {
             }
             None => base.clone(),
         };
-        let base_tree = git::tree_of(&self.repo, &base)?;
         let context = self.worker_context(&task)?;
         let wt = self.dir().join("worktrees").join(format!("{task_id}-worker-{}", task.attempts_used + 1));
         let (attempt, token) = match self.start(task_id, Role::Worker, &wt)? {
-            Ok(v) => v,
-            Err(moved) => return Ok(blocked_report(Role::Worker, moved)),
+            Opened::Yes(a, t) => (a, t),
+            Opened::Blocked(moved) => return Ok(Some(blocked_report(Role::Worker, moved))),
+            Opened::Interrupted => return Ok(None),
         };
-        self.save_token(&attempt.id, &token)?;
+        self.tokens().save(&attempt.id, &token)?;
         fresh_worktree(&self.repo, &wt, &start_commit)?;
         let brief = self.store.brief(task_id, Role::Worker, self.cfg.profile, &HostPolicy::open(), Utc::now())?;
         let env = self.env(&attempt.id, &token, None);
         let (timeout, budget_deadline, cost_left) = self.limits(&task)?;
         let prompt = format!("{}{context}", prompts::worker(&brief.to_markdown()));
         let spec = self.spec(&wt, prompt, prompts::WORKER_SYSTEM, &attempt, env, plugin, timeout, cost_left);
-        let outcome = self.launch(task_id, &attempt, &token, &spec, budget_deadline);
-        self.finish_worker(task_id, &attempt, &token, &wt, &base_tree, outcome, budget_deadline, spec.session_id)
+        let ended = self.launch(task_id, &attempt, &token, &spec, budget_deadline, &start_commit);
+        self.finish_worker(task_id, &attempt, &token, &wt, &start_commit, ended).map(Some)
     }
 
     /// Everything after a worker's session ends: submit its output, or
     /// record why it ended and retry (R3), stop at a spent budget, and clean up.
-    #[allow(clippy::too_many_arguments)]
     fn finish_worker(
         &mut self,
         task_id: &str,
         attempt: &Attempt,
         token: &str,
         wt: &Path,
-        base_tree: &str,
-        outcome: SessionOutcome,
-        budget_deadline: bool,
-        host_session_id: Option<String>,
+        start_commit: &str,
+        ended: Ended,
     ) -> Result<SessionReport> {
-        let (reason, detail) = ended_because(&outcome, budget_deadline);
+        let Ended { outcome, budget_deadline, host_session_id, strays } = ended;
+        let (reason, detail) = ended_because(&outcome, budget_deadline, self.host.auth_failures());
         let spent = spent_of(&outcome);
         let mut moves = Vec::new();
         let mut exported = None;
+        let base_tree = match self.store.task(task_id)?.input_snapshot {
+            Some(s) => git::tree_of(&self.repo, &s.base_commit)?,
+            None => git::tree_of(&self.repo, start_commit)?,
+        };
         let tree = if outcome.exit == Exit::Completed { Some(git::worktree_tree(wt)) } else { None };
         match tree {
             Some(Ok(tree)) => {
                 // Scope is judged on everything the output changes relative to the input.
-                let changed = git::changed_paths(&self.repo, base_tree, &tree)?;
+                let changed = git::changed_paths(&self.repo, &base_tree, &tree)?;
                 let applied = self.store.submit_result(
                     SubmitResult {
                         attempt_id: attempt.id.clone(),
@@ -830,6 +896,7 @@ impl Supervisor {
                         &self.dir(),
                         attempt,
                         wt,
+                        start_commit,
                         self.cfg.profile,
                         Utc::now(),
                     )
@@ -846,15 +913,16 @@ impl Supervisor {
             }
         }
         moves.extend(self.store.enforce_budget(task_id, Utc::now())?);
-        self.forget_token(&attempt.id);
+        self.tokens().forget(&attempt.id);
         if !self.cfg.keep_worktrees {
             let _ = git::worktree_remove(&self.repo, wt);
         }
         let (reason, detail) = self.recorded_end(&attempt.id, reason, detail);
-        Ok(session_report(Role::Worker, attempt, outcome, moves, reason, detail, host_session_id, exported))
+        let ended = Ended { outcome, budget_deadline, host_session_id, strays };
+        Ok(session_report(Role::Worker, attempt, ended, moves, reason, detail, exported))
     }
 
-    fn verifier_session(&mut self, task_id: &str, plugin: &Path) -> Result<SessionReport> {
+    fn verifier_session(&mut self, task_id: &str, plugin: &Path) -> Result<Option<SessionReport>> {
         let task = self.store.task(task_id)?;
         let tree = task.current_tree.clone().ok_or_else(|| RunError::Other("no output tree to verify".into()))?;
         let base = task.input_snapshot.as_ref().map(|s| s.base_commit.clone());
@@ -863,48 +931,47 @@ impl Supervisor {
         let n = self.store.attempts(task_id)?.iter().filter(|a| a.role == Role::Verifier).count() + 1;
         let wt = self.dir().join("worktrees").join(format!("{task_id}-verifier-{n}"));
         let (attempt, token) = match self.start(task_id, Role::Verifier, &wt)? {
-            Ok(v) => v,
-            Err(moved) => return Ok(blocked_report(Role::Verifier, moved)),
+            Opened::Yes(a, t) => (a, t),
+            Opened::Blocked(moved) => return Ok(Some(blocked_report(Role::Verifier, moved))),
+            Opened::Interrupted => return Ok(None),
         };
-        self.save_token(&attempt.id, &token)?;
+        self.tokens().save(&attempt.id, &token)?;
         fresh_worktree(&self.repo, &wt, &commit)?;
         let brief = self.store.brief(task_id, Role::Verifier, self.cfg.profile, &HostPolicy::open(), Utc::now())?;
         let env = self.env(&attempt.id, &token, Some(&tree));
         let (timeout, budget_deadline, cost_left) = self.limits(&task)?;
-        let prompt = prompts::verifier(&brief.to_markdown());
+        let prompt =
+            format!("{}{}", prompts::verifier(&brief.to_markdown()), prompts::verifier_requirements(&task.criteria));
         let spec = self.spec(&wt, prompt, prompts::VERIFIER_SYSTEM, &attempt, env, plugin, timeout, cost_left);
-        let outcome = self.launch(task_id, &attempt, &token, &spec, budget_deadline);
-        self.finish_verifier(task_id, &attempt, &token, &wt, outcome, budget_deadline, spec.session_id)
+        let ended = self.launch(task_id, &attempt, &token, &spec, budget_deadline, &commit);
+        self.finish_verifier(task_id, &attempt, &token, &wt, ended).map(Some)
     }
 
-    #[allow(clippy::too_many_arguments)]
     fn finish_verifier(
         &mut self,
         task_id: &str,
         attempt: &Attempt,
         token: &str,
         wt: &Path,
-        outcome: SessionOutcome,
-        budget_deadline: bool,
-        host_session_id: Option<String>,
+        ended: Ended,
     ) -> Result<SessionReport> {
-        let (reason, detail) = ended_because(&outcome, budget_deadline);
+        let (reason, detail) = ended_because(&ended.outcome, ended.budget_deadline, self.host.auth_failures());
         let status = match reason {
             EndReason::Completed => AttemptStatus::Completed,
             EndReason::Cancelled => AttemptStatus::Cancelled,
             _ => AttemptStatus::Failed,
         };
-        self.end(attempt, token, Some(status), done(reason, detail.clone()), spent_of(&outcome))?;
+        self.end(attempt, token, Some(status), done(reason, detail.clone()), spent_of(&ended.outcome))?;
         let mut moves: Vec<Move> = self.stop_at_budget(task_id, reason)?.into_iter().collect();
         if moves.is_empty() && !self.store.task(task_id)?.state.is_terminal() {
             moves = self.store.advance(task_id, Utc::now())?;
         }
-        self.forget_token(&attempt.id);
+        self.tokens().forget(&attempt.id);
         if !self.cfg.keep_worktrees {
             let _ = git::worktree_remove(&self.repo, wt);
         }
         let (reason, detail) = self.recorded_end(&attempt.id, reason, detail);
-        Ok(session_report(Role::Verifier, attempt, outcome, moves, reason, detail, host_session_id, None))
+        Ok(session_report(Role::Verifier, attempt, ended, moves, reason, detail, None))
     }
 
     /// Fails the task when its budget is spent. A session the budget itself
@@ -929,14 +996,23 @@ impl Supervisor {
     }
 }
 
+/// How a session came to an end, and what it left behind.
+struct Ended {
+    outcome: SessionOutcome,
+    /// The session's deadline came from the task's wall-clock budget.
+    budget_deadline: bool,
+    host_session_id: Option<String>,
+    strays: Vec<u32>,
+}
+
 fn done(reason: EndReason, detail: Option<String>) -> AttemptEnd {
     AttemptEnd { reason, detail, synthetic: false }
 }
 
 /// The session's end reason; a timeout set by the task's wall-clock budget
 /// counts as the budget running out.
-fn ended_because(outcome: &SessionOutcome, budget_deadline: bool) -> (EndReason, Option<String>) {
-    match interlock_adapter::classify(outcome) {
+fn ended_because(outcome: &SessionOutcome, budget_deadline: bool, auth: &[&str]) -> (EndReason, Option<String>) {
+    match interlock_adapter::classify(outcome, auth) {
         (EndReason::Timeout, _) if budget_deadline => {
             (EndReason::BudgetExhausted, Some("the task's wall-clock budget ran out during the session".into()))
         }
@@ -953,33 +1029,6 @@ fn spent_of(outcome: &SessionOutcome) -> Spent {
     }
 }
 
-fn target_of(h: &Handoff) -> Target {
-    Target {
-        pid: h.pid,
-        pgid: h.pgid,
-        process_start: h.process_start,
-        started_at: h.started_at.into(),
-        deadline: h.deadline.into(),
-        transcript: PathBuf::from(&h.transcript),
-    }
-}
-
-/// What a session that died unseen used: its transcript's last write bounds
-/// its wall-clock time, and a host that finished reported its cost there.
-fn salvage_spent(h: &Handoff) -> Spent {
-    let path = Path::new(&h.transcript);
-    let last_write =
-        std::fs::metadata(path).and_then(|m| m.modified()).map(DateTime::<Utc>::from).unwrap_or(h.started_at);
-    let lines: Vec<String> = std::fs::read_to_string(path).unwrap_or_default().lines().map(str::to_string).collect();
-    let summary = interlock_adapter::host(&h.host).map(|host| host.summarize(&lines)).unwrap_or_default();
-    Spent {
-        wall_ms: (last_write - h.started_at).num_milliseconds().max(0) as u64,
-        cost_usd: summary.cost_usd,
-        premium_requests: summary.premium_requests,
-        turns: summary.turns,
-    }
-}
-
 /// Replaces anything a crashed run left at `path` with a clean worktree.
 fn fresh_worktree(repo: &Path, path: &Path, commit: &str) -> Result<()> {
     let _ = git::worktree_remove(repo, path);
@@ -988,22 +1037,24 @@ fn fresh_worktree(repo: &Path, path: &Path, commit: &str) -> Result<()> {
     Ok(())
 }
 
-#[allow(clippy::too_many_arguments)]
 fn session_report(
     role: Role,
     attempt: &interlock_schema::Attempt,
-    outcome: SessionOutcome,
+    ended: Ended,
     moves: Vec<Move>,
     reason: EndReason,
     detail: Option<String>,
-    host_session_id: Option<String>,
     export: Option<Export>,
 ) -> SessionReport {
+    let Ended { outcome, host_session_id, strays, .. } = ended;
+    let spent = spent_of(&outcome);
     SessionReport {
         role,
         attempt_id: attempt.id.clone(),
         epoch: attempt.epoch,
-        spent: spent_of(&outcome),
+        cost_usd: spent.cost_usd,
+        premium_requests: spent.premium_requests,
+        spent,
         exit: outcome.exit,
         duration_ms: outcome.duration_ms,
         host_session_id: host_session_id.or(outcome.summary.session_id),
@@ -1014,6 +1065,7 @@ fn session_report(
         ended_because: Some(reason),
         end_detail: detail,
         reattached: false,
+        stopped_strays: strays,
         export,
     }
 }
@@ -1032,8 +1084,11 @@ fn blocked_report(role: Role, moved: Move) -> SessionReport {
         ended_because: None,
         end_detail: None,
         spent: Spent::default(),
+        cost_usd: None,
+        premium_requests: None,
         host_session_id: None,
         reattached: false,
+        stopped_strays: vec![],
         export: None,
     }
 }

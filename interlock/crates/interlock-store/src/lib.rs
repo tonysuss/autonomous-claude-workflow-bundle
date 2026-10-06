@@ -757,26 +757,10 @@ impl Store {
         Ok(Applied { event_id, duplicate: false, outcome })
     }
 
-    /// Supervisor path for restart recovery: ends every attempt a previous
-    /// controller left running as failed, each with a synthetic failure report.
-    pub fn reconcile_running(&mut self, task_id: &str, reason: &str, now: Timestamp) -> Result<Vec<Attempt>> {
-        let (tx, v) = self.begin()?;
-        let mut ended = Vec::new();
-        for mut attempt in attempts_of(&tx, task_id)? {
-            if attempt.status != AttemptStatus::Running {
-                continue;
-            }
-            let end = AttemptEnd { reason: EndReason::Crash, detail: Some(reason.to_string()), synthetic: true };
-            record_end(&tx, v, &mut attempt, Some(AttemptStatus::Failed), end, None, now)?;
-            ended.push(attempt);
-        }
-        tx.commit()?;
-        Ok(ended)
-    }
-
-    /// Supervisor path for restart recovery, one attempt at a time: ends a
-    /// running attempt whose session is gone as failed, with a synthetic
-    /// report. A no-op for an attempt that is no longer running.
+    /// Supervisor and operator path for an attempt whose session nobody can
+    /// finish any more: records a synthetic end, once, and closes the attempt
+    /// if it is still open (cancelled for a cancellation, failed otherwise).
+    /// A no-op for an attempt whose end is already recorded.
     pub fn reconcile_attempt(
         &mut self,
         attempt_id: &str,
@@ -787,12 +771,22 @@ impl Store {
     ) -> Result<Attempt> {
         let (tx, v) = self.begin()?;
         let mut attempt = get_attempt(&tx, attempt_id)?;
-        if attempt.status == AttemptStatus::Running {
+        if attempt.end.is_none() {
+            let status = if reason == EndReason::Cancelled { AttemptStatus::Cancelled } else { AttemptStatus::Failed };
             let end = AttemptEnd { reason, detail: Some(detail.to_string()), synthetic: true };
-            record_end(&tx, v, &mut attempt, Some(AttemptStatus::Failed), end, spent, now)?;
+            record_end(&tx, v, &mut attempt, Some(status), end, spent, now)?;
         }
         tx.commit()?;
         Ok(attempt)
+    }
+
+    /// Every attempt, across all tasks, that had a session and has no recorded
+    /// end: what a restarted supervisor must account for.
+    pub fn unended_sessions(&self) -> Result<Vec<Attempt>> {
+        let mut stmt = self.conn.prepare("SELECT record FROM attempts ORDER BY rowid")?;
+        let rows = stmt.query_map([], |r| r.get::<_, String>(0))?;
+        let all: Vec<Attempt> = rows.map(|r| decode(r?)).collect::<Result<_>>()?;
+        Ok(all.into_iter().filter(|a| a.handoff.is_some() && a.end.is_none()).collect())
     }
 
     /// Records where an attempt's session runs, in its own transaction,
@@ -870,11 +864,32 @@ impl Store {
         Ok(Some(mv))
     }
 
-    /// Makes an exported work-in-progress tree the next worker's starting point.
-    pub fn resume_from(&mut self, task_id: &str, tree: &str, now: Timestamp) -> Result<Task> {
+    /// Makes an exported work-in-progress tree (from `commit`) the next
+    /// worker's starting point, with a `task.resumed` event as its record.
+    pub fn resume_from(&mut self, task_id: &str, commit: &str, tree: &str, now: Timestamp) -> Result<Task> {
         let (tx, v) = self.begin()?;
-        let task = lifecycle::resume_from(&get_task(&tx, task_id)?, tree, now)?;
+        let before = get_task(&tx, task_id)?;
+        let task = lifecycle::resume_from(&before, tree, now)?;
         put_task(&tx, v, &task, false)?;
+        put_event(
+            &tx,
+            v,
+            &Event {
+                id: new_id("evt"),
+                task_id: task.id.clone(),
+                attempt_id: None,
+                epoch: None,
+                kind: EventKind::TaskResumed,
+                payload_ref: None,
+                received_at: now,
+                acknowledged: true,
+                outcome: Some(serde_json::json!({
+                    "commit": commit,
+                    "tree": tree,
+                    "replaced_tree": before.current_tree,
+                })),
+            },
+        )?;
         tx.commit()?;
         Ok(task)
     }

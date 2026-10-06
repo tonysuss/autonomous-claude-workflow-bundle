@@ -3,10 +3,17 @@
 //! defaults that move results, so a run on any other version is blocked
 //! before a session starts.
 //!
+//! `[env] pass` names variables from interlock's own environment that every
+//! session may have, beyond the built-in allowlist (`interlock_adapter::env`):
+//! exact names, or prefixes ending in `*`.
+//!
 //! ```toml
 //! [pins]
 //! copilot = "1.0.91"
 //! claude-code = "2.1.289"
+//!
+//! [env]
+//! pass = ["MY_TOOL_HOME", "PIP_*"]
 //! ```
 
 use std::collections::BTreeMap;
@@ -19,6 +26,16 @@ pub struct Config {
     /// Host name to exact version.
     #[serde(default)]
     pub pins: BTreeMap<String, String>,
+    #[serde(default)]
+    pub env: EnvConfig,
+}
+
+#[derive(Debug, Clone, Default, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct EnvConfig {
+    /// Extra variables every session may have.
+    #[serde(default)]
+    pub pass: Vec<String>,
 }
 
 impl Config {
@@ -27,15 +44,28 @@ impl Config {
         dir.join("config.toml")
     }
 
-    /// Reads the config in `dir`. A missing file is an empty config; other
-    /// sections are left for whoever owns them.
+    /// Reads the config in `dir`. A missing file is an empty config. Other
+    /// sections are left for whoever owns them, but `[pins]` may name only
+    /// known hosts.
     pub fn load(dir: &Path) -> Result<Config, String> {
         let path = Config::path(dir);
-        match std::fs::read_to_string(&path) {
-            Ok(text) => toml::from_str(&text).map_err(|e| format!("{}: {e}", path.display())),
-            Err(e) if e.kind() == std::io::ErrorKind::NotFound => Ok(Config::default()),
-            Err(e) => Err(format!("{}: {e}", path.display())),
+        let config: Config = match std::fs::read_to_string(&path) {
+            Ok(text) => toml::from_str(&text).map_err(|e| format!("{}: {e}", path.display()))?,
+            Err(e) if e.kind() == std::io::ErrorKind::NotFound => return Ok(Config::default()),
+            Err(e) => return Err(format!("{}: {e}", path.display())),
+        };
+        let known: Vec<&str> = interlock_adapter::hosts().iter().map(|h| h.name()).collect();
+        if let Some(host) = config.pins.keys().find(|h| !known.contains(&h.as_str())) {
+            return Err(format!(
+                "{}: [pins] names an unknown host `{host}`; known hosts: {}",
+                path.display(),
+                known.join(", ")
+            ));
         }
+        if let Some((host, _)) = config.pins.iter().find(|(_, v)| v.trim().is_empty()) {
+            return Err(format!("{}: [pins] {host} has an empty version", path.display()));
+        }
+        Ok(config)
     }
 
     pub fn pin(&self, host: &str) -> Option<&str> {
@@ -115,5 +145,12 @@ mod tests {
 
         std::fs::write(Config::path(dir.path()), "[pins\n").unwrap();
         assert!(Config::load(dir.path()).is_err());
+        std::fs::write(Config::path(dir.path()), "[pins]\nclaude = \"2.1.289\"\n").unwrap();
+        let err = Config::load(dir.path()).unwrap_err();
+        assert!(err.contains("unknown host `claude`; known hosts: copilot, claude-code"), "{err}");
+        std::fs::write(Config::path(dir.path()), "[env]\npass = [\"MY_TOOL_*\"]\nkeep = 1\n").unwrap();
+        assert!(Config::load(dir.path()).is_err(), "unknown keys in [env] are refused");
+        std::fs::write(Config::path(dir.path()), "[env]\npass = [\"MY_TOOL_*\"]\n").unwrap();
+        assert_eq!(Config::load(dir.path()).unwrap().env.pass, vec!["MY_TOOL_*"]);
     }
 }

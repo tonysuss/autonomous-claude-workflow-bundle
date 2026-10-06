@@ -290,6 +290,10 @@ fn session_handoff_end_and_spending_conform() {
         transcript: "/repo/.interlock/transcripts/att-2.jsonl".into(),
         host_session_id: Some("0cb916db-26aa-40f2-86b5-1ba81b225fd2".into()),
         supervisor_pid: 4200,
+        supervisor_start: Some(77),
+        start_commit: Some("4b825dc642cb6eb9a060e54bf8d69288fbee4904".into()),
+        env: vec!["PATH".into(), "INTERLOCK_ATTEMPT".into()],
+        effort: Some("low".into()),
         reattached_at: vec![t0() + chrono::Duration::minutes(3)],
     });
     attempt.status = AttemptStatus::Cancelled;

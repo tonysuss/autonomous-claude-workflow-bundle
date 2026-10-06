@@ -158,6 +158,18 @@ pub fn create(spec: TaskSpec, workflow: &Workflow, now: Timestamp) -> Result<Tas
     if spec.budget.max_attempts == 0 {
         return Err(invalid("budget.max_attempts must be at least 1".into()));
     }
+    if spec.budget.max_wall_secs == Some(0) {
+        return Err(invalid("budget.max_wall_secs must be at least 1".into()));
+    }
+    for (name, amount) in
+        [("max_cost_usd", spec.budget.max_cost_usd), ("max_premium_requests", spec.budget.max_premium_requests)]
+    {
+        if let Some(a) = amount
+            && !(a.is_finite() && a > 0.0)
+        {
+            return Err(invalid(format!("budget.{name} must be a finite number above zero, not {a}")));
+        }
+    }
     if spec.integration_required && workflow.integration == Integration::Never {
         return Err(invalid(format!("the {} workflow never integrates", workflow.name)));
     }

@@ -7,6 +7,7 @@
 
 mod claude_code;
 mod copilot;
+pub mod env;
 pub mod hooks;
 mod probe;
 mod session;
@@ -19,8 +20,9 @@ pub use claude_code::ClaudeCode;
 pub use copilot::Copilot;
 pub use probe::Probe;
 pub use session::{
-    CommandPlan, Exit, SessionOutcome, SessionSpec, SessionSummary, Spawned, Target, alive, attach, classify,
-    process_start, run, shell_quote, spawn, stderr_path, write_hooks_plugin,
+    CommandPlan, Exit, SESSION_MARKER, SessionOutcome, SessionSpec, SessionSummary, Spawned, Target, alive, attach,
+    become_subreaper, classify, contain, marked, process_start, run, shell_quote, spawn, stderr_path,
+    write_hooks_plugin,
 };
 
 /// How a capability's availability was established.
@@ -105,6 +107,22 @@ pub trait Host {
 
     /// Reads a finished session's output stream.
     fn summarize(&self, lines: &[String]) -> SessionSummary;
+
+    /// Whether a variable from interlock's own environment may reach this
+    /// host's sessions, beyond the generic allowlist in [`env`].
+    fn passes_env(&self, _name: &str) -> bool {
+        false
+    }
+
+    /// Lowercase phrases this host prints when it cannot sign in.
+    fn auth_failures(&self) -> &'static [&'static str] {
+        &[]
+    }
+
+    /// The effort levels this host's effort flag accepts, if it has one.
+    fn effort_levels(&self) -> &'static [&'static str] {
+        &[]
+    }
 
     /// Runs one headless session to completion, timeout or cancellation.
     fn run_session(&self, probe: &Probe, spec: &SessionSpec, cancel: &std::sync::atomic::AtomicBool) -> SessionOutcome {

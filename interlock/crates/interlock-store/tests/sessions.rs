@@ -118,6 +118,10 @@ fn handoff(pid: u32, at: i64) -> Handoff {
         transcript: format!("/work/.interlock/transcripts/{pid}.jsonl"),
         host_session_id: Some("0cb916db-26aa-40f2-86b5-1ba81b225fd2".into()),
         supervisor_pid: 99,
+        supervisor_start: None,
+        start_commit: None,
+        env: vec![],
+        effort: None,
         reattached_at: vec![],
     }
 }
@@ -140,19 +144,19 @@ fn attempt_events(store: &Store, attempt: &str) -> Vec<Event> {
 }
 
 #[test]
-fn reconcile_running_ends_every_running_attempt_with_a_synthetic_report() {
+fn reconcile_attempt_ends_a_running_attempt_with_a_synthetic_report() {
     let mut store = store();
     let w = start(&mut store, Role::Worker, 2);
+    store.record_handoff(&w.id, &w.token, handoff(4242, 2)).unwrap();
     assert_eq!(state(&store), State::Running);
 
-    let ended = store.reconcile_running(TASK, "the supervisor restarted; the session is gone", t(5)).unwrap();
-    assert_eq!(ended.iter().map(|a| a.id.as_str()).collect::<Vec<_>>(), vec![w.id.as_str()]);
-    let a = store.attempt(&w.id).unwrap();
+    let detail = "the session's process (pid 4242) was gone when the supervisor restarted";
+    let a = store.reconcile_attempt(&w.id, EndReason::Crash, detail, None, t(5)).unwrap();
     assert_eq!(a.status, AttemptStatus::Failed);
     assert_eq!(a.ended_at, Some(t(5)));
     let report = a.end.unwrap();
     assert_eq!((report.reason, report.synthetic), (EndReason::Crash, true));
-    assert_eq!(report.detail.as_deref(), Some("the supervisor restarted; the session is gone"));
+    assert_eq!(report.detail.as_deref(), Some(detail));
     let events = attempt_events(&store, &w.id);
     assert_eq!(events.len(), 1);
     assert_eq!(events[0].kind, EventKind::AttemptFailed);
@@ -161,9 +165,9 @@ fn reconcile_running_ends_every_running_attempt_with_a_synthetic_report() {
     // The store does not move the task; the supervisor applies R3.
     assert_eq!(state(&store), State::Running);
 
-    // Reconciling again finds nothing and writes nothing.
+    // Reconciling again changes and writes nothing.
     let count = store.event_count(TASK).unwrap();
-    assert!(store.reconcile_running(TASK, "again", t(6)).unwrap().is_empty());
+    store.reconcile_attempt(&w.id, EndReason::Timeout, "again", None, t(6)).unwrap();
     assert_eq!(store.event_count(TASK).unwrap(), count);
 
     // R3, then a fresh attempt at the next epoch; the reconciled worker's late result is superseded.
@@ -176,17 +180,60 @@ fn reconcile_running_ends_every_running_attempt_with_a_synthetic_report() {
 }
 
 #[test]
-fn reconcile_running_leaves_submitted_and_finished_attempts_alone() {
+fn every_session_without_an_end_is_listed_whatever_its_status_or_task() {
     let mut store = store();
+    // A second task in the same store.
+    let spec: TaskSpec = serde_json::from_value(serde_json::json!({
+        "id": "other", "repository": "/work/repo", "workflow": "bug-fix", "intent": "x",
+        "criteria": [{"id": "c", "statement": "s", "min_strength": "tested", "producer": "self"}]
+    }))
+    .unwrap();
+    store.create_task(spec, t(0)).unwrap();
+    let snapshot = Snapshot {
+        repository: "/work/repo".into(),
+        base_commit: "e43c7ee".into(),
+        untracked_hash: None,
+        protected_paths: vec![],
+    };
+    store.ready("other", snapshot, t(1)).unwrap();
+    let other = match store
+        .start_attempt(
+            StartAttempt {
+                task_id: "other".into(),
+                role: Role::Worker,
+                mode: Mode::Headless,
+                host: HostRef { host: "copilot".into(), version: "1.0.91".into() },
+                capabilities: caps(),
+                profile: Profile::Conservative,
+                host_policy: HostPolicy::open(),
+                agent: None,
+                model: None,
+                worktree: None,
+            },
+            t(2),
+        )
+        .unwrap()
+    {
+        Started::Yes { attempt, token, .. } => Handle { id: attempt.id, token, epoch: attempt.epoch },
+        Started::Blocked { .. } => panic!("blocked"),
+    };
+    store.record_handoff(&other.id, &other.token, handoff(5000, 2)).unwrap();
+
     let w = start(&mut store, Role::Worker, 2);
-    submit(&mut store, &w, TREE_A, 3);
-    let v = start(&mut store, Role::Verifier, 4);
-    let ended = store.reconcile_running(TASK, "restart", t(5)).unwrap();
-    assert_eq!(ended.len(), 1);
-    assert_eq!(ended[0].id, v.id, "only the running verifier ends");
-    assert_eq!(store.attempt(&w.id).unwrap().status, AttemptStatus::Submitted);
-    assert_eq!(store.attempt(&v.id).unwrap().status, AttemptStatus::Failed);
-    assert_eq!(state(&store), State::AwaitingVerification, "the work is kept for the next verifier");
+    store.record_handoff(&w.id, &w.token, handoff(5001, 2)).unwrap();
+    // The operator cancels the task while no supervisor runs: the attempt is
+    // closed, but its session's end is still unaccounted for.
+    store.stop(TASK, true, "operator cancelled", t(3)).unwrap();
+    assert_eq!(store.attempt(&w.id).unwrap().status, AttemptStatus::Cancelled);
+    let ids: Vec<String> = store.unended_sessions().unwrap().into_iter().map(|a| a.id).collect();
+    assert_eq!(ids, vec![other.id.clone(), w.id.clone()]);
+
+    // Recording the end keeps the operator's status and writes the event once.
+    let a = store.reconcile_attempt(&w.id, EndReason::Cancelled, "stopped at restart", None, t(4)).unwrap();
+    assert_eq!((a.status, a.end.unwrap().reason), (AttemptStatus::Cancelled, EndReason::Cancelled));
+    assert_eq!(attempt_events(&store, &w.id)[0].kind, EventKind::AttemptCancelled);
+    let ids: Vec<String> = store.unended_sessions().unwrap().into_iter().map(|a| a.id).collect();
+    assert_eq!(ids, vec![other.id]);
 }
 
 #[test]
@@ -366,9 +413,12 @@ fn a_finished_task_leaves_no_attempt_open() {
 #[test]
 fn resuming_sets_where_the_next_worker_starts() {
     let mut store = store();
-    let task = store.resume_from(TASK, TREE_B, t(2)).unwrap();
+    let task = store.resume_from(TASK, "c0ffee1", TREE_B, t(2)).unwrap();
     assert_eq!((task.state, task.current_tree.as_deref()), (State::Ready, Some(TREE_B)));
+    let resumed = store.events(TASK).unwrap().into_iter().find(|e| e.kind == EventKind::TaskResumed).unwrap();
+    assert_eq!(resumed.outcome.as_ref().unwrap()["commit"], "c0ffee1", "the resume is on record");
+    assert_eq!(resumed.outcome.as_ref().unwrap()["tree"], TREE_B);
     start(&mut store, Role::Worker, 3);
-    let err = store.resume_from(TASK, TREE_A, t(4)).unwrap_err();
+    let err = store.resume_from(TASK, "c0ffee1", TREE_A, t(4)).unwrap_err();
     assert!(err.to_string().contains("needs the task ready"), "{err}");
 }
