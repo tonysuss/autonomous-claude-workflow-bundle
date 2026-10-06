@@ -1,16 +1,47 @@
 {
   "attempts": [
     {
+      "binding": {
+        "agent_type": null,
+        "host_agent": null,
+        "host_session": "be5ad9b5-ff40-42a9-b1f6-139a2514d4e3",
+        "interactive": true,
+        "via": "session"
+      },
+      "bound": "bound to session be5ad9b5-ff40-42a9-b1f6-139a2514d4e3",
       "epoch": 1,
       "host": "copilot",
-      "id": "att-cd54c1beb2564b21",
+      "id": "att-7fd69edfaf9741a2",
       "role": "worker",
-      "status": "submitted"
+      "status": "completed"
     },
     {
+      "binding": {
+        "agent_type": null,
+        "host_agent": null,
+        "host_session": "de5c237a-f01a-4667-9eb8-10667f207b36",
+        "interactive": true,
+        "via": "unbound"
+      },
+      "bound": "unbound (session de5c237a-f01a-4667-9eb8-10667f207b36): its assessments count only where interlock ran the criterion's check",
       "epoch": 1,
       "host": "copilot",
-      "id": "att-5d47a89d33fd4250",
+      "id": "att-97c88f95d49a46b7",
+      "role": "verifier",
+      "status": "completed"
+    },
+    {
+      "binding": {
+        "agent_type": null,
+        "host_agent": null,
+        "host_session": null,
+        "interactive": false,
+        "via": "interlock_launched"
+      },
+      "bound": "launched by interlock",
+      "epoch": 1,
+      "host": "copilot",
+      "id": "att-7c3a69690c2d4921",
       "role": "verifier",
       "status": "completed"
     }
@@ -21,10 +52,10 @@
     "criteria": [
       {
         "criterion_id": "answer",
-        "current_assessments": 1,
+        "current_assessments": 2,
         "current_claims": 1,
         "current_runs": 0,
-        "evidence_id": "asm-e236feb56c8441aa",
+        "evidence_id": "asm-b6a3caf7c5dc4ca0",
         "source": "assessment",
         "stale": 0,
         "strength": "observed",
@@ -36,7 +67,7 @@
   "task": {
     "attempts_used": 1,
     "blocked_reason": null,
-    "current_attempt": "att-cd54c1beb2564b21",
+    "current_attempt": "att-7fd69edfaf9741a2",
     "current_tree": "ab5f9f25d0c687fd0ee189b79d48ca9f2d7f308b",
     "id": "export-tries",
     "integration_required": false,

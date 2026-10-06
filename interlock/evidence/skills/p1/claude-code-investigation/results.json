@@ -1,15 +1,15 @@
 [
   {
-    "id": "res-295dd8f9802b442e",
+    "id": "res-d8e2d81ba74e4b3d",
     "task_id": "ttl-boundary",
-    "attempt_id": "att-8f3683217e6b4971",
+    "attempt_id": "att-9b6c3a6489844769",
     "epoch": 1,
     "output_tree": "e2abab1d819807dd70f25b1fa552bd377f7eb000",
     "changed_paths": [],
-    "summary": "Yes. cache.py:20 'if self.clock() - stored > self.ttl' is strict, so an entry aged exactly ttl is still served; it expires only when strictly older (deleted lazily at cache.py:21 on get). Observed with injected clock, ttl=10: age 9.999 -> v, 10 -> v, 10.001 -> MISS. Why: commit 7c6352a 'Keep cache entries through their last second (#12)' changed '>=' to '>' (97e4961 originally used >=): on coarse clocks (monotonic ticking in 15 ms steps) ttl=1 entries expired on first read after a one-tick advance; the message says ttl should be the minimum lifetime callers can rely on. Rationale is stated in the commit message (direct), not inferred.",
+    "summary": "Yes. cache.py:20 (TTLCache.get) expires only when clock()-stored > ttl, so at exactly ttl the value is still returned (observed: ttl=10, fake clock, t=10 -> 'v', t=10.001 -> miss). Originally '>=' (d6cba38); 2e2afb8 'Keep cache entries through their last second (#12)' made it strict. Direct reason from commit message: coarse monotonic clocks (15 ms ticks) expired ttl=1 entries on first read after one tick; ttl is a guaranteed minimum lifetime.",
     "open_questions": [],
     "status": "accepted",
     "superseded_reason": null,
-    "received_at": "2026-10-06T00:11:30.234360543Z"
+    "received_at": "2026-10-06T01:53:11.875312175Z"
   }
 ]

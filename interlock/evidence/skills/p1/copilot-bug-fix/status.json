@@ -1,16 +1,32 @@
 {
   "attempts": [
     {
+      "binding": {
+        "agent_type": null,
+        "host_agent": null,
+        "host_session": "e2982678-9e09-4f17-ac3c-a3445c2f4d04",
+        "interactive": true,
+        "via": "session"
+      },
+      "bound": "bound to session e2982678-9e09-4f17-ac3c-a3445c2f4d04",
       "epoch": 1,
       "host": "copilot",
-      "id": "att-f59aa482135a408a",
+      "id": "att-6502054ff74d402e",
       "role": "worker",
-      "status": "submitted"
+      "status": "completed"
     },
     {
+      "binding": {
+        "agent_type": null,
+        "host_agent": null,
+        "host_session": null,
+        "interactive": false,
+        "via": "interlock_launched"
+      },
+      "bound": "launched by interlock",
       "epoch": 1,
       "host": "copilot",
-      "id": "att-c7ef0d6c7c9d4992",
+      "id": "att-b54604bda4364750",
       "role": "verifier",
       "status": "completed"
     }
@@ -24,7 +40,7 @@
         "current_assessments": 1,
         "current_claims": 1,
         "current_runs": 2,
-        "evidence_id": "asm-f72af51b44cf453c",
+        "evidence_id": "asm-1a6f2abfdd4747f5",
         "source": "assessment",
         "stale": 0,
         "strength": "observed",
@@ -35,7 +51,7 @@
         "current_assessments": 1,
         "current_claims": 1,
         "current_runs": 2,
-        "evidence_id": "asm-07149635d9884fef",
+        "evidence_id": "asm-cfe609e795f440b3",
         "source": "assessment",
         "stale": 0,
         "strength": "tested",
@@ -47,7 +63,7 @@
   "task": {
     "attempts_used": 1,
     "blocked_reason": null,
-    "current_attempt": "att-f59aa482135a408a",
+    "current_attempt": "att-6502054ff74d402e",
     "current_tree": "6e01676420dea49adaf4960994d510dbf0f921db",
     "id": "fix-add",
     "integration_required": false,

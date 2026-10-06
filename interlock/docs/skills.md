@@ -1,8 +1,8 @@
 # Skills, the generator, and guided sessions
 
-October 6, 2026. Copilot CLI 1.0.91 (offline, scripted model) and Claude Code 2.1.289 (live model).
+October 6, 2026. Copilot CLI 1.0.91 (offline, scripted model) and Claude Code 2.1.289 (live model, sonnet).
 
-The interactive path: a person drives a Copilot CLI or Claude Code session, generated skills call `interlock` at each step, the hooks plugin runs in interactive mode (it asks where the headless path denies), and an independent verifier custom agent records the evidence that decides the task. The core stays host-agnostic: skills are written once, host-neutral, and a generator says them in each host's terms.
+The interactive path: a person drives a Copilot CLI or Claude Code session, generated skills call `interlock` at each step, the hooks plugin runs in interactive mode (it asks where the headless path denies), and an independent verifier records the evidence that decides the task. interlock binds each guided attempt to the agent the host says opened it, so it can tell the verifier from the agent that did the work. The core stays host-agnostic: skills are written once, host-neutral, and a generator says them in each host's terms.
 
 Runtime evidence for everything below is indexed in [evidence/skills/README.md](../evidence/skills/README.md).
 
@@ -10,12 +10,12 @@ Runtime evidence for everything below is indexed in [evidence/skills/README.md](
 
 | Piece | Where | Design |
 | --- | --- | --- |
-| Six canonical v1 skills and five routed references | `skills/` | §10 v1 skill set |
+| Six canonical v1 skills and six routed references | `skills/` | §10 v1 skill set |
 | The independent verifier agent | `agents/verifier/` | §3, §9 native delegation |
 | Generator and static validator (`interlock-skillgen`) | `crates/interlock-skillgen/` | §1 Skills row, §2 frontmatter gap, §4 |
 | `interlock skills generate`, `validate`, `list` | `crates/interlock-cli/src/skills_cmd.rs` | §10 |
-| `interlock setup --host copilot\|claude-code` | same, and `interlock-skillgen/src/setup.rs` | §3 interactive path |
-| Guided attempts: `attempt start --worktree auto`, hooks that find the guided attempt, `result submit --tree auto` | `crates/interlock-supervisor/src/guided.rs`, `main.rs` | §3 |
+| `interlock setup --host copilot\|claude-code`, with a manifest of what it wrote | same, `interlock-skillgen/src/setup.rs`, `safe_write.rs` | §3 interactive path |
+| Guided attempts bound to their caller; the state guard; `interlock verify`; notes | `crates/interlock-supervisor/src/guided.rs`, `state_paths.rs`, `run.rs`, `main.rs` | §3 |
 | S1 skill load spike | [evidence/skills/s1/](../evidence/skills/s1/) | §12 P0 S1, §14 risk |
 | P1 gate runs | [evidence/skills/](../evidence/skills/) | §12 P1 gate |
 
@@ -23,20 +23,22 @@ Runtime evidence for everything below is indexed in [evidence/skills/README.md](
 
 | Skill | Invocation | From pstack | Job | interlock commands it drives |
 | --- | --- | --- | --- | --- |
-| `route` | model | poteto-mode routing | Pick the workflow, write the criteria, create the task | `init`, `task create`, `task ready`, `status` |
-| `investigate` | model | how, why | File-level evidence and history; the worker of an investigation | `brief`, `attempt start`, `check run`, `claim add`, `result submit --tree auto` |
-| `design` | user | architect, arena | Compare whole designs, only when uncertainty and impact justify it | `brief`, `status` |
+| `route` | model | poteto-mode routing | Pick the workflow, write the criteria, create the task | `init`, `task create -`, `task ready`, `status` |
+| `investigate` | model | how, why | File-level evidence and history; the worker of an investigation | `brief`, `attempt start`, `check run`, `claim add`, `result submit --tree auto`, `note add --kind answer` |
+| `design` | user | architect, arena | Compare whole designs, only when uncertainty and impact justify it | `brief`, `status`, `note add --kind design` |
 | `implement` | model | bug-fix, feature, refactoring playbooks | Smallest change, in the attempt's worktree; before and after recorded | `brief`, `status`, `attempt start --worktree auto`, `check run --target base`, `check run`, `claim add`, `result submit --tree auto` |
-| `verify` | model | bug-fix steps 1 and 4, prove-it-works | Hand off to the verifier agent, then let interlock decide | `status`, `advance`, `task log` |
-| `review` | model | interrogate | Findings with evidence, a lead judgment on each, dismissals kept | `status`, `attempt start --role reviewer`, `attempt end --note` |
+| `verify` | model | bug-fix steps 1 and 4, prove-it-works | Hand off to the independent verifier, then let interlock decide | `status`, `verify` (Copilot), `advance`, `task log` |
+| `review` | model | interrogate | Findings with evidence, a lead judgment on each, dismissals kept | `status`, `attempt start --role reviewer`, `attempt end --note`, `note add --kind review` |
 
-The verifier agent (`agents/verifier`) opens its own verifier attempt, has interlock run each check on the submitted tree in its own worktree, records one assessment per criterion, and ends its attempt: `attempt start --role verifier --worktree auto`, `brief --role verifier`, `check run`, `assess add --tree auto`, `attempt end`. Its token never passes through the main session.
+On Copilot the skills are named `interlock-<name>`: project skills share one namespace with the repository's own, and a repository may already have a `review` skill. Claude Code's plugin namespace (`interlock:<name>`) does the same job.
+
+The verifier agent (`agents/verifier`) opens its own verifier attempt, has interlock run each check on the submitted tree in its own worktree, records one assessment per criterion, and ends its attempt: `attempt start --role verifier --worktree auto`, `brief --role verifier`, `check run`, `assess add --tree auto`, `attempt end`. Its attempt is bound to it, its token works only from it, and it never puts the token in its reply.
 
 Routed references, emitted as files under the skills that route to them and never as standalone skills:
 
 | Reference | Routed from | From pstack |
 | --- | --- | --- |
-| `interlock-basics` | every skill | (new) the loop, tokens, strengths, rules |
+| `interlock-basics` | every skill | (new) the loop, tokens, scope, strengths, rules |
 | `prove-it-works` | implement, verify | principle-prove-it-works |
 | `fix-root-causes` | implement, investigate | principle-fix-root-causes |
 | `test-behavior-not-implementation` | implement, verify | principle-test-behavior-not-implementation |
@@ -49,12 +51,16 @@ Skill-local references: `route/references/task-templates.md` (one TOML template 
 
 | Workflow | Skills, in order | Criteria template |
 | --- | --- | --- |
-| Investigation | route, investigate, verify | `answer`: independent, observed, no check unless a fact is decidable now |
+| Investigation | route, investigate, verify | `answer`: independent, observed, no check unless a fact is decidable now; no scope |
 | Bug fix | route, implement (bug-fix playbook), verify; review optional | `repro`: independent, observed, `baseline = "fails"`; `regression`: self, tested, `baseline = "passes"` |
 | Feature | route, implement (feature playbook; design when warranted), verify; review optional | `behavior`: independent, observed, `baseline = "fails"`; `regression` |
 | Refactor | route, implement (refactor playbook), verify; review optional | `pin`: independent, tested, `baseline = "passes"`; `shape`: independent, static; `regression` |
 
-The machine-checkable parts of the principles live in the core already (baselines, empty-run detection, scope on the output tree, stale evidence). The skills carry the rest as routed text.
+The machine-checkable parts of the principles live in the core (baselines, empty-run detection, scope on the output tree, stale evidence). The skills carry the rest as routed text.
+
+Scope: a task's `scope.paths` lists what its result may change. An empty or missing scope allows no change at all; `["**"]` allows any. An investigation's result may change nothing, whatever its scope.
+
+Route tells the person before it commits a check script under `checks/` (the input snapshot is a commit, on their branch), names the file, branch and message, and waits for their go-ahead when they are at the keyboard; inline checks need no commit. Review runs in the working session, so on its own it is a second look rather than an independent one; the skill offers a second reviewer on a different model family, as pstack's interrogate does, and every act-on finding goes to the verifier.
 
 ## Canonical format
 
@@ -79,21 +85,23 @@ The binary embeds `skills/` and `agents/` at build time (`build.rs`), so `interl
 
 ```bash
 interlock skills list
-interlock skills generate --target copilot      --out <repo>        # .github/skills, .github/agents
+interlock skills generate --target copilot      --out <repo>        # .github/skills/interlock-*
 interlock skills generate --target claude-code  --out <plugin dir>  # a Claude Code plugin
 interlock skills generate --target agent-skills --out <dir>         # plain Agent Skills folders
 interlock skills validate <dir> [--target agent-skills|copilot|claude-code]
 ```
 
-`generate` validates its own output before writing and refuses to write output that fails. `validate` exits 1 on any error and prints every problem as JSON.
+`generate` validates its own output before writing and refuses to write output that fails. It writes only inside `--out`, never through a symlink, and never over a file it did not write or that changed since it did, unless `--force`; `<out>/.interlock/generated.json` records what it wrote, with SHA-256 hashes. Refusals are listed and exit 2. `validate` takes a folder of skill folders, a Claude Code plugin, or a repository with `.github/skills`, checks the agent files beside the skills too, exits 1 on any error and prints every problem as JSON.
 
 | Intent | Copilot CLI | Claude Code | Plain Agent Skills |
 | --- | --- | --- | --- |
-| Model-invoked | `.github/skills/<name>/SKILL.md` with `name`, `description` | `skills/<name>/SKILL.md` in plugin `interlock`, loaded as `interlock:<name>` | `<name>/SKILL.md` with `name`, `description`, `compatibility`, `metadata.interlock-invocation: model` |
+| Model-invoked | `.github/skills/interlock-<name>/SKILL.md` with `name`, `description` | `skills/<name>/SKILL.md` in plugin `interlock`, loaded as `interlock:<name>` | `<name>/SKILL.md` with `name`, `description`, `compatibility`, `metadata.interlock-invocation: model` |
 | User-invoked | the same, plus `disable-model-invocation: true` and `argument-hint` | the same, plus `disable-model-invocation: true` and `argument-hint` | `metadata.interlock-invocation: user`; no host field |
 | Routed | `references/<name>.md` under each router | the same | the same |
-| Verifier agent | `.github/agents/interlock-verifier.agent.md`, `tools: ["read", "search", "execute"]` | `agents/verifier.md` (`interlock:verifier`), `tools: Read, Grep, Glob, Bash` | `verify/references/verifier-agent.md`, instructions for any sub-agent |
-| Hand-off sentence | `task` tool, `agent_type: "interlock-verifier"`, `mode: "sync"` | Agent tool, `subagent_type: "interlock:verifier"` | a sub-agent with read and shell tools only |
+| Verifier | none: `interlock verify` launches it | `agents/verifier.md` (`interlock:verifier`), `tools: Read, Grep, Glob, Bash` | `verify/references/verifier-agent.md`, instructions for any sub-agent |
+| Hand-off | "Run `interlock verify <id> --host copilot`" | Agent tool, `subagent_type: "interlock:verifier"`, with a filled-in prompt | `interlock verify` where the host is known; otherwise a read-and-shell sub-agent, which interlock records as unbound |
+
+Copilot gets no custom agent because its hooks cannot tell which subagent is calling (a subagent's tool calls carry their own session id and no agent type), so a verifier subagent's attempt could not be bound to it; interlock launches the verifier itself instead. That also settles the review's note about the agent's `search` tool: there is no Copilot agent file.
 
 The static validator applies the Agent Skills rules to every SKILL.md (required `name` and `description`; name 1 to 64 lowercase letters, digits and single hyphens, matching its folder; description 1 to 1024 characters; `compatibility` at most 500; `metadata` a string map; only the specification's fields), plus each host's extra fields for its target, plus: no unexpanded template, every `references/...` a body mentions exists, and a warning past 500 body lines. Agent files must name themselves after their file, describe themselves, and list tools. The frontmatter reader handles the YAML subset skill files use and reports anything else as unsupported rather than guessing.
 
@@ -111,9 +119,9 @@ Run on the pinned hosts with probe skills (raw output in [evidence/skills/s1/](.
 | Routed references under the router | Work: the skill context lists them under "Related files", and `view` reads them | Work: Read reads them |
 | Custom agent profile | `--agent s1-agent` loads its body as the system prompt with only its tools; the `task` tool offers it as an `agent_type` | `agents/*.md` in a plugin load as `plugin:name` |
 
-So the design's report ("listed but reported as not found when used") holds for the agent's skill tool on 1.0.91, and the flag now does what it says: the skill is for people. The settled emission is in the generator table above. A custom agent profile is not needed for user-invoked skills. On Copilot a user-invoked skill is usable only in the interactive session, never in `copilot -p`; that is why only `design` is user-invoked, and why the skills a workflow chains through (route, investigate, implement, verify, review) are model-invoked.
+So the design's report ("listed but reported as not found when used") holds for the agent's skill tool on 1.0.91, and the flag does what it says: the skill is for people. The generated skills were checked the same way: on Copilot, every model-invoked `interlock-*` skill was invoked through the `skill` tool and its text reached the model, `interlock-design` was refused, and `/interlock-design` typed in the interactive TUI reached the model with its body; on Claude Code all six load and `design` and `review` are slash commands. On Copilot a user-invoked skill is usable only in the interactive session, never in `copilot -p`; that is why only `design` is user-invoked.
 
-Claude Code ships built-in skills named `verify` and `design` in this environment (visible in the init event). The plugin namespace (`interlock:verify`) keeps them apart, which is why the Claude Code target is a plugin rather than `.claude/skills/` (that layout also loads; see the S1 evidence).
+Claude Code ships built-in skills named `verify` and `design` in this environment (visible in the init event). The plugin namespace (`interlock:verify`) keeps them apart, which is why the Claude Code target is a plugin rather than `.claude/skills/`.
 
 ## Guided sessions
 
@@ -126,56 +134,75 @@ interlock setup --host copilot       # or --host claude-code
 
 | | Copilot CLI | Claude Code |
 | --- | --- | --- |
-| Skills | `.github/skills/<name>/` (commit to share) | `.interlock/guided/claude-code-plugin/skills/` |
-| Verifier | `.github/agents/interlock-verifier.agent.md` | `.interlock/guided/claude-code-plugin/agents/verifier.md` |
+| Skills | `.github/skills/interlock-<name>/` (commit to share) | `.interlock/guided/claude-code-plugin/skills/` |
+| Verifier | `interlock verify <id> --host copilot`, launched by the verify skill | `.interlock/guided/claude-code-plugin/agents/verifier.md` |
 | Hooks | `.interlock/guided/copilot-plugin/hooks/hooks.json` | `.interlock/guided/claude-code-plugin/hooks/hooks.json` |
 | Start a session | `copilot --plugin-dir .interlock/guided/copilot-plugin` | `claude --plugin-dir .interlock/guided/claude-code-plugin` |
 
-`setup` also creates the store, inspects the host once and saves its capabilities (so attempts in the session read the saved report instead of starting the host's binary from inside it), validates what it generates before writing, and prints the files, the session command, the host report and notes as JSON. The `interlock` binary must be on the session's PATH.
+`setup` also creates the store, inspects the host and saves its capabilities (so attempts in the session read the saved report instead of starting the host's binary from inside it), validates what it generates, and prints the files written, unchanged and refused, the session command, the host report and notes as JSON. A host that is installed but reports no capabilities (a probe that timed out reads that way) is probed once more; if it still reports none, setup saves nothing and fails. Setup writes only inside the repository that holds the store, refuses a store outside it, never writes through a symlink, and never overwrites a file it did not write, or one changed since, unless `--force`; `.interlock/setup-manifest.json` records what it wrote, with hashes. The `interlock` binary must be on the session's PATH.
 
 The hooks run `INTERLOCK_MODE=interactive INTERLOCK_HOST=<host> INTERLOCK_DB=<store> interlock hook <event>` on `PreToolUse`, `Stop` and `SubagentStop`.
 
 ### How a guided session is governed
 
-- **The hooks find the attempt.** A person's session has no `INTERLOCK_ATTEMPT` in its environment. `interlock attempt start` in interactive mode records the attempt in `.interlock/guided-attempt.json`, and interactive hooks govern that attempt while it is open and its task is active. Outside an open attempt they allow everything, as before.
-- **Ask, not deny.** In interactive mode a call the grant does not cover gets `permissionDecision: ask`; the person decides. Hard rules still deny: edits outside the attempt's worktree or the task's scope, commands that touch the store, and the grant's own deny list.
-- **One worktree per attempt.** `--worktree auto` makes a fresh git worktree under `.interlock/worktrees/` (workers at the input snapshot or the last accepted output; verifiers and reviewers at the output under verification) and records it on the attempt.
-- **Results come from the tree.** `result submit --tree auto` records the worktree's tree, and the change set is read from it, so scope holds whatever the caller lists.
-- **The store is found from inside a worktree.** Without `INTERLOCK_DB`, a command run anywhere under `<repo>/.interlock/worktrees/` uses `<repo>/.interlock/state.db`; everywhere else the store is still found at the nearest repository root.
-- **The stop guard holds the session** until the open attempt's evidence is recorded, once per stop, as in the headless path.
+- **Each attempt is bound to its caller.** Every hook payload names the host session, and on Claude Code a subagent's id and type. When the hooks see `interlock attempt start`, they record who ran it; the CLI binds the new attempt to that caller in the store (`binding`: `session`, `subagent`, `interlock_launched` or `unbound`). An attempt governs only its own caller, and on Claude Code that caller's subagents; other sessions in the same checkout are not governed by it. Submitting, ending or superseding an attempt releases the session. An interactive worker attempt opened where no hook saw it goes to the first session that calls a hook; a verifier attempt never does.
+- **Who may verify.** The hooks refuse `attempt start --role verifier` from the main agent of a session that holds the task's worker attempt (running or submitted). On Claude Code, a verifier attempt opened by the `interlock:verifier` subagent is bound to that subagent. `interlock verify` launches a separate headless verifier session and binds its attempt as `interlock_launched`. A verifier anyone else opens is `unbound`. A verifier's credentials (`assess add`, `check run`, `attempt end`, and the rest) work only from the caller its attempt is bound to; a command whose attempt id the hooks cannot read is refused while a foreign verifier attempt is open.
+- **Unbound verifiers count only where interlock ran the check.** For a criterion without a check, an assessment is the whole evidence, so one from an unbound verifier does not count, and `status` says so. Failures from anyone still count. `status` and `brief` show each attempt's binding.
+- **interlock's state is off limits.** Everything under `.interlock/` except the caller's own worktree: edit tools may not write there, and shell commands may not change it, in every hooked session, governed or not. Reading is allowed (Claude Code's skills keep their references there). The hooks judge each simple command of a shell line, following `cd`: output redirected there, a path there named by any command but a read-only one (inside a string too), and a command that would change files while its directory is there, are refused. Here-documents are data. `interlock` itself is allowed.
+- **Fail closed.** A payload the hook cannot read, or one with no session id, is refused while a guided attempt is open, and so is anything when the store cannot be read.
+- **Ask, not deny.** In interactive mode a call the grant does not cover gets `permissionDecision: ask`; the person decides. Hard rules still deny: edits outside the attempt's worktree or the task's scope, interlock's state, and the grant's own deny list.
+- **One worktree per attempt.** `--worktree auto` makes a fresh git worktree under `.interlock/worktrees/` (workers at the input snapshot or the last accepted output; verifiers and reviewers at the output under verification) and records it on the attempt. `--tree auto`, and an attempt's `check run`, use that worktree wherever the command runs.
+- **Results come from the tree, or not at all.** `result submit` reads the change set itself, from the output tree in the repository that owns the store, against the input snapshot. The caller's directory and its git variables (`GIT_DIR`, `GIT_WORK_TREE`, `GIT_INDEX_FILE` and the rest) play no part, there is no `--changed`, and when the changes cannot be read the submission is refused with exit 2.
+- **The store is found from inside a worktree.** Without `INTERLOCK_DB`, a command run under `<repo>/.interlock/worktrees/` uses `<repo>/.interlock/state.db`, and refuses rather than create a fresh store there; elsewhere the store is at the nearest repository root.
+- **The stop guard** holds an agent until its own attempt's evidence is recorded, once per stop. Every suggested command is complete, with `--attempt` and `--token`, and each role is asked only for its own record: a worker for claims, a verifier for assessments.
+- **Done, failed and cancelled settle the task.** interlock ends the attempts the task left open and removes their worktrees. Before that, a done task's verified output is kept at `refs/interlock/tasks/<id>`, a commit on the input snapshot; `advance` prints it with `git cherry-pick <ref>`, and the verify skill tells the person. No branch moves.
 
-### Verification is delegated
+### Notes
 
-The verify skill hands off with the host's native delegation (Copilot's `task` tool, Claude Code's Agent tool) to the generated verifier agent, which has read and shell tools only. The verifier opens its own attempt and records its own assessments. An interactive verifier attempt needs the host's `custom_agents` capability; without it the attempt does not open and the task moves to blocked with "no independent verifier", its work kept.
+`interlock note add --task <id> --kind design|review|answer --file -` keeps a design's rationale, a review's judged findings or an investigation's answer on the task, in the store; `interlock note list --task <id>` reads them. The design, review and investigate skills use it, so their output outlives the session and needs no file the hooks would have to allow.
+
+### Verification
+
+| Host | How the verify skill gets an independent verifier | Binding |
+| --- | --- | --- |
+| Claude Code | The Agent tool with `subagent_type: "interlock:verifier"` and a filled-in prompt; the subagent opens its own attempt | `subagent` |
+| Copilot CLI | `interlock verify <id> --host copilot`: interlock launches a headless verifier session with read and test tools, on exactly the submitted files, and applies what its evidence allows | `interlock_launched` |
+| Other | `interlock verify` where interlock knows the host; otherwise a read-and-shell sub-agent | `unbound` for the latter |
+
+An interactive verifier attempt needs the host's `custom_agents` capability; without it the attempt does not open and the task moves to blocked with "no independent verifier", its work kept.
 
 ## P1 gate
 
 | Gate item | Result | Evidence |
 | --- | --- | --- |
-| Investigation end to end in guidance mode, Copilot | `done` via G1, G2, G3, G4, G7; scripted model; real Copilot CLI, skills, hooks and custom agent | `crates/interlock-cli/tests/guided_copilot.rs`, [copilot-investigation](../evidence/skills/p1/copilot-investigation/) |
-| Bug fix end to end in guidance mode, Copilot | `done` via G1, G2, G3, G4, G7; an edit outside the worktree denied by the guided hook; an uncovered external call asked, which `copilot -p` turns into a denial | same test, [copilot-bug-fix](../evidence/skills/p1/copilot-bug-fix/) |
-| Investigation end to end in guidance mode, Claude Code, live | `done` via G1, G2, G3, G4, G7 in 43 s for $0.25; a correct, cited answer, rechecked by `interlock:verifier` with its own injected-clock run | [p1/claude-code-investigation](../evidence/skills/p1/claude-code-investigation/) |
-| Bug fix end to end in guidance mode, Claude Code, live | `done` via G1, G2, G3, G4, G7 in 47 s for $0.28; the reproduction failed on the input snapshot and passed on the output, in interlock's own runs; the verifier ran as `interlock:verifier` | [p1/claude-code-bug-fix](../evidence/skills/p1/claude-code-bug-fix/) |
-| The guided hooks on Claude Code, live | An edit outside the worktree denied; an uncovered `curl -X POST` asked, and `claude -p` (no one to ask) recorded it as a permission denial | [p1/claude-code-hook-probe](../evidence/skills/p1/claude-code-hook-probe/) |
-| Every generated skill loads | Copilot: all six by `copilot skill list`; Claude Code: all six and the verifier in the init event | `crates/interlock-cli/tests/skills_load.rs` |
+| Investigation end to end in guidance mode, Copilot | `done` via G1, G2, G3, G4, G7; scripted model; real Copilot CLI, skills and hooks; verified by `interlock verify`. The worker's session was refused a verifier attempt; a `task` subagent's verifier was recorded `unbound` and its pass did not count | `crates/interlock-cli/tests/guided_copilot.rs`, [copilot-investigation](../evidence/skills/p1/copilot-investigation/) |
+| Bug fix end to end in guidance mode, Copilot | `done` via G1, G2, G3, G4, G7; an edit outside the worktree denied; an uncovered external call asked, which `copilot -p` turns into a denial; the worker's own verifier attempt refused; the launched verifier's edit denied | same test, [copilot-bug-fix](../evidence/skills/p1/copilot-bug-fix/) |
+| The Copilot tests, three runs in a row | 2 of 2 passed each time, with `INTERLOCK_REQUIRE_HOSTS=1` | [review-fixes/guided-copilot-3-runs.txt](../evidence/skills/review-fixes/guided-copilot-3-runs.txt) |
+| Investigation end to end in guidance mode, Claude Code, live (sonnet) | `done` via G1, G2, G3, G4, G7 in 53 s for $0.26; a correct, cited answer, rechecked by the `interlock:verifier` subagent, bound as `subagent` | [p1/claude-code-investigation](../evidence/skills/p1/claude-code-investigation/) |
+| Bug fix end to end in guidance mode, Claude Code, live (sonnet) | `done` via G1, G2, G3, G4, G7 in 48 s for $0.26; the reproduction failed on the input snapshot and passed on the output, in interlock's own runs; verifier bound as `subagent`; the output kept at `refs/interlock/tasks/duration-sum` | [p1/claude-code-bug-fix](../evidence/skills/p1/claude-code-bug-fix/) |
+| The guided hooks on Claude Code, live | An edit outside the worktree denied; an uncovered `curl -X POST` asked, and `claude -p` recorded it as a permission denial. Run on commit 4f7e74b | [p1/claude-code-hook-probe](../evidence/skills/p1/claude-code-hook-probe/) |
+| Every generated skill loads, and reaches the model | Copilot: all six listed; each model-invoked skill's text reached the model through the `skill` tool; `/interlock-design` typed in the TUI reached it. Claude Code: all six and the verifier in the init event | `crates/interlock-cli/tests/skills_load.rs`, [load](../evidence/skills/load/) |
 | Plain Agent Skills output passes static validation | `interlock skills validate` reports no problems | `crates/interlock-skillgen/tests/generate.rs`, [validate](../evidence/skills/validate/) |
 
 ## Changes from the design
 
 - **Claude Code is a target.** The design's generator emits Copilot files and plain Agent Skills. Per the host decision, Claude Code is a first-class host, so it gets its own target: a plugin, because a plugin namespace keeps `verify` and `design` apart from Claude Code's built-in skills of those names.
-- **User-invoked emission: keep the flag.** The design left this to S1 (a custom agent profile, or a skill without the flag). S1 shows the flag now does the right thing on both hosts: hidden from the agent, available to a person by name. A profile is not needed.
+- **User-invoked emission: keep the flag.** The design left this to S1 (a custom agent profile, or a skill without the flag). S1 shows the flag does the right thing on both hosts: hidden from the agent, available to a person by name.
 - **The verifier opens its own attempt.** §3 has custom agents "report back with their attempt token". The verifier keeps its token to itself and reports its attempt id and verdicts; the main session never holds a verifier token.
-- **Review informs, verify decides.** The core accepts assessments from verifier attempts only, so a reviewer attempt records its findings in its end note and a file, and the verifier checks the act-on findings. A reproduced finding fails its criterion and R1 sends the task back.
-- **Guided attempts are found through a file.** The headless hooks read the attempt from the session's environment, which a person's session does not have. `.interlock/guided-attempt.json` names the attempt the guided session opened last; one guided attempt per checkout.
+- **On Copilot, interlock launches the verifier.** §3 has native delegation on both hosts. Copilot's hooks cannot name the calling subagent, so independence there comes from `interlock verify` launching the verifier as its own session.
+- **Review informs, verify decides.** The core accepts assessments from verifier attempts only, so a reviewer attempt records its findings in its end note and a task note, and the verifier checks the act-on findings. A reproduced finding fails its criterion and R1 sends the task back.
+- **Guided attempts are bound in the store.** The headless hooks read the attempt from the session's environment, which a person's session does not have. Each guided attempt records, in the store, the host session (and subagent) that opened it.
 
 ## Limits
 
-- **Copilot was not run with a real model.** Its guided runs exercise the real CLI, skills, hooks, custom agent and permissions, with a scripted model choosing every tool call. They prove the plumbing, not that a model follows the skills. The live evidence that a model follows them is from Claude Code.
-- **The interactive Copilot TUI was driven only for S1.** The slash-command finding comes from a pseudo-terminal run of the real TUI against the scripted model. The P1 runs use `copilot -p`, where user-invoked skills cannot be used at all; no P1 workflow needs one.
-- **"Ask" was observed only where nobody can answer.** In `copilot -p` and `claude -p` an ask becomes a denial ("unable to ask user for confirmation" on Copilot; a permission denial on Claude Code). Neither host's interactive prompt for a hook ask was exercised with a person.
-- **The live runs are one each, on small repositories.** A model following the skills once is evidence they work, not a measure of how often. In both, the person's request named the route skill (`/interlock:route ...`); the model chose every later skill, the hand-off, and every interlock command.
-- **Attempt tokens and the guided-attempt file are bookkeeping, not security.** A session with shell access can read the file, and the main session could open a verifier attempt itself. Independence rests on the verify skill handing off and on the custom agent's restricted tools, as in the design.
-- **Shell writes are not placement-checked per call.** The hooks place edit-tool writes; a `sed -i` outside the worktree is not stopped per call. Scope is enforced at G3 on the output tree, and the repository's own files are never part of an attempt's output.
-- **One guided attempt per checkout at a time.** Two people driving two tasks in one checkout would share the guided-attempt file.
+- **Copilot was not run with a real model.** Its guided runs exercise the real CLI, skills, hooks, TUI and permissions, with a scripted model choosing every tool call. They prove the plumbing, not that a model follows the skills. The live evidence that a model follows them is from Claude Code.
+- **Copilot does not pass its provider settings to commands.** Its bash tool drops `COPILOT_OFFLINE` and `COPILOT_PROVIDER_*` from the environment of the commands it runs (it keeps `COPILOT_HOME` and `COPILOT_MODEL`), so the verifier `interlock verify` launches uses the person's signed-in Copilot. With a bring-your-own-model provider, the command needs those variables set on it; the offline tests do that.
+- **`interlock verify` was run on Copilot only.** It uses the same supervisor session as `interlock run`, but no guided run on Claude Code used it; there the verifier subagent is the path.
+- **"Ask" was observed only where nobody can answer.** In `copilot -p` and `claude -p` an ask becomes a denial. Neither host's interactive prompt for a hook ask was exercised with a person.
+- **The live runs are one each, on small repositories,** after one failed and one superseded run (see the evidence). In both, the person's request named the route skill (`/interlock:route ...`); the model chose every later skill, the hand-off, and every interlock command.
+- **The state guard reads command text.** It catches commands that name interlock's state, as words or inside strings, and commands run from inside it. A path computed at run time (`touch "$(cat f)"`), or a script that writes there, is beyond it. Attempt tokens are stored only as hashes, so reading the store reveals none.
+- **Binding trusts the host's payload.** It is as good as the session and agent ids the host reports. In this container a nested `claude` reports its parent session's id, so both live runs show the outer session's id; the binding still tells the main agent from the subagent by agent id. A Copilot subagent appears as its own session, so a verifier it opens is `unbound`.
+- **Shell writes are not placement-checked per call.** The hooks place edit-tool writes; a `sed -i` outside the worktree, but outside `.interlock/`, is not stopped per call. Scope is enforced at G3 on the output tree, and the repository's own files are never part of an attempt's output.
+- **The probe hang was not reproduced.** One earlier setup saved a host report with no capabilities. 32 concurrent probes on fresh Copilot homes all finished in about 1.5 s, and no stray processes were left. The probe now reads the host's output for at most two seconds after it exits, times out after 15 s and retries once, and setup refuses a report with no capabilities.
 - **The validator reads a YAML subset.** Anchors, flow mappings and multi-line plain scalars are reported as unsupported.
 - **Feature and refactor have skills and templates but no end-to-end run.** The P1 gate names investigation and bug fix; those are the workflows run.

@@ -1,11 +1,11 @@
 {
-  "id": "parse-duration-sum",
+  "id": "duration-sum",
   "repository": ".",
   "workflow": {
     "name": "bug-fix",
     "version": 1
   },
-  "intent": "parse_duration(\"1h30m\") in durations.py returns 1800 instead of 5400; compound durations must sum all their parts.",
+  "intent": "parse_duration('1h30m') returns 1800 instead of 5400; multi-unit durations must sum all components",
   "scope": {
     "paths": [
       "durations.py",
@@ -17,8 +17,8 @@
   "criteria": [
     {
       "id": "repro",
-      "statement": "parse_duration of compound durations sums every part (1h30m is 5400)",
-      "check": "python3 -c 'from durations import parse_duration as p; assert p(\"1h30m\")==5400 and p(\"2m10s\")==130 and p(\"45s\")==45'",
+      "statement": "parse_duration('1h30m') returns 5400 and '2m10s' returns 130",
+      "check": "python3 -c 'from durations import parse_duration as p; assert p(\"1h30m\")==5400 and p(\"2m10s\")==130'",
       "check_version": "1",
       "min_strength": "observed",
       "producer": "independent",
@@ -36,12 +36,12 @@
   ],
   "input_snapshot": {
     "repository": ".",
-    "base_commit": "407b3658be91320b4208997f2f66a59e0c704419",
+    "base_commit": "a2a6dd9cadabe2dc157c541e0a5d5bbda38de233",
     "untracked_hash": null,
     "protected_paths": []
   },
   "environment": "",
-  "policy_digest": "sha256:b729823f83ed8473a068c8e6a240de5b5c0d81209cf91a87a05ade05a32dfccb",
+  "policy_digest": "sha256:78bdf18f4cbdd649c16dd0906dacfb5377f554c009176ce15d10c6277ff456cd",
   "budget": {
     "max_attempts": 3
   },
@@ -49,10 +49,10 @@
   "state": "done",
   "resume_point": null,
   "blocked_reason": null,
-  "current_tree": "b6704bc62639be217cdda0bb0b362d889e443ad2",
+  "current_tree": "4688fba1015d33dedf241719d5caee3cfb7ffa3c",
   "lease_epoch": 1,
-  "current_attempt": "att-f91346fccd824bae",
+  "current_attempt": "att-0c96f4cd20834457",
   "attempts_used": 1,
-  "created_at": "2026-10-06T00:09:49.533515942Z",
-  "updated_at": "2026-10-06T00:10:24.458076997Z"
+  "created_at": "2026-10-06T01:55:04.587753887Z",
+  "updated_at": "2026-10-06T01:55:40.698580421Z"
 }

@@ -1,6 +1,6 @@
 [
   {
-    "id": "att-8f3683217e6b4971",
+    "id": "att-9b6c3a6489844769",
     "task_id": "ttl-boundary",
     "epoch": 1,
     "role": "worker",
@@ -10,7 +10,7 @@
     },
     "agent": null,
     "model": null,
-    "worktree": "/home/user/autonomous-claude-workflow-bundle/.claude/worktrees/agent-a7be600d9be0a6677/interlock/target/skws/live/investigation-repo/.interlock/worktrees/ttl-boundary-worker-1",
+    "worktree": "/home/user/autonomous-claude-workflow-bundle/.claude/worktrees/agent-a7be600d9be0a6677/interlock/target/skws/live3/investigation-repo/.interlock/worktrees/ttl-boundary-worker-1",
     "effective_grant": {
       "action_classes": [
         "read",
@@ -31,13 +31,20 @@
       "landing_authority": "none",
       "grant_ids": []
     },
-    "token_hash": "f5720988aa63c287efd71c5b850dde29623137984d30aa0b5890d508a4013fc5",
-    "status": "submitted",
-    "started_at": "2026-10-06T00:11:20.749310792Z",
-    "ended_at": null
+    "token_hash": "a952d4d4086112ece077cc28dcc1ded5e3f7add6dcadc0f97aa31ed9f1c7585b",
+    "status": "completed",
+    "started_at": "2026-10-06T01:52:57.844018021Z",
+    "ended_at": "2026-10-06T01:53:36.114266828Z",
+    "binding": {
+      "via": "session",
+      "interactive": true,
+      "host_session": "533a7202-b2b1-5f9c-8fb9-d9bcdfeb7c84",
+      "host_agent": null,
+      "agent_type": null
+    }
   },
   {
-    "id": "att-8d499b24c88b4ed2",
+    "id": "att-15f54f782cd94357",
     "task_id": "ttl-boundary",
     "epoch": 1,
     "role": "verifier",
@@ -47,7 +54,7 @@
     },
     "agent": "interlock:verifier",
     "model": null,
-    "worktree": "/home/user/autonomous-claude-workflow-bundle/.claude/worktrees/agent-a7be600d9be0a6677/interlock/target/skws/live/investigation-repo/.interlock/worktrees/ttl-boundary-verifier-1",
+    "worktree": "/home/user/autonomous-claude-workflow-bundle/.claude/worktrees/agent-a7be600d9be0a6677/interlock/target/skws/live3/investigation-repo/.interlock/worktrees/ttl-boundary-verifier-1",
     "effective_grant": {
       "action_classes": [
         "read",
@@ -67,9 +74,16 @@
       "landing_authority": "none",
       "grant_ids": []
     },
-    "token_hash": "7fa3030fe3fe58ad97b0f26648ea57793cd7b241013fc36ff960ffc1ada509d2",
+    "token_hash": "9083eb8c213b3f0b3844411e7718c8ff167798441be4ffa72c538ce901443879",
     "status": "completed",
-    "started_at": "2026-10-06T00:11:36.283909807Z",
-    "ended_at": "2026-10-06T00:11:45.729646374Z"
+    "started_at": "2026-10-06T01:53:16.871470420Z",
+    "ended_at": "2026-10-06T01:53:31.943741912Z",
+    "binding": {
+      "via": "subagent",
+      "interactive": true,
+      "host_session": "533a7202-b2b1-5f9c-8fb9-d9bcdfeb7c84",
+      "host_agent": "acf5325b8c3c8332d",
+      "agent_type": "interlock:verifier"
+    }
   }
 ]

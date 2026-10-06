@@ -1,16 +1,32 @@
 {
   "attempts": [
     {
+      "binding": {
+        "agent_type": null,
+        "host_agent": null,
+        "host_session": "533a7202-b2b1-5f9c-8fb9-d9bcdfeb7c84",
+        "interactive": true,
+        "via": "session"
+      },
+      "bound": "bound to session 533a7202-b2b1-5f9c-8fb9-d9bcdfeb7c84",
       "epoch": 1,
       "host": "claude-code",
-      "id": "att-8f3683217e6b4971",
+      "id": "att-9b6c3a6489844769",
       "role": "worker",
-      "status": "submitted"
+      "status": "completed"
     },
     {
+      "binding": {
+        "agent_type": "interlock:verifier",
+        "host_agent": "acf5325b8c3c8332d",
+        "host_session": "533a7202-b2b1-5f9c-8fb9-d9bcdfeb7c84",
+        "interactive": true,
+        "via": "subagent"
+      },
+      "bound": "interlock's verifier subagent: session 533a7202-b2b1-5f9c-8fb9-d9bcdfeb7c84, agent acf5325b8c3c8332d (interlock:verifier)",
       "epoch": 1,
       "host": "claude-code",
-      "id": "att-8d499b24c88b4ed2",
+      "id": "att-15f54f782cd94357",
       "role": "verifier",
       "status": "completed"
     }
@@ -24,7 +40,7 @@
         "current_assessments": 1,
         "current_claims": 1,
         "current_runs": 0,
-        "evidence_id": "asm-d9a4e013ac1745a9",
+        "evidence_id": "asm-a7aa3d7e1be546af",
         "source": "assessment",
         "stale": 0,
         "strength": "observed",
@@ -36,7 +52,7 @@
   "task": {
     "attempts_used": 1,
     "blocked_reason": null,
-    "current_attempt": "att-8f3683217e6b4971",
+    "current_attempt": "att-9b6c3a6489844769",
     "current_tree": "e2abab1d819807dd70f25b1fa552bd377f7eb000",
     "id": "ttl-boundary",
     "integration_required": false,

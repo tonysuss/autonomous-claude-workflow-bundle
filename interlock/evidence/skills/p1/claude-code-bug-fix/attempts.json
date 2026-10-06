@@ -1,7 +1,7 @@
 [
   {
-    "id": "att-f91346fccd824bae",
-    "task_id": "parse-duration-sum",
+    "id": "att-0c96f4cd20834457",
+    "task_id": "duration-sum",
     "epoch": 1,
     "role": "worker",
     "host": {
@@ -10,7 +10,7 @@
     },
     "agent": null,
     "model": null,
-    "worktree": "/home/user/autonomous-claude-workflow-bundle/.claude/worktrees/agent-a7be600d9be0a6677/interlock/target/skws/live/bugfix-repo/.interlock/worktrees/parse-duration-sum-worker-1",
+    "worktree": "/home/user/autonomous-claude-workflow-bundle/.claude/worktrees/agent-a7be600d9be0a6677/interlock/target/skws/live4/bugfix-repo/.interlock/worktrees/duration-sum-worker-1",
     "effective_grant": {
       "action_classes": [
         "read",
@@ -29,14 +29,21 @@
       "landing_authority": "none",
       "grant_ids": []
     },
-    "token_hash": "b2c448dfd0d73dc6b5c5ce1df274be360c6b2d805e699e82cc98db53204b653e",
-    "status": "submitted",
-    "started_at": "2026-10-06T00:09:57.342793920Z",
-    "ended_at": null
+    "token_hash": "6c2d30e618eb290b31e3312f39fab96ca2a6490ff3eb476a031a5bc036b2a036",
+    "status": "completed",
+    "started_at": "2026-10-06T01:55:12.094892310Z",
+    "ended_at": "2026-10-06T01:55:40.703757213Z",
+    "binding": {
+      "via": "session",
+      "interactive": true,
+      "host_session": "533a7202-b2b1-5f9c-8fb9-d9bcdfeb7c84",
+      "host_agent": null,
+      "agent_type": null
+    }
   },
   {
-    "id": "att-924c60b4d51a43f7",
-    "task_id": "parse-duration-sum",
+    "id": "att-2847147c2820422d",
+    "task_id": "duration-sum",
     "epoch": 1,
     "role": "verifier",
     "host": {
@@ -45,7 +52,7 @@
     },
     "agent": "interlock:verifier",
     "model": null,
-    "worktree": "/home/user/autonomous-claude-workflow-bundle/.claude/worktrees/agent-a7be600d9be0a6677/interlock/target/skws/live/bugfix-repo/.interlock/worktrees/parse-duration-sum-verifier-1",
+    "worktree": "/home/user/autonomous-claude-workflow-bundle/.claude/worktrees/agent-a7be600d9be0a6677/interlock/target/skws/live4/bugfix-repo/.interlock/worktrees/duration-sum-verifier-1",
     "effective_grant": {
       "action_classes": [
         "read",
@@ -65,9 +72,16 @@
       "landing_authority": "none",
       "grant_ids": []
     },
-    "token_hash": "235d4b73c9d574ae8a64966d0b898290e0c2a46ec43ff052b4295d86ac5915ac",
+    "token_hash": "b33f650125cbd21c33b57f40eab5a68f11c32e3cc9c79f82d991424355805442",
     "status": "completed",
-    "started_at": "2026-10-06T00:10:14.137493532Z",
-    "ended_at": "2026-10-06T00:10:20.574541911Z"
+    "started_at": "2026-10-06T01:55:28.957838121Z",
+    "ended_at": "2026-10-06T01:55:36.625949662Z",
+    "binding": {
+      "via": "subagent",
+      "interactive": true,
+      "host_session": "533a7202-b2b1-5f9c-8fb9-d9bcdfeb7c84",
+      "host_agent": "ae7c9d4c4af01e116",
+      "agent_type": "interlock:verifier"
+    }
   }
 ]

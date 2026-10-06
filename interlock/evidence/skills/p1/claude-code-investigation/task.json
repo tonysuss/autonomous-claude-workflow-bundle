@@ -14,7 +14,7 @@
   "criteria": [
     {
       "id": "answer",
-      "statement": "The question is answered with file and line citations (where the expiry comparison is decided, and the history/rationale for it), and a command shows the behavior at exactly ttl seconds",
+      "statement": "The question is answered with file and line citations (where the expiry boundary is decided, and the history/reason for it), and a command shows the behavior at exactly ttl seconds",
       "check": null,
       "check_version": "1",
       "min_strength": "observed",
@@ -24,12 +24,12 @@
   ],
   "input_snapshot": {
     "repository": ".",
-    "base_commit": "7c6352a5585e1b7006a7430e826655ff123cf7cd",
+    "base_commit": "2e2afb8027b7b7948dafb9b467a64cd3dac5a416",
     "untracked_hash": null,
     "protected_paths": []
   },
   "environment": "",
-  "policy_digest": "sha256:53461824e9d74f867ba67e5f424db3864d0482c7c75e1feabc7bb9c3378038ff",
+  "policy_digest": "sha256:942e364feb73c2e81af5317332237bc512b825968701d5260c65d3e1f195a4c8",
   "budget": {
     "max_attempts": 2
   },
@@ -39,8 +39,8 @@
   "blocked_reason": null,
   "current_tree": "e2abab1d819807dd70f25b1fa552bd377f7eb000",
   "lease_epoch": 1,
-  "current_attempt": "att-8f3683217e6b4971",
+  "current_attempt": "att-9b6c3a6489844769",
   "attempts_used": 1,
-  "created_at": "2026-10-06T00:11:17.758887384Z",
-  "updated_at": "2026-10-06T00:11:49.811488177Z"
+  "created_at": "2026-10-06T01:52:54.754153428Z",
+  "updated_at": "2026-10-06T01:53:36.109578300Z"
 }

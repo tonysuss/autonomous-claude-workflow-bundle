@@ -1,20 +1,20 @@
 [
   {
-    "id": "clm-a520027760ed4311",
+    "id": "clm-cd881bda3764410b",
     "task_id": "ttl-boundary",
     "criterion_id": "answer",
-    "attempt_id": "att-8f3683217e6b4971",
+    "attempt_id": "att-9b6c3a6489844769",
     "strength": "observed",
     "currency": {
       "tree": "e2abab1d819807dd70f25b1fa552bd377f7eb000",
       "check_version": "1",
       "environment": "",
-      "policy_digest": "sha256:53461824e9d74f867ba67e5f424db3864d0482c7c75e1feabc7bb9c3378038ff"
+      "policy_digest": "sha256:942e364feb73c2e81af5317332237bc512b825968701d5260c65d3e1f195a4c8"
     },
     "evidence_refs": [
-      "cache.py:20; python3 fake-clock run: ttl=10 -> get at 10 returns 'v', at 10.001 MISS; git show 7c6352a"
+      "python3 -c (fake clock, ttl=10): get at 10 -> 'v'; at 10.001 -> MISS; cache.py:20"
     ],
-    "note": "Yes: get returns the value at exactly ttl. Decided at cache.py:20 (clock()-stored > ttl, strict). Commit 7c6352a (#12) changed >= to > because coarse monotonic clocks (15ms ticks) expired ttl=1 entries on first read after one tick; ttl is now the guaranteed minimum lifetime.",
-    "recorded_at": "2026-10-06T00:11:30.160910398Z"
+    "note": "Yes: at exactly ttl the entry is returned. Boundary is cache.py:20 'self.clock() - stored > self.ttl' (strict), changed from '>=' in 2e2afb8 (#12) whose message states the reason: coarse clocks made ttl=1 entries expire on first read after one tick; ttl is now the minimum lifetime.",
+    "recorded_at": "2026-10-06T01:53:11.696629880Z"
   }
 ]

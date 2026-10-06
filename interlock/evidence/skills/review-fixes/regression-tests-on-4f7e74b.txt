@@ -1,0 +1,58 @@
+     Running tests/cli.rs (target/skws/before-target/debug/deps/cli-9d2e2c87b8ee18f5)
+test grants_reject_the_irreversible_class ... ok
+test one_grant_translates_to_both_hosts ... ok
+test a_crash_mid_apply_loses_nothing_and_the_replay_applies_once ... ok
+test a_bug_fix_runs_from_create_to_done ... FAILED
+test check_run_records_what_interlock_saw_and_baselines_catch_empty_checks ... ok
+test schema_validate_checks_files ... ok
+test refusals_exit_2_with_a_json_reason ... ok
+test policy_check_pauses_irreversible_actions_and_respects_grants ... ok
+test the_brief_is_built_from_records ... ok
+---- a_bug_fix_runs_from_create_to_done stdout ----
+thread 'a_bug_fix_runs_from_create_to_done' (8945) panicked at crates/interlock-cli/tests/cli.rs:188:5:
+test result: FAILED. 8 passed; 1 failed; 0 ignored; 0 measured; 0 filtered out; finished in 1.88s
+     Running tests/guided_cli.rs (target/skws/before-target/debug/deps/guided_cli-6cbec0218bbec7a0)
+test a_task_id_cannot_climb_out_of_the_store ... ok
+test a_guided_attempt_governs_only_the_session_that_opened_it_until_submitted ... FAILED
+test an_empty_scope_allows_no_change ... FAILED
+test an_investigation_changes_nothing_at_all ... FAILED
+test cancel_closes_the_attempts_and_removes_their_worktrees ... FAILED
+test guided_hooks_keep_every_caller_out_of_interlocks_state ... FAILED
+test setup_installs_prefixed_skills_and_never_overwrites_what_is_not_its_own ... FAILED
+test notes_and_tree_auto_follow_the_attempt_not_the_directory ... FAILED
+test result_submit_reads_the_change_from_the_tree_and_fails_closed ... FAILED
+test skills_validate_checks_skills_and_agent_files ... FAILED
+test setup_never_writes_through_a_symlink_or_outside_the_repository ... FAILED
+test setup_refuses_to_save_a_host_report_without_capabilities ... FAILED
+test stop_guard_messages_are_complete_and_ask_each_role_for_its_own_record ... FAILED
+test the_store_is_found_from_a_worktree_and_never_made_inside_one ... FAILED
+test the_worker_cannot_verify_its_own_work_and_only_a_bound_verifier_counts ... FAILED
+---- a_guided_attempt_governs_only_the_session_that_opened_it_until_submitted stdout ----
+thread 'a_guided_attempt_governs_only_the_session_that_opened_it_until_submitted' (9388) panicked at crates/interlock-cli/tests/guided_cli.rs:501:5:
+---- an_empty_scope_allows_no_change stdout ----
+thread 'an_empty_scope_allows_no_change' (9390) panicked at crates/interlock-cli/tests/guided_cli.rs:630:5:
+---- an_investigation_changes_nothing_at_all stdout ----
+thread 'an_investigation_changes_nothing_at_all' (9391) panicked at crates/interlock-cli/tests/guided_cli.rs:615:5:
+---- cancel_closes_the_attempts_and_removes_their_worktrees stdout ----
+thread 'cancel_closes_the_attempts_and_removes_their_worktrees' (9482) panicked at crates/interlock-cli/tests/guided_cli.rs:696:5:
+---- guided_hooks_keep_every_caller_out_of_interlocks_state stdout ----
+thread 'guided_hooks_keep_every_caller_out_of_interlocks_state' (9539) panicked at crates/interlock-cli/tests/guided_cli.rs:460:9:
+---- setup_installs_prefixed_skills_and_never_overwrites_what_is_not_its_own stdout ----
+thread 'setup_installs_prefixed_skills_and_never_overwrites_what_is_not_its_own' (9644) panicked at crates/interlock-cli/tests/guided_cli.rs:294:5:
+---- notes_and_tree_auto_follow_the_attempt_not_the_directory stdout ----
+thread 'notes_and_tree_auto_follow_the_attempt_not_the_directory' (9553) panicked at crates/interlock-cli/tests/guided_cli.rs:645:5:
+---- result_submit_reads_the_change_from_the_tree_and_fails_closed stdout ----
+thread 'result_submit_reads_the_change_from_the_tree_and_fails_closed' (9598) panicked at crates/interlock-cli/tests/guided_cli.rs:434:5:
+---- skills_validate_checks_skills_and_agent_files stdout ----
+thread 'skills_validate_checks_skills_and_agent_files' (9746) panicked at crates/interlock-cli/tests/guided_cli.rs:167:9:
+---- setup_never_writes_through_a_symlink_or_outside_the_repository stdout ----
+thread 'setup_never_writes_through_a_symlink_or_outside_the_repository' (9725) panicked at crates/interlock-cli/tests/guided_cli.rs:348:5:
+---- setup_refuses_to_save_a_host_report_without_capabilities stdout ----
+thread 'setup_refuses_to_save_a_host_report_without_capabilities' (9736) panicked at crates/interlock-cli/tests/guided_cli.rs:374:5:
+---- stop_guard_messages_are_complete_and_ask_each_role_for_its_own_record stdout ----
+thread 'stop_guard_messages_are_complete_and_ask_each_role_for_its_own_record' (9780) panicked at crates/interlock-cli/tests/guided_cli.rs:675:5:
+---- the_store_is_found_from_a_worktree_and_never_made_inside_one stdout ----
+thread 'the_store_is_found_from_a_worktree_and_never_made_inside_one' (9840) panicked at crates/interlock-cli/tests/guided_cli.rs:716:5:
+---- the_worker_cannot_verify_its_own_work_and_only_a_bound_verifier_counts stdout ----
+thread 'the_worker_cannot_verify_its_own_work_and_only_a_bound_verifier_counts' (9845) panicked at crates/interlock-cli/tests/guided_cli.rs:539:5:
+test result: FAILED. 1 passed; 14 failed; 0 ignored; 0 measured; 0 filtered out; finished in 2.04s

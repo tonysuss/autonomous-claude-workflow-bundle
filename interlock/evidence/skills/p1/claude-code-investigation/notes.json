@@ -1,0 +1,9 @@
+[
+  {
+    "seq": 1,
+    "task_id": "ttl-boundary",
+    "kind": "answer",
+    "body": "## Overview\nYes. TTLCache.get still returns a value exactly ttl seconds after put. Entries expire only once strictly older than ttl.\n\n## How it works\nThe decision is one line, `cache.py:20`: `if self.clock() - stored > self.ttl:` in `get` (`cache.py:15-23`). Equal age returns the value; older deletes the entry and returns default. `put` (`cache.py:12-13`) stamps `self.clock()`; the clock is injectable (default `time.monotonic`).\n\n## Why it is this way\nDirect (commit 2e2afb8, \"Keep cache entries through their last second (#12)\", Ana): on coarse clocks (monotonic ticks in ~15 ms steps on some platforms) ttl=1 entries expired on the first read after a one-tick advance. Serving until strictly older than ttl makes ttl the minimum lifetime callers can rely on. The original (d6cba38, Sam) used `>=`. Searched: git log/blame for cache.py (only two commits); no tests, docs or PR text in the repo beyond the commit message.\n\n## Evidence\nFake clock, ttl=10: `9.999 'v'`, `10 'v'`, `10.001 'MISS'`.\n\n## Gotchas\nReal lifetime is ttl plus up to the time until the next get; expired entries are only deleted lazily on get. No tests cover the boundary.\n",
+    "at": "2026-10-06T01:53:12.002353444+00:00"
+  }
+]

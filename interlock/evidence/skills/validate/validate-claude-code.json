@@ -1,5 +1,6 @@
 {
-  "dir": "gen-claude-code/skills",
+  "exit": 0,
+  "dir": "<claude-code output>",
   "problems": [],
   "target": "claude-code",
   "valid": true

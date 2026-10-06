@@ -1,38 +1,38 @@
 [
   {
-    "id": "clm-11e5e32ac963468a",
-    "task_id": "parse-duration-sum",
+    "id": "clm-221002b50d354676",
+    "task_id": "duration-sum",
     "criterion_id": "repro",
-    "attempt_id": "att-f91346fccd824bae",
+    "attempt_id": "att-0c96f4cd20834457",
     "strength": "observed",
     "currency": {
-      "tree": "b6704bc62639be217cdda0bb0b362d889e443ad2",
+      "tree": "4688fba1015d33dedf241719d5caee3cfb7ffa3c",
       "check_version": "1",
       "environment": "",
-      "policy_digest": "sha256:b729823f83ed8473a068c8e6a240de5b5c0d81209cf91a87a05ade05a32dfccb"
+      "policy_digest": "sha256:78bdf18f4cbdd649c16dd0906dacfb5377f554c009176ce15d10c6277ff456cd"
     },
     "evidence_refs": [
-      "interlock check run --criterion repro"
+      "python3 -c 'from durations import parse_duration as p; assert p(\"1h30m\")==5400 and p(\"2m10s\")==130'"
     ],
-    "note": "Failed on base with AssertionError; passes after fix (1h30m=5400, 2m10s=130, 45s=45)",
-    "recorded_at": "2026-10-06T00:10:08.086882317Z"
+    "note": "Failed on base (AssertionError); passes after changing total = to total += in parse_duration",
+    "recorded_at": "2026-10-06T01:55:22.698221751Z"
   },
   {
-    "id": "clm-30acdb61dbb94bc2",
-    "task_id": "parse-duration-sum",
+    "id": "clm-bc86d1d55e1d4f03",
+    "task_id": "duration-sum",
     "criterion_id": "regression",
-    "attempt_id": "att-f91346fccd824bae",
+    "attempt_id": "att-0c96f4cd20834457",
     "strength": "tested",
     "currency": {
-      "tree": "b6704bc62639be217cdda0bb0b362d889e443ad2",
+      "tree": "4688fba1015d33dedf241719d5caee3cfb7ffa3c",
       "check_version": "1",
       "environment": "",
-      "policy_digest": "sha256:b729823f83ed8473a068c8e6a240de5b5c0d81209cf91a87a05ade05a32dfccb"
+      "policy_digest": "sha256:78bdf18f4cbdd649c16dd0906dacfb5377f554c009176ce15d10c6277ff456cd"
     },
     "evidence_refs": [
       "python3 -m unittest discover -s tests"
     ],
-    "note": "4 tests pass, incl. new test_compound",
-    "recorded_at": "2026-10-06T00:10:08.160003982Z"
+    "note": "4 tests pass, including new test_sums_multiple_units",
+    "recorded_at": "2026-10-06T01:55:22.765283008Z"
   }
 ]

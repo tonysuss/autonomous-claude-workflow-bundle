@@ -1,18 +1,18 @@
 [
   {
-    "id": "res-4fe58fecc4a94d65",
-    "task_id": "parse-duration-sum",
-    "attempt_id": "att-f91346fccd824bae",
+    "id": "res-98a2bdcc67284bba",
+    "task_id": "duration-sum",
+    "attempt_id": "att-0c96f4cd20834457",
     "epoch": 1,
-    "output_tree": "b6704bc62639be217cdda0bb0b362d889e443ad2",
+    "output_tree": "4688fba1015d33dedf241719d5caee3cfb7ffa3c",
     "changed_paths": [
       "durations.py",
       "tests/test_durations.py"
     ],
-    "summary": "Bug: parse_duration used 'total = int(number) * UNITS[ch]', overwriting the running total so only the last unit counted (1h30m -> 1800). Fix: '+='. Added test_compound. repro check: AssertionError on base, exit 0 after fix; unittest 4 tests OK.",
+    "summary": "parse_duration overwrote total for each unit (total = int(number) * UNITS[ch]), so only the last component counted: '1h30m' gave 1800. Changed to += so components sum. Added test_sums_multiple_units. Repro failed on base with AssertionError and now passes; unittest suite passes.",
     "open_questions": [],
     "status": "accepted",
     "superseded_reason": null,
-    "received_at": "2026-10-06T00:10:08.234234988Z"
+    "received_at": "2026-10-06T01:55:22.843589790Z"
   }
 ]

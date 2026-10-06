@@ -47,7 +47,7 @@ with open(src) as f:
             continue
         if isinstance(e, dict) and e.get("type") == "system" and e.get("subtype") == "init":
             e = {k: e.get(k) for k in ("type", "subtype", "cwd", "model", "permissionMode", "skills", "agents",
-                                       "plugins", "claude_code_version")}
+                                       "plugins", "slash_commands", "claude_code_version")}
             e["tools_note"] = "the tool inventory and startup timings are left out"
         if isinstance(e, dict) and e.get("type") in DROP:
             continue
