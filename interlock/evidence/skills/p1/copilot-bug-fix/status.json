@@ -1,0 +1,63 @@
+{
+  "attempts": [
+    {
+      "epoch": 1,
+      "host": "copilot",
+      "id": "att-f59aa482135a408a",
+      "role": "worker",
+      "status": "submitted"
+    },
+    {
+      "epoch": 1,
+      "host": "copilot",
+      "id": "att-c7ef0d6c7c9d4992",
+      "role": "verifier",
+      "status": "completed"
+    }
+  ],
+  "evidence": {
+    "all_pass": true,
+    "any_fail": false,
+    "criteria": [
+      {
+        "criterion_id": "repro",
+        "current_assessments": 1,
+        "current_claims": 1,
+        "current_runs": 2,
+        "evidence_id": "asm-f72af51b44cf453c",
+        "source": "assessment",
+        "stale": 0,
+        "strength": "observed",
+        "verdict": "pass"
+      },
+      {
+        "criterion_id": "regression",
+        "current_assessments": 1,
+        "current_claims": 1,
+        "current_runs": 2,
+        "evidence_id": "asm-07149635d9884fef",
+        "source": "assessment",
+        "stale": 0,
+        "strength": "tested",
+        "verdict": "pass"
+      }
+    ]
+  },
+  "next_moves": [],
+  "task": {
+    "attempts_used": 1,
+    "blocked_reason": null,
+    "current_attempt": "att-f59aa482135a408a",
+    "current_tree": "6e01676420dea49adaf4960994d510dbf0f921db",
+    "id": "fix-add",
+    "integration_required": false,
+    "intent": "add(2, 3) returns -1 instead of 5",
+    "lease_epoch": 1,
+    "max_attempts": 3,
+    "state": "done",
+    "workflow": {
+      "name": "bug-fix",
+      "version": 1
+    }
+  }
+}

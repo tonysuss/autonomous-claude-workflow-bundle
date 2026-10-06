@@ -1,0 +1,58 @@
+[
+  {
+    "name": "design",
+    "description": "Compare two or more whole designs for an interlock task before implementing, when the change crosses function boundaries and both the uncertainty and the cost of a wrong shape are high. Started by a person; skip it for small or obvious changes.",
+    "source": "project",
+    "path": "/home/user/autonomous-claude-workflow-bundle/.claude/worktrees/agent-a7be600d9be0a6677/interlock/target/skws/gen-copilot/.github/skills/design",
+    "enabled": true
+  },
+  {
+    "name": "implement",
+    "description": "Make the smallest change that meets an interlock task's criteria, in the isolated worktree interlock opens for the attempt: reproduce first for a bug fix, build from a named data shape for a feature, pin behavior first for a refactor.",
+    "source": "project",
+    "path": "/home/user/autonomous-claude-workflow-bundle/.claude/worktrees/agent-a7be600d9be0a6677/interlock/target/skws/gen-copilot/.github/skills/implement",
+    "enabled": true
+  },
+  {
+    "name": "investigate",
+    "description": "Answer how something works or why it was built that way, with file and line evidence and the history behind it, before anything changes. Use for an interlock investigation task, and to ground a bug fix, feature or refactor.",
+    "source": "project",
+    "path": "/home/user/autonomous-claude-workflow-bundle/.claude/worktrees/agent-a7be600d9be0a6677/interlock/target/skws/gen-copilot/.github/skills/investigate",
+    "enabled": true
+  },
+  {
+    "name": "review",
+    "description": "Adversarially review a submitted interlock result before it is verified: findings with evidence, a lead judgment on each (act on, consider, noted, dismissed), dismissals kept, and the act-on findings handed to the verifier.",
+    "source": "project",
+    "path": "/home/user/autonomous-claude-workflow-bundle/.claude/worktrees/agent-a7be600d9be0a6677/interlock/target/skws/gen-copilot/.github/skills/review",
+    "enabled": true
+  },
+  {
+    "name": "route",
+    "description": "Start here for any request to investigate, fix, build or restructure code in a repository that uses interlock. Picks the workflow (investigation, bug fix, feature, refactor), writes its acceptance criteria, and creates the interlock task.",
+    "source": "project",
+    "path": "/home/user/autonomous-claude-workflow-bundle/.claude/worktrees/agent-a7be600d9be0a6677/interlock/target/skws/gen-copilot/.github/skills/route",
+    "enabled": true
+  },
+  {
+    "name": "verify",
+    "description": "Hand an interlock task that awaits verification to the independent verifier agent, then let interlock decide: verified, sent back for rework, or still waiting. Use after a result is submitted, and never verify your own work.",
+    "source": "project",
+    "path": "/home/user/autonomous-claude-workflow-bundle/.claude/worktrees/agent-a7be600d9be0a6677/interlock/target/skws/gen-copilot/.github/skills/verify",
+    "enabled": true
+  },
+  {
+    "name": "customize-cloud-agent",
+    "description": "Skill for customizing the Copilot cloud agent (formerly known as Copilot coding agent) environment, including copilot-setup-steps.yml configuration, preinstalling tools and dependencies, runners, and settings. Use when the user mentions copilot-setup-steps, copilot setup steps, or wants to configure the cloud agent environment.",
+    "source": "builtin",
+    "path": "/root/.cache/copilot/pkg/linux-x64/1.0.91/builtin/customize-cloud-agent",
+    "enabled": true
+  },
+  {
+    "name": "github-pr-media",
+    "description": "Upload an image or video to GitHub's user attachments API and embed it in a pull request description or comment. Use when asked to add screenshots, diagrams, recordings, or other media to a PR or GitHub comment.",
+    "source": "builtin",
+    "path": "/root/.cache/copilot/pkg/linux-x64/1.0.91/builtin/github-pr-media",
+    "enabled": true
+  }
+]

@@ -1,0 +1,38 @@
+[
+  {
+    "id": "asm-5fce51d52f6f4ed3",
+    "task_id": "parse-duration-sum",
+    "criterion_id": "repro",
+    "attempt_id": "att-924c60b4d51a43f7",
+    "strength": "observed",
+    "currency": {
+      "tree": "b6704bc62639be217cdda0bb0b362d889e443ad2",
+      "check_version": "1",
+      "environment": "",
+      "policy_digest": "sha256:b729823f83ed8473a068c8e6a240de5b5c0d81209cf91a87a05ade05a32dfccb"
+    },
+    "evidence_refs": [
+      "interlock check run --criterion repro"
+    ],
+    "note": "passed on submitted tree, exit 0",
+    "recorded_at": "2026-10-06T00:10:20.461025176Z"
+  },
+  {
+    "id": "asm-7ec8a509fa2848b8",
+    "task_id": "parse-duration-sum",
+    "criterion_id": "regression",
+    "attempt_id": "att-924c60b4d51a43f7",
+    "strength": "tested",
+    "currency": {
+      "tree": "b6704bc62639be217cdda0bb0b362d889e443ad2",
+      "check_version": "1",
+      "environment": "",
+      "policy_digest": "sha256:b729823f83ed8473a068c8e6a240de5b5c0d81209cf91a87a05ade05a32dfccb"
+    },
+    "evidence_refs": [
+      "interlock check run --criterion regression"
+    ],
+    "note": "4 tests OK",
+    "recorded_at": "2026-10-06T00:10:20.528018199Z"
+  }
+]

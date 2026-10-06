@@ -1,0 +1,75 @@
+[
+  {
+    "id": "att-8f3683217e6b4971",
+    "task_id": "ttl-boundary",
+    "epoch": 1,
+    "role": "worker",
+    "host": {
+      "host": "claude-code",
+      "version": "2.1.289"
+    },
+    "agent": null,
+    "model": null,
+    "worktree": "/home/user/autonomous-claude-workflow-bundle/.claude/worktrees/agent-a7be600d9be0a6677/interlock/target/skws/live/investigation-repo/.interlock/worktrees/ttl-boundary-worker-1",
+    "effective_grant": {
+      "action_classes": [
+        "read",
+        "local_reversible"
+      ],
+      "tools": {
+        "allow": [
+          "read",
+          "shell",
+          "web"
+        ],
+        "deny": [
+          "edit",
+          "shell:git push",
+          "shell:git commit"
+        ]
+      },
+      "landing_authority": "none",
+      "grant_ids": []
+    },
+    "token_hash": "f5720988aa63c287efd71c5b850dde29623137984d30aa0b5890d508a4013fc5",
+    "status": "submitted",
+    "started_at": "2026-10-06T00:11:20.749310792Z",
+    "ended_at": null
+  },
+  {
+    "id": "att-8d499b24c88b4ed2",
+    "task_id": "ttl-boundary",
+    "epoch": 1,
+    "role": "verifier",
+    "host": {
+      "host": "claude-code",
+      "version": "2.1.289"
+    },
+    "agent": "interlock:verifier",
+    "model": null,
+    "worktree": "/home/user/autonomous-claude-workflow-bundle/.claude/worktrees/agent-a7be600d9be0a6677/interlock/target/skws/live/investigation-repo/.interlock/worktrees/ttl-boundary-verifier-1",
+    "effective_grant": {
+      "action_classes": [
+        "read",
+        "local_reversible"
+      ],
+      "tools": {
+        "allow": [
+          "read",
+          "shell"
+        ],
+        "deny": [
+          "edit",
+          "shell:git push",
+          "shell:git commit"
+        ]
+      },
+      "landing_authority": "none",
+      "grant_ids": []
+    },
+    "token_hash": "7fa3030fe3fe58ad97b0f26648ea57793cd7b241013fc36ff960ffc1ada509d2",
+    "status": "completed",
+    "started_at": "2026-10-06T00:11:36.283909807Z",
+    "ended_at": "2026-10-06T00:11:45.729646374Z"
+  }
+]

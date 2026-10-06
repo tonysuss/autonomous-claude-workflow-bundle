@@ -1,0 +1,63 @@
+{
+  "attempts": [
+    {
+      "epoch": 1,
+      "host": "claude-code",
+      "id": "att-f91346fccd824bae",
+      "role": "worker",
+      "status": "submitted"
+    },
+    {
+      "epoch": 1,
+      "host": "claude-code",
+      "id": "att-924c60b4d51a43f7",
+      "role": "verifier",
+      "status": "completed"
+    }
+  ],
+  "evidence": {
+    "all_pass": true,
+    "any_fail": false,
+    "criteria": [
+      {
+        "criterion_id": "repro",
+        "current_assessments": 1,
+        "current_claims": 1,
+        "current_runs": 2,
+        "evidence_id": "asm-5fce51d52f6f4ed3",
+        "source": "assessment",
+        "stale": 0,
+        "strength": "observed",
+        "verdict": "pass"
+      },
+      {
+        "criterion_id": "regression",
+        "current_assessments": 1,
+        "current_claims": 1,
+        "current_runs": 2,
+        "evidence_id": "asm-7ec8a509fa2848b8",
+        "source": "assessment",
+        "stale": 0,
+        "strength": "tested",
+        "verdict": "pass"
+      }
+    ]
+  },
+  "next_moves": [],
+  "task": {
+    "attempts_used": 1,
+    "blocked_reason": null,
+    "current_attempt": "att-f91346fccd824bae",
+    "current_tree": "b6704bc62639be217cdda0bb0b362d889e443ad2",
+    "id": "parse-duration-sum",
+    "integration_required": false,
+    "intent": "parse_duration(\"1h30m\") in durations.py returns 1800 instead of 5400; compound durations must sum all their parts.",
+    "lease_epoch": 1,
+    "max_attempts": 3,
+    "state": "done",
+    "workflow": {
+      "name": "bug-fix",
+      "version": 1
+    }
+  }
+}

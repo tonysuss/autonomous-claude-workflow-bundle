@@ -1,0 +1,75 @@
+[
+  {
+    "agent": null,
+    "effective_grant": {
+      "action_classes": [
+        "read",
+        "local_reversible"
+      ],
+      "grant_ids": [],
+      "landing_authority": "none",
+      "tools": {
+        "allow": [
+          "read",
+          "shell",
+          "web"
+        ],
+        "deny": [
+          "edit",
+          "shell:git push",
+          "shell:git commit"
+        ]
+      }
+    },
+    "ended_at": null,
+    "epoch": 1,
+    "host": {
+      "host": "copilot",
+      "version": "1.0.91"
+    },
+    "id": "att-cd54c1beb2564b21",
+    "model": null,
+    "role": "worker",
+    "started_at": "2026-10-06T00:23:02.602234485Z",
+    "status": "submitted",
+    "task_id": "export-tries",
+    "token_hash": "a87e26e0e337de3e82fb6aae61edecf76e5b95e20e8661dc6ed72a1c06dd63a9",
+    "worktree": "/tmp/.tmpEDsIC6/.interlock/worktrees/export-tries-worker-1"
+  },
+  {
+    "agent": "interlock-verifier",
+    "effective_grant": {
+      "action_classes": [
+        "read",
+        "local_reversible"
+      ],
+      "grant_ids": [],
+      "landing_authority": "none",
+      "tools": {
+        "allow": [
+          "read",
+          "shell"
+        ],
+        "deny": [
+          "edit",
+          "shell:git push",
+          "shell:git commit"
+        ]
+      }
+    },
+    "ended_at": "2026-10-06T00:23:04.673475164Z",
+    "epoch": 1,
+    "host": {
+      "host": "copilot",
+      "version": "1.0.91"
+    },
+    "id": "att-5d47a89d33fd4250",
+    "model": null,
+    "role": "verifier",
+    "started_at": "2026-10-06T00:23:03.829092280Z",
+    "status": "completed",
+    "task_id": "export-tries",
+    "token_hash": "a47b1a6eff9c86a1b5f288b90fcf643000d266dd503f73db0d5a3f4d98cc1665",
+    "worktree": "/tmp/.tmpEDsIC6/.interlock/worktrees/export-tries-verifier-1"
+  }
+]

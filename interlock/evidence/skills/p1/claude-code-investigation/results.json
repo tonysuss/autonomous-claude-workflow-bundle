@@ -1,0 +1,15 @@
+[
+  {
+    "id": "res-295dd8f9802b442e",
+    "task_id": "ttl-boundary",
+    "attempt_id": "att-8f3683217e6b4971",
+    "epoch": 1,
+    "output_tree": "e2abab1d819807dd70f25b1fa552bd377f7eb000",
+    "changed_paths": [],
+    "summary": "Yes. cache.py:20 'if self.clock() - stored > self.ttl' is strict, so an entry aged exactly ttl is still served; it expires only when strictly older (deleted lazily at cache.py:21 on get). Observed with injected clock, ttl=10: age 9.999 -> v, 10 -> v, 10.001 -> MISS. Why: commit 7c6352a 'Keep cache entries through their last second (#12)' changed '>=' to '>' (97e4961 originally used >=): on coarse clocks (monotonic ticking in 15 ms steps) ttl=1 entries expired on first read after a one-tick advance; the message says ttl should be the minimum lifetime callers can rely on. Rationale is stated in the commit message (direct), not inferred.",
+    "open_questions": [],
+    "status": "accepted",
+    "superseded_reason": null,
+    "received_at": "2026-10-06T00:11:30.234360543Z"
+  }
+]

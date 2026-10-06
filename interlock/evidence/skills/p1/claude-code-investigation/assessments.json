@@ -1,0 +1,20 @@
+[
+  {
+    "id": "asm-d9a4e013ac1745a9",
+    "task_id": "ttl-boundary",
+    "criterion_id": "answer",
+    "attempt_id": "att-8d499b24c88b4ed2",
+    "strength": "observed",
+    "currency": {
+      "tree": "e2abab1d819807dd70f25b1fa552bd377f7eb000",
+      "check_version": "1",
+      "environment": "",
+      "policy_digest": "sha256:53461824e9d74f867ba67e5f424db3864d0482c7c75e1feabc7bb9c3378038ff"
+    },
+    "evidence_refs": [
+      "python3 injected-clock ttl=10 at 9.999/10/10.001; git log; git show 97e4961:cache.py"
+    ],
+    "note": "cache.py:20 uses strict >; outputs v, v, MISS. 97e4961 line 20 used >=; 7c6352a message gives coarse-clock rationale. Citations match.",
+    "recorded_at": "2026-10-06T00:11:45.675191146Z"
+  }
+]

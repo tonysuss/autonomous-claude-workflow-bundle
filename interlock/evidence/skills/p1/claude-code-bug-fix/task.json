@@ -1,0 +1,58 @@
+{
+  "id": "parse-duration-sum",
+  "repository": ".",
+  "workflow": {
+    "name": "bug-fix",
+    "version": 1
+  },
+  "intent": "parse_duration(\"1h30m\") in durations.py returns 1800 instead of 5400; compound durations must sum all their parts.",
+  "scope": {
+    "paths": [
+      "durations.py",
+      "tests/**"
+    ],
+    "description": null
+  },
+  "dependencies": [],
+  "criteria": [
+    {
+      "id": "repro",
+      "statement": "parse_duration of compound durations sums every part (1h30m is 5400)",
+      "check": "python3 -c 'from durations import parse_duration as p; assert p(\"1h30m\")==5400 and p(\"2m10s\")==130 and p(\"45s\")==45'",
+      "check_version": "1",
+      "min_strength": "observed",
+      "producer": "independent",
+      "baseline": "fails"
+    },
+    {
+      "id": "regression",
+      "statement": "The existing tests pass",
+      "check": "python3 -m unittest discover -s tests",
+      "check_version": "1",
+      "min_strength": "tested",
+      "producer": "self",
+      "baseline": "passes"
+    }
+  ],
+  "input_snapshot": {
+    "repository": ".",
+    "base_commit": "407b3658be91320b4208997f2f66a59e0c704419",
+    "untracked_hash": null,
+    "protected_paths": []
+  },
+  "environment": "",
+  "policy_digest": "sha256:b729823f83ed8473a068c8e6a240de5b5c0d81209cf91a87a05ade05a32dfccb",
+  "budget": {
+    "max_attempts": 3
+  },
+  "integration_required": false,
+  "state": "done",
+  "resume_point": null,
+  "blocked_reason": null,
+  "current_tree": "b6704bc62639be217cdda0bb0b362d889e443ad2",
+  "lease_epoch": 1,
+  "current_attempt": "att-f91346fccd824bae",
+  "attempts_used": 1,
+  "created_at": "2026-10-06T00:09:49.533515942Z",
+  "updated_at": "2026-10-06T00:10:24.458076997Z"
+}

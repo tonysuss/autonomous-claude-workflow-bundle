@@ -1,0 +1,13 @@
+id = "ttl-boundary"
+repository = "."
+workflow = "investigation"
+intent = "Can TTLCache.get in cache.py still return a value exactly ttl seconds after it was stored? Where is that decided, and why is it that way?"
+
+[budget]
+max_attempts = 2
+
+[[criterion]]
+id = "answer"
+statement = "The question is answered with file and line citations (where the expiry comparison is decided, and the history/rationale for it), and a command shows the behavior at exactly ttl seconds"
+min_strength = "observed"
+producer = "independent"

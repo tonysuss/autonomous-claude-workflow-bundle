@@ -1,0 +1,20 @@
+[
+  {
+    "id": "clm-a520027760ed4311",
+    "task_id": "ttl-boundary",
+    "criterion_id": "answer",
+    "attempt_id": "att-8f3683217e6b4971",
+    "strength": "observed",
+    "currency": {
+      "tree": "e2abab1d819807dd70f25b1fa552bd377f7eb000",
+      "check_version": "1",
+      "environment": "",
+      "policy_digest": "sha256:53461824e9d74f867ba67e5f424db3864d0482c7c75e1feabc7bb9c3378038ff"
+    },
+    "evidence_refs": [
+      "cache.py:20; python3 fake-clock run: ttl=10 -> get at 10 returns 'v', at 10.001 MISS; git show 7c6352a"
+    ],
+    "note": "Yes: get returns the value at exactly ttl. Decided at cache.py:20 (clock()-stored > ttl, strict). Commit 7c6352a (#12) changed >= to > because coarse monotonic clocks (15ms ticks) expired ttl=1 entries on first read after one tick; ttl is now the guaranteed minimum lifetime.",
+    "recorded_at": "2026-10-06T00:11:30.160910398Z"
+  }
+]

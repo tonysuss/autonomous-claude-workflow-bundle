@@ -1,0 +1,73 @@
+[
+  {
+    "id": "att-f91346fccd824bae",
+    "task_id": "parse-duration-sum",
+    "epoch": 1,
+    "role": "worker",
+    "host": {
+      "host": "claude-code",
+      "version": "2.1.289"
+    },
+    "agent": null,
+    "model": null,
+    "worktree": "/home/user/autonomous-claude-workflow-bundle/.claude/worktrees/agent-a7be600d9be0a6677/interlock/target/skws/live/bugfix-repo/.interlock/worktrees/parse-duration-sum-worker-1",
+    "effective_grant": {
+      "action_classes": [
+        "read",
+        "local_reversible"
+      ],
+      "tools": {
+        "allow": [
+          "read",
+          "edit",
+          "shell"
+        ],
+        "deny": [
+          "shell:git push"
+        ]
+      },
+      "landing_authority": "none",
+      "grant_ids": []
+    },
+    "token_hash": "b2c448dfd0d73dc6b5c5ce1df274be360c6b2d805e699e82cc98db53204b653e",
+    "status": "submitted",
+    "started_at": "2026-10-06T00:09:57.342793920Z",
+    "ended_at": null
+  },
+  {
+    "id": "att-924c60b4d51a43f7",
+    "task_id": "parse-duration-sum",
+    "epoch": 1,
+    "role": "verifier",
+    "host": {
+      "host": "claude-code",
+      "version": "2.1.289"
+    },
+    "agent": "interlock:verifier",
+    "model": null,
+    "worktree": "/home/user/autonomous-claude-workflow-bundle/.claude/worktrees/agent-a7be600d9be0a6677/interlock/target/skws/live/bugfix-repo/.interlock/worktrees/parse-duration-sum-verifier-1",
+    "effective_grant": {
+      "action_classes": [
+        "read",
+        "local_reversible"
+      ],
+      "tools": {
+        "allow": [
+          "read",
+          "shell"
+        ],
+        "deny": [
+          "edit",
+          "shell:git push",
+          "shell:git commit"
+        ]
+      },
+      "landing_authority": "none",
+      "grant_ids": []
+    },
+    "token_hash": "235d4b73c9d574ae8a64966d0b898290e0c2a46ec43ff052b4295d86ac5915ac",
+    "status": "completed",
+    "started_at": "2026-10-06T00:10:14.137493532Z",
+    "ended_at": "2026-10-06T00:10:20.574541911Z"
+  }
+]

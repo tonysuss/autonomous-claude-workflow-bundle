@@ -1,0 +1,52 @@
+{
+  "attempts": [
+    {
+      "epoch": 1,
+      "host": "copilot",
+      "id": "att-cd54c1beb2564b21",
+      "role": "worker",
+      "status": "submitted"
+    },
+    {
+      "epoch": 1,
+      "host": "copilot",
+      "id": "att-5d47a89d33fd4250",
+      "role": "verifier",
+      "status": "completed"
+    }
+  ],
+  "evidence": {
+    "all_pass": true,
+    "any_fail": false,
+    "criteria": [
+      {
+        "criterion_id": "answer",
+        "current_assessments": 1,
+        "current_claims": 1,
+        "current_runs": 0,
+        "evidence_id": "asm-e236feb56c8441aa",
+        "source": "assessment",
+        "stale": 0,
+        "strength": "observed",
+        "verdict": "pass"
+      }
+    ]
+  },
+  "next_moves": [],
+  "task": {
+    "attempts_used": 1,
+    "blocked_reason": null,
+    "current_attempt": "att-cd54c1beb2564b21",
+    "current_tree": "ab5f9f25d0c687fd0ee189b79d48ca9f2d7f308b",
+    "id": "export-tries",
+    "integration_required": false,
+    "intent": "How many times does export() try a batch before giving up, and where is that decided?",
+    "lease_epoch": 1,
+    "max_attempts": 3,
+    "state": "done",
+    "workflow": {
+      "name": "investigation",
+      "version": 1
+    }
+  }
+}

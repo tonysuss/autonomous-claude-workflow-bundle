@@ -1,0 +1,52 @@
+{
+  "attempts": [
+    {
+      "epoch": 1,
+      "host": "claude-code",
+      "id": "att-8f3683217e6b4971",
+      "role": "worker",
+      "status": "submitted"
+    },
+    {
+      "epoch": 1,
+      "host": "claude-code",
+      "id": "att-8d499b24c88b4ed2",
+      "role": "verifier",
+      "status": "completed"
+    }
+  ],
+  "evidence": {
+    "all_pass": true,
+    "any_fail": false,
+    "criteria": [
+      {
+        "criterion_id": "answer",
+        "current_assessments": 1,
+        "current_claims": 1,
+        "current_runs": 0,
+        "evidence_id": "asm-d9a4e013ac1745a9",
+        "source": "assessment",
+        "stale": 0,
+        "strength": "observed",
+        "verdict": "pass"
+      }
+    ]
+  },
+  "next_moves": [],
+  "task": {
+    "attempts_used": 1,
+    "blocked_reason": null,
+    "current_attempt": "att-8f3683217e6b4971",
+    "current_tree": "e2abab1d819807dd70f25b1fa552bd377f7eb000",
+    "id": "ttl-boundary",
+    "integration_required": false,
+    "intent": "Can TTLCache.get in cache.py still return a value exactly ttl seconds after it was stored? Where is that decided, and why is it that way?",
+    "lease_epoch": 1,
+    "max_attempts": 2,
+    "state": "done",
+    "workflow": {
+      "name": "investigation",
+      "version": 1
+    }
+  }
+}

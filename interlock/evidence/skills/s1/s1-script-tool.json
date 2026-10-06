@@ -1,0 +1,8 @@
+{"sessions": [{"match": "S1-PROBE-TOOL", "steps": [
+  {"tool": "skill", "args": {"skill": "s1-model"}},
+  {"tool": "skill", "args": {"skill": "s1-user"}},
+  {"tool": "skill", "args": {"skill": "s1-hidden"}},
+  {"tool": "skill", "args": {"skill": "s1-router"}},
+  {"tool": "view", "args": {"path": "$SPIKE/s1repo/.github/skills/s1-router/references/routed.md"}},
+  {"tool": "skill", "args": {"skill": "no-such-skill"}}
+], "final": "probe finished"}]}
