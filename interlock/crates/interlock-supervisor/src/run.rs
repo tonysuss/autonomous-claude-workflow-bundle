@@ -161,6 +161,8 @@ pub struct Supervisor {
     store: Store,
     host: Box<dyn Host>,
     probe: Probe,
+    /// The host as inspected once in this run; every check reads this copy.
+    inspected: Option<HostReport>,
     cfg: RunConfig,
     config: Config,
     /// This process adopts orphans its sessions leave (Linux).
@@ -179,6 +181,7 @@ impl Supervisor {
             store,
             host,
             probe,
+            inspected: None,
             cfg,
             config: Config::default(),
             subreaper: false,
@@ -198,11 +201,18 @@ impl Supervisor {
         self.cancel.load(Ordering::SeqCst)
     }
 
+    /// Inspects the host once per run: its version and flags do not change
+    /// under a running supervisor, and each inspection runs the binary twice.
+    fn inspect(&mut self) -> HostReport {
+        let (host, probe) = (&self.host, &self.probe);
+        self.inspected.get_or_insert_with(|| host.inspect(probe)).clone()
+    }
+
     fn capabilities(&mut self) -> Result<(CapabilitySet, String)> {
         if let Some(c) = &self.cfg.capabilities {
             return Ok((c.clone(), "declared".into()));
         }
-        let report: HostReport = self.host.inspect(&self.probe);
+        let report: HostReport = self.inspect();
         if !report.installed {
             return Err(RunError::Other(format!("{} is not installed: {}", report.host, report.notes.join("; "))));
         }
@@ -212,13 +222,13 @@ impl Supervisor {
     }
 
     /// Refuses an effort level the host cannot take, before anything starts.
-    fn check_effort(&self) -> Result<()> {
-        let Some(level) = &self.cfg.effort else { return Ok(()) };
-        let name = self.host.name();
+    fn check_effort(&mut self) -> Result<()> {
+        let Some(level) = self.cfg.effort.clone() else { return Ok(()) };
         let has_flag = match &self.cfg.capabilities {
             Some(c) => c.has(Capability::EffortSelection),
-            None => self.host.inspect(&self.probe).capability_set().has(Capability::EffortSelection),
+            None => self.inspect().capability_set().has(Capability::EffortSelection),
         };
+        let name = self.host.name();
         if !has_flag || self.host.effort_levels().is_empty() {
             return Err(RunError::Other(format!(
                 "{name} has no effort setting (its --help shows no effort flag), so --effort cannot be honored"
@@ -267,9 +277,9 @@ impl Supervisor {
         // Read only now, so a bad config never stands in the way of recovery.
         self.config = Config::load(&dir).map_err(RunError::Other)?;
 
-        if let Some(pinned) = self.config.pin(self.host.name()) {
-            let installed = self.host.inspect(&self.probe).version;
-            let pin = PinStatus::of(Some(pinned), installed.as_deref());
+        if let Some(pinned) = self.config.pin(self.host.name()).map(str::to_string) {
+            let installed = self.inspect().version;
+            let pin = PinStatus::of(Some(&pinned), installed.as_deref());
             let state = self.store.task(task_id)?.state;
             if let Some(why) = pin.refusal(self.host.name())
                 && !state.is_terminal()

@@ -113,8 +113,8 @@ impl Host for Copilot {
         let Some(bin) = probe.locate(self.name(), BINARY) else {
             return HostReport::not_installed(self.name(), BINARY);
         };
-        let version = probe.run(&bin, &["--version"]).map(|(_, o)| o).unwrap_or_default();
-        let help = probe.run(&bin, &["--help"]).map(|(_, o)| o).unwrap_or_default();
+        let version = probe.query(&bin, &["--version"]).map(|(_, o)| o).unwrap_or_default();
+        let help = probe.query(&bin, &["--help"]).map(|(_, o)| o).unwrap_or_default();
         Copilot::report(Some(bin.display().to_string()), &version, &help)
     }
 

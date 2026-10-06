@@ -416,3 +416,33 @@ baseline = "passes"
     assert_eq!(empty["checked_nothing"], "unittest ran 0 tests", "{empty:#}");
     assert_eq!(empty["passed"], false);
 }
+
+#[test]
+fn assessments_weaker_than_the_criterion_needs_come_back_with_a_warning() {
+    let env = Env::new();
+    let (w, wt, epoch) = to_running(&env);
+    assert!(submit(&env, &w, &wt, epoch, "e1").status.success());
+    let (v, vt, _) = env.start("verifier");
+    let assess = |strength: &str| {
+        env.ok(&[
+            "assess",
+            "add",
+            "--attempt",
+            &v,
+            "--token",
+            &vt,
+            "--criterion",
+            "repro",
+            "--strength",
+            strength,
+            "--tree",
+            TREE_A,
+        ])
+    };
+    let weak = assess("tested");
+    let warning = weak["warning"].as_str().unwrap_or_default();
+    assert!(warning.starts_with("repro needs observed or stronger"), "{weak:#}");
+    assert!(warning.contains("tested will not satisfy it"), "{warning}");
+    assert!(assess("observed").get("warning").is_none(), "no warning when the strength suffices");
+    assert!(assess("failed").get("warning").is_none(), "a failure is not a weak pass");
+}

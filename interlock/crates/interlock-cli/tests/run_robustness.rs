@@ -368,7 +368,7 @@ fn a_session_that_died_with_its_supervisor_is_reconciled_and_retried() {
     assert_eq!(first_attempt["status"], "failed");
     assert_eq!(first_attempt["end"]["reason"], "crash");
     assert_eq!(first_attempt["end"]["synthetic"], true, "a synthetic failure report");
-    assert!(first_attempt["end"]["detail"].as_str().unwrap().contains("was gone when the supervisor restarted"));
+    assert!(first_attempt["end"]["detail"].as_str().unwrap().contains("was gone when a restarted supervisor found it"));
     // The orphan's unfinished work was salvaged before its worktree went.
     assert_eq!(report["exports"][0]["reference"], "refs/heads/interlock/wip/fix-add");
     assert_eq!(f.signals(), ["G1", "G2", "R3", "G2", "G3", "G4", "G7"]);
