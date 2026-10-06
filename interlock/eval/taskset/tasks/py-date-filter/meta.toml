@@ -1,0 +1,16 @@
+# Harness metadata. Hidden: never copied into an agent's working copy.
+id = "py-date-filter"
+kind = "interruption"
+language = "python"
+repo = "tally"
+scope = ["tally/**", "tests/**", "README.md"]
+judge = "hidden/judge.py"
+
+# The second forced interruption. The change spans several edits (the CLI,
+# the ledger and CSV reading). The harness kills the whole process tree at a
+# point between the agent's first edit and its first test run after that
+# edit: a delay drawn from [0, max_delay_s] seconds after the first edit,
+# deterministic per seed, or the moment a test command is issued, whichever
+# comes first. A run that never reaches an edit is flagged and re-run.
+[interrupt]
+max_delay_s = 20

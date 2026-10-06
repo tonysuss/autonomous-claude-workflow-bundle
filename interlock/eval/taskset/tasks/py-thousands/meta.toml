@@ -1,0 +1,10 @@
+# Harness metadata. Hidden: never copied into an agent's working copy.
+id = "py-thousands"
+kind = "feature"
+language = "python"
+repo = "tally"
+scope = ["tally/**", "tests/**", "README.md"]
+judge = "hidden/judge.py"
+# What the prompt leaves for the engineer to find: format_cents is shared
+# with the machine-readable `export` command, which must not change.
+harder = "regression in an untouched module"

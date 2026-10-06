@@ -29,12 +29,5 @@ def format_cents(cents):
 
 
 def split_evenly(total, n):
-    """Splits `total` cents into `n` shares that differ by at most one cent and
-    sum to `total`. Earlier shares take the extra cents. A negative total
-    mirrors the positive case: split_evenly(-100, 3) == [-34, -33, -33].
-    """
-    if n <= 0:
-        raise ValueError("n must be positive")
-    sign = -1 if total < 0 else 1
-    base, extra = divmod(abs(total), n)
-    return [sign * (base + (1 if i < extra else 0)) for i in range(n)]
+    """Splits `total` cents into `n` equal shares."""
+    return [total // n] * n

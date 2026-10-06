@@ -48,14 +48,16 @@ COMMITS = [
         ],
     ),
     (
-        "money: explain who pays the extra cent",
+        "money: document the sign of formatted amounts",
         False,
         [
             (
                 "replace",
                 "tally/money.py",
-                "Earlier shares take the extra cents.",
-                "Earlier shares take the extra cents, so the first participants\n    listed pay a cent more.",
+                '    """Formats cents as a decimal string: 1250 -> "12.50", -5 -> "-0.05"."""\n',
+                '    """Formats cents as a decimal string: 1250 -> "12.50", -5 -> "-0.05".\n\n'
+                "    The sign goes before the whole amount, so a refund of five cents reads\n"
+                '    "-0.05", never "0.-5".\n    """\n',
             )
         ],
     ),

@@ -5,6 +5,7 @@ Split shared expenses and settle up.
 ```
 python3 -m tally balances examples/trip.csv
 python3 -m tally settle examples/trip.csv
+python3 -m tally export examples/trip.csv
 ```
 
 A ledger is a CSV file with the columns `date,payer,amount,participants,memo`.
@@ -14,6 +15,7 @@ participants, to the cent.
 
 `balances` prints what each person is owed (positive) or owes (negative).
 `settle` prints the transfers that bring every balance to zero.
+`export` prints the entries as normalized CSV, for other programs to read.
 
 ## Development
 

@@ -1,0 +1,46 @@
+id = "go-dotted-section"
+repository = "."
+workflow = "bug-fix"
+environment = "linux-go"
+intent = '''
+`kvconf get` cannot read a key in a section whose name contains a dot. With this file:
+
+```
+[db.eu]
+host = db1.example.org
+```
+
+`go run ./cmd/kvconf get app.conf db.eu.host` prints `kvconf: no section "db"` instead of `db1.example.org`.
+
+Section names may contain dots; keys never do. So in a name of the form `SECTION.KEY`, the key is the part after the last dot: `db.eu.host` is the key `host` in the section `db.eu`. A name without a dot is a key in the unnamed section.
+
+`checks/dotted.sh` reproduces the problem. The tests run with `go test ./...`.
+'''
+
+[budget]
+max_attempts = 3
+
+[scope]
+paths = ["config.go", "cmd/kvconf/*.go", "*_test.go", "README.md"]
+
+[[criterion]]
+id = "repro"
+statement = "`kvconf get` prints the value of `db.eu.host` for the reported file"
+check = "sh checks/dotted.sh"
+min_strength = "observed"
+producer = "independent"
+baseline = "fails"
+
+[[criterion]]
+id = "spec"
+statement = "In a name of the form SECTION.KEY, the key is the part after the last dot, and a name without a dot is a key in the unnamed section"
+min_strength = "tested"
+producer = "independent"
+
+[[criterion]]
+id = "regression"
+statement = "The existing Go tests pass"
+check = "go test ./..."
+min_strength = "tested"
+producer = "self"
+baseline = "passes"

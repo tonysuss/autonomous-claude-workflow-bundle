@@ -1,10 +1,11 @@
-"""Command line: python3 -m tally {balances,settle} FILE"""
+"""Command line: python3 -m tally {balances,settle,export} FILE"""
 
 import argparse
 import sys
 
 from tally import report
 from tally.csvio import load_ledger
+from tally.export import export_entries
 
 
 def main(argv=None):
@@ -13,6 +14,7 @@ def main(argv=None):
     for name, help_text in (
         ("balances", "show what each person is owed (+) or owes (-)"),
         ("settle", "list the transfers that settle every balance"),
+        ("export", "print the entries as normalized CSV"),
     ):
         p = sub.add_parser(name, help=help_text)
         p.add_argument("file", help="CSV file with columns date,payer,amount,participants,memo")
@@ -24,6 +26,8 @@ def main(argv=None):
         return 1
     if args.command == "balances":
         sys.stdout.write(report.render_balances(ledger.balances()))
-    else:
+    elif args.command == "settle":
         sys.stdout.write(report.render_transfers(ledger.settle()))
+    else:
+        sys.stdout.write(export_entries(ledger.entries))
     return 0

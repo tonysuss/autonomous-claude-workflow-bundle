@@ -21,7 +21,8 @@ go run ./cmd/kvconf get testdata/app.conf server.title
 go run ./cmd/kvconf dump testdata/app.conf
 ```
 
-Getters: `Get`, `GetInt`, `GetBool`, `GetDuration`.
+Getters: `Get`, `GetInt`, `GetBool`, `GetDuration`. `Lookup` takes a name in
+the command line's `SECTION.KEY` form.
 
 ## Development
 

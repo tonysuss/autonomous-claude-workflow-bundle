@@ -7,9 +7,11 @@ scope = ["*.go", "cmd/kvconf/*.go", "README.md", "testdata/**"]
 judge = "hidden/judge.py"
 
 # The forced interruption: the harness kills the whole process tree (host,
-# its tools, and interlock if present) at the first change to the agent's
-# working files, or after deadline_s seconds, whichever comes first. Then it
-# restarts the condition's normal recovery path once.
+# its tools, and interlock if present) at a point between the agent's first
+# edit and its first test run after that edit: a delay drawn from
+# [0, max_delay_s] seconds after the first edit, deterministic per seed, or
+# the moment a test command is issued, whichever comes first. Then it starts
+# the condition's normal recovery path once. A run that never reaches an
+# edit is flagged and re-run.
 [interrupt]
-when = "first-edit"
-deadline_s = 300
+max_delay_s = 20

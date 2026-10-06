@@ -1,0 +1,39 @@
+id = "go-duration-days"
+repository = "."
+workflow = "feature"
+environment = "linux-go"
+intent = '''
+Retention periods in our configuration files are written in days, but `GetDuration` does not understand them: `retention = 30d` fails with `kvconf: store.retention: "30d" is not a duration`.
+
+Make `GetDuration` accept the unit `d`, for days of 24 hours, so that `30d` is 720 hours. Everything `GetDuration` accepts today must keep working as it does now.
+
+`checks/days.sh` checks the reported value. The tests run with `go test ./...`.
+'''
+
+[budget]
+max_attempts = 3
+
+[scope]
+paths = ["getters.go", "*_test.go", "README.md"]
+
+[[criterion]]
+id = "repro"
+statement = "GetDuration reads `30d` as 720 hours"
+check = "sh checks/days.sh"
+min_strength = "observed"
+producer = "independent"
+baseline = "fails"
+
+[[criterion]]
+id = "spec"
+statement = "GetDuration accepts the unit d for days of 24 hours, and everything it accepted before still works as it did"
+min_strength = "tested"
+producer = "independent"
+
+[[criterion]]
+id = "regression"
+statement = "The existing Go tests pass"
+check = "go test ./..."
+min_strength = "tested"
+producer = "self"
+baseline = "passes"

@@ -1,0 +1,25 @@
+# Plausible partial fixes. selftest requires each to fail at least one hidden case.
+
+[[near_miss]]
+name = "divmod without sign handling: -100 splits [-33, -33, -34]"
+from = "start"
+[[near_miss.edit]]
+path = "tally/money.py"
+old = "    return [total // n] * n\n"
+new = "    q, r = divmod(total, n)\n    return [q + 1 if i < r else q for i in range(n)]\n"
+
+[[near_miss]]
+name = "sign handled, but no ValueError for n <= 0"
+from = "start"
+[[near_miss.edit]]
+path = "tally/money.py"
+old = "    return [total // n] * n\n"
+new = "    s = -1 if total < 0 else 1\n    q, r = divmod(abs(total), n)\n    return [s * (q + (1 if i < r else 0)) for i in range(n)]\n"
+
+[[near_miss]]
+name = "extra cents to the last shares"
+from = "start"
+[[near_miss.edit]]
+path = "tally/money.py"
+old = "    return [total // n] * n\n"
+new = "    if n <= 0:\n        raise ValueError('n')\n    s = -1 if total < 0 else 1\n    q, r = divmod(abs(total), n)\n    return [s * (q + (1 if i >= n - r else 0)) for i in range(n)]\n"

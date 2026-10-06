@@ -1,0 +1,25 @@
+# Plausible partial fixes. selftest requires each to fail at least one hidden case.
+
+[[near_miss]]
+name = "$$ not handled"
+from = "solution"
+[[near_miss.edit]]
+path = "parser.go"
+old = "\t\tcase '$':\n\t\t\tb.WriteByte('$')\n\t\t\ti++\n"
+new = ""
+
+[[near_miss]]
+name = "fallback only when the variable is unset, not when it is empty"
+from = "solution"
+[[near_miss.edit]]
+path = "parser.go"
+old = "\t\t\tcase ok && v != \"\":\n"
+new = "\t\t\tcase ok:\n"
+
+[[near_miss]]
+name = "--no-expand accepted by get only"
+from = "solution"
+[[near_miss.edit]]
+path = "cmd/kvconf/main.go"
+old = "\tnoExpand := len(rest) > 0 && rest[0] == \"--no-expand\"\n"
+new = "\tnoExpand := cmd == \"get\" && len(rest) > 0 && rest[0] == \"--no-expand\"\n"

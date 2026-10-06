@@ -83,12 +83,12 @@ func run(args []string, stdout, stderr io.Writer) int {
 	return 2
 }
 
-// splitName splits SECTION.KEY at the last dot; a name without a dot is a
-// key in the unnamed section.
+// splitName splits SECTION.KEY into its parts; a name without a dot is a key
+// in the unnamed section.
 func splitName(name string) (string, string) {
-	i := strings.LastIndex(name, ".")
-	if i < 0 {
+	section, key, ok := strings.Cut(name, ".")
+	if !ok {
 		return "", name
 	}
-	return name[:i], name[i+1:]
+	return section, key
 }

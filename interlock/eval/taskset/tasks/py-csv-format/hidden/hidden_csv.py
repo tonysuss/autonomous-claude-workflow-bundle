@@ -53,6 +53,10 @@ class HiddenCsv(unittest.TestCase):
         self.assertEqual(tally("balances", "--format", "text", TRIP)[:2], (0, expected))
         self.assertEqual(tally("settle", "--format", "text", TRIP)[:2], (0, "Bea -> Cal  40.00\nDan -> Ann  36.00\n"))
 
-    def test_unknown_format_exits_2(self):
+    def test_format_values_and_unknown_format(self):
+        # Fails on the start state too, where --format does not exist at all.
+        self.assertEqual(tally("balances", "--format", "csv", TRIP)[0], 0)
+        self.assertEqual(tally("settle", "--format", "text", TRIP)[0], 0)
         code, out, err = tally("balances", "--format", "xml", TRIP)
         self.assertEqual(code, 2, (out, err))
+        self.assertIn("--format", err)

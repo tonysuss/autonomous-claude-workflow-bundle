@@ -2,23 +2,15 @@
 
 
 def parse_amount(text):
-    """Parses a decimal amount such as "12.50", "-3.2" or "1,234.56" into cents.
+    """Parses a decimal amount such as "12.50" or "1,234.56" into cents.
 
-    Thousands separators are ignored. At most two decimal places are allowed.
+    Thousands separators are ignored.
     """
     s = text.strip().replace(",", "")
-    sign = 1
-    if s[:1] in ("+", "-"):
-        sign = -1 if s[0] == "-" else 1
-        s = s[1:]
-    whole, dot, frac = s.partition(".")
-    if not (whole.isdigit() or (whole == "" and frac.isdigit())):
-        raise ValueError(f"not an amount: {text!r}")
-    if frac and not frac.isdigit():
-        raise ValueError(f"not an amount: {text!r}")
-    if len(frac) > 2:
-        raise ValueError(f"too many decimal places: {text!r}")
-    return sign * (int(whole or "0") * 100 + int(frac.ljust(2, "0")))
+    if "." in s:
+        whole, frac = s.split(".", 1)
+        return int(whole) * 100 + int(frac)
+    return int(s) * 100
 
 
 def format_cents(cents):

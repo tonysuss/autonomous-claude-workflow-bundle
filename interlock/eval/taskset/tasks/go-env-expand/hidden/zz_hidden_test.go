@@ -36,11 +36,11 @@ func hiddenParse(t *testing.T, text string) *Config {
 
 func TestHiddenBraceReferences(t *testing.T) {
 	t.Setenv("KV_HOST", "db.local")
-	c := hiddenParse(t, "[db]\nhost = ${KV_HOST}\nurl = \"postgres://${KV_HOST}/app # main\"\n")
+	c := hiddenParse(t, "[db]\nhost = ${KV_HOST}\nurl = \"postgres://${KV_HOST}/app main\"\n")
 	if v := hiddenGet(t, c, "db", "host"); v != "db.local" {
 		t.Errorf("host = %q", v)
 	}
-	if v := hiddenGet(t, c, "db", "url"); v != "postgres://db.local/app # main" {
+	if v := hiddenGet(t, c, "db", "url"); v != "postgres://db.local/app main" {
 		t.Errorf("url = %q", v)
 	}
 }

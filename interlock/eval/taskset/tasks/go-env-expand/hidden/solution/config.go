@@ -15,6 +15,7 @@ import (
 	"io"
 	"os"
 	"sort"
+	"strings"
 )
 
 // Config holds parsed values by section and key.
@@ -53,6 +54,16 @@ func (c *Config) Keys(section string) []string {
 	}
 	sort.Strings(keys)
 	return keys
+}
+
+// Lookup returns a value by the name the command line uses, SECTION.KEY.
+// A name without a dot is a key in the unnamed section.
+func (c *Config) Lookup(name string) (string, error) {
+	section, key, ok := strings.Cut(name, ".")
+	if !ok {
+		return c.Get("", name)
+	}
+	return c.Get(section, key)
 }
 
 // ParseOptions changes how values are read.

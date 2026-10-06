@@ -13,10 +13,11 @@ max_attempts = 3
 
 # interlock has no way to say "no file may change": an empty scope allows
 # every path. The investigation workflow denies edit tools instead; the
-# harness still counts any change as a scope violation.
+# harness still counts any change as a scope violation, and tells the plain
+# condition, in its prompt, that no file may change.
 
 [[criterion]]
 id = "answer"
-statement = "The worker's ANSWER line names the first commit at which `sh checks/settle-repro.sh` (run from a copy outside the tree) fails, and the reproduction passes at that commit's parent"
+statement = "The worker's ANSWER line names the first commit at which the reproduction in `checks/settle-repro.sh` fails, and the reproduction passes at that commit's parent"
 min_strength = "observed"
 producer = "independent"

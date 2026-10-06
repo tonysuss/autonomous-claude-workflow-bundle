@@ -53,36 +53,22 @@ func parse(r io.Reader, expandVars bool) (*Config, error) {
 	return c, nil
 }
 
-// parseValue handles quoting and inline comments. An unquoted value ends at
-// the first '#'. A double-quoted value may contain '#', and \" and \\ stand
-// for a quote and a backslash; after the closing quote only a comment may
-// follow.
+// parseValue strips an inline comment, then removes surrounding quotes.
+// Inside quotes, \" and \\ stand for a quote and a backslash.
 func parseValue(raw string) (string, error) {
-	if !strings.HasPrefix(raw, `"`) {
-		if i := strings.Index(raw, "#"); i >= 0 {
-			raw = raw[:i]
-		}
-		return strings.TrimSpace(raw), nil
+	if i := strings.Index(raw, "#"); i >= 0 {
+		raw = strings.TrimSpace(raw[:i])
 	}
-	var b strings.Builder
-	for i := 1; i < len(raw); i++ {
-		ch := raw[i]
-		switch {
-		case ch == '\\' && i+1 < len(raw) && (raw[i+1] == '"' || raw[i+1] == '\\'):
-			b.WriteByte(raw[i+1])
-			i++
-		case ch == '"':
-			rest := strings.TrimSpace(raw[i+1:])
-			if rest != "" && !strings.HasPrefix(rest, "#") {
-				return "", fmt.Errorf("unexpected text after closing quote: %q", rest)
-			}
-			return b.String(), nil
-		default:
-			b.WriteByte(ch)
+	if strings.HasPrefix(raw, `"`) {
+		if len(raw) < 2 || !strings.HasSuffix(raw, `"`) {
+			return "", fmt.Errorf("unterminated quoted value")
 		}
+		return unescape.Replace(raw[1 : len(raw)-1]), nil
 	}
-	return "", fmt.Errorf("unterminated quoted value")
+	return raw, nil
 }
+
+var unescape = strings.NewReplacer(`\\`, `\`, `\"`, `"`)
 
 // expand replaces ${NAME} and ${NAME:-fallback} with environment values and
 // $$ with $. Any other $ is kept.
