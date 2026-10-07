@@ -70,8 +70,17 @@ jobs:
         run: cargo test --workspace --locked
       - name: Evaluation harness tests
         run: python3 eval/test_harness.py
-      - name: Test kit, under the system's own bash
-        run: /bin/bash testkit/run.sh doctor
+      - name: Test kit, under the system's own bash (3.2 on macOS)
+        run: |
+          /bin/bash testkit/run.sh doctor
+          # The evaluation's whole path on Copilot's scripted model: two tasks, three conditions.
+          /bin/bash testkit/run.sh eval --fake-model --tasks py-split-remainder go-quoted-hash
+          # Local disk is no network filesystem: the store opens, and the result names the filesystem.
+          set +e; /bin/bash testkit/run.sh netfs "$RUNNER_TEMP"; status=$?; set -e
+          test "$status" -eq 1
+          grep -q "opened a store" testkit-results/netfs-*/RESULT.txt
+          /bin/bash testkit/run.sh pack
+          ls -l testkit-results-*.zip
 
   binaries:
     name: binary (${{ matrix.name }})

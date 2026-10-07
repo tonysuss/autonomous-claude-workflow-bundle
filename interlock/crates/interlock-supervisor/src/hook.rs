@@ -183,36 +183,202 @@ fn canonical(p: &Path) -> PathBuf {
     resolve(Path::new("/"), &p.display().to_string())
 }
 
-/// Options of `ps` that take a value, which may contain an `e` or an `E`.
-const PS_VALUE_OPTS: &[char] = &['o', 'O', 'p', 'q', 'U', 'u', 'G', 'g', 't', 'M', 'N', 'J', 'k'];
+/// Options of `ps` whose value is the next word (which may hold an `e` or an
+/// `E`): dash-style, BSD-style (no dash), and long ones.
+const PS_DASH_VALUES: &[char] = &['o', 'O', 'p', 'q', 'U', 'u', 'G', 'g', 't', 'M', 'N', 'J', 'k', 'C', 's'];
+const PS_BSD_VALUES: &[char] = &['o', 'O', 'p', 'U', 't', 'k'];
+const PS_LONG_VALUES: &[&str] = &[
+    "sort",
+    "user",
+    "User",
+    "group",
+    "Group",
+    "pid",
+    "ppid",
+    "sid",
+    "tty",
+    "cols",
+    "columns",
+    "lines",
+    "rows",
+    "width",
+    "format",
+    "quick-pid",
+];
+
+/// Programs that run the rest of their words as a command, and their options
+/// whose value is the next word.
+const RUNS_A_COMMAND: &[&str] = &[
+    "sudo",
+    "doas",
+    "env",
+    "command",
+    "exec",
+    "nice",
+    "nohup",
+    "time",
+    "timeout",
+    "watch",
+    "xargs",
+    "stdbuf",
+    "caffeinate",
+];
+const RUNNER_VALUES: &[&str] = &[
+    "-u", "-g", "-U", "-C", "-D", "-h", "-p", "-r", "-t", "-T", "-n", "-s", "-k", "-I", "-L", "-P", "-E", "-d", "-a",
+    "-S",
+];
+const SHELLS: &[&str] = &["sh", "bash", "zsh", "dash", "ksh"];
+
+/// A shell line cut into simple commands, each a list of words with quotes
+/// and backslashes removed, as the shell would pass them; and the command
+/// lines inside `$(...)` or backquotes within double quotes, which the shell
+/// runs too. Not a parser: enough to see what a line runs.
+fn shell_commands(line: &str) -> (Vec<Vec<String>>, Vec<String>) {
+    fn flush(words: &mut Vec<String>, word: &mut String, in_word: &mut bool) {
+        if *in_word {
+            words.push(std::mem::take(word));
+            *in_word = false;
+        }
+    }
+    let (mut commands, mut nested, mut words) = (Vec::new(), Vec::new(), Vec::new());
+    let (mut word, mut in_word, mut quote) = (String::new(), false, None::<char>);
+    let mut chars = line.chars().peekable();
+    while let Some(c) = chars.next() {
+        match (quote, c) {
+            (Some('\''), '\'') | (Some('"'), '"') => quote = None,
+            (Some('"'), '\\') => word.extend(chars.next()),
+            (Some('"'), '$') if chars.peek() == Some(&'(') => {
+                chars.next();
+                let mut depth = 1;
+                let inner: String = chars
+                    .by_ref()
+                    .take_while(|c| {
+                        depth += match c {
+                            '(' => 1,
+                            ')' => -1,
+                            _ => 0,
+                        };
+                        depth > 0
+                    })
+                    .collect();
+                nested.push(inner);
+            }
+            (Some('"'), '`') => nested.push(chars.by_ref().take_while(|c| *c != '`').collect()),
+            (Some(_), c) => word.push(c),
+            (None, '\'' | '"') => {
+                quote = Some(c);
+                in_word = true;
+            }
+            (None, '\\') => {
+                if let Some(next) = chars.next().filter(|n| *n != '\n') {
+                    word.push(next);
+                    in_word = true;
+                }
+            }
+            (None, c) if ";|&()`<>\n".contains(c) => {
+                flush(&mut words, &mut word, &mut in_word);
+                if !words.is_empty() {
+                    commands.push(std::mem::take(&mut words));
+                }
+            }
+            (None, c) if c.is_whitespace() => flush(&mut words, &mut word, &mut in_word),
+            (None, c) => {
+                word.push(c);
+                in_word = true;
+            }
+        }
+    }
+    flush(&mut words, &mut word, &mut in_word);
+    if !words.is_empty() {
+        commands.push(words);
+    }
+    (commands, nested)
+}
+
+fn is_assignment(word: &str) -> bool {
+    word.split_once('=').is_some_and(|(name, _)| {
+        name.chars().next().is_some_and(|c| c == '_' || c.is_ascii_alphabetic())
+            && name.chars().all(|c| c == '_' || c.is_ascii_alphanumeric())
+    })
+}
 
 /// Whether a shell line runs `ps` so that it prints processes' environments,
 /// where running sessions keep their attempt tokens: BSD-style options with an
-/// `e` (`ps eww`, Linux and macOS) or `-E` (macOS). Linux's `-e`, all
-/// processes, is not one.
-fn shows_environments(command: &str) -> bool {
-    command.split(|c: char| ";|&()\n`".contains(c)).any(|part| {
-        let words: Vec<&str> = part.split_whitespace().map(|w| w.trim_matches(['\'', '"'])).collect();
-        let Some(at) = words.iter().position(|w| w.rsplit('/').next() == Some("ps")) else { return false };
-        let mut args = words[at + 1..].iter();
-        while let Some(arg) = args.next() {
-            let (letters, bsd) = match arg.strip_prefix('-') {
-                Some(rest) if rest.starts_with('-') => continue,
-                Some(rest) => (rest, false),
-                None => (*arg, true),
-            };
-            if !letters.chars().all(|c| c.is_ascii_alphabetic()) {
-                continue;
-            }
-            if letters.contains('E') || (bsd && letters.contains('e')) {
-                return true;
-            }
-            if letters.ends_with(PS_VALUE_OPTS) {
-                args.next();
+/// `e` (`ps eww`, Linux and macOS), or `-E` (macOS), or `-e` under macOS's
+/// `COMMAND_MODE=legacy`. Linux's `-e`, all processes, is not one. `ps` counts
+/// only where it is run: as a command, after variables and programs that run
+/// a command (sudo, env, timeout and the like), or in a shell's `-c` script.
+fn shows_environments(line: &str) -> bool {
+    let (commands, nested) = shell_commands(line);
+    nested.iter().any(|n| shows_environments(n)) || commands.iter().any(|c| command_shows_environments(c))
+}
+
+fn command_shows_environments(words: &[String]) -> bool {
+    let program = |w: &str| w.rsplit('/').next().unwrap_or(w).to_string();
+    let mut legacy = false;
+    let mut i = 0;
+    loop {
+        while words.get(i).is_some_and(|w| is_assignment(w)) {
+            legacy |= words[i].starts_with("COMMAND_MODE=");
+            i += 1;
+        }
+        let Some(first) = words.get(i) else { return false };
+        let name = program(first);
+        if SHELLS.contains(&name.as_str()) {
+            let script = words[i + 1..]
+                .iter()
+                .position(|a| a.starts_with('-') && !a.starts_with("--") && a.contains('c'))
+                .and_then(|at| words.get(i + at + 2));
+            return script.is_some_and(|s| shows_environments(s));
+        }
+        if name == "eval" {
+            return shows_environments(&words[i + 1..].join(" "));
+        }
+        if !RUNS_A_COMMAND.contains(&name.as_str()) {
+            return name == "ps" && ps_shows_environments(&words[i + 1..], legacy);
+        }
+        i += 1;
+        while let Some(arg) = words.get(i) {
+            if arg.len() > 1 && arg.starts_with('-') {
+                i += if RUNNER_VALUES.contains(&arg.as_str()) { 2 } else { 1 };
+            } else if is_assignment(arg) {
+                legacy |= arg.starts_with("COMMAND_MODE=");
+                i += 1;
+            } else if arg.trim_end_matches(['s', 'm', 'h', 'd']).parse::<f64>().is_ok() {
+                // timeout's duration, nice's or watch's number.
+                i += 1;
+            } else {
+                break;
             }
         }
-        false
-    })
+    }
+}
+
+fn ps_shows_environments(args: &[String], legacy: bool) -> bool {
+    let mut args = args.iter().peekable();
+    while let Some(arg) = args.next() {
+        let takes_next = |values: bool, args: &mut std::iter::Peekable<std::slice::Iter<'_, String>>| {
+            if values && args.peek().is_some_and(|n| !n.starts_with('-')) {
+                args.next();
+            }
+        };
+        if let Some(long) = arg.strip_prefix("--") {
+            takes_next(PS_LONG_VALUES.contains(&long), &mut args);
+            continue;
+        }
+        let (letters, bsd) = match arg.strip_prefix('-') {
+            Some(rest) => (rest, false),
+            None => (arg.as_str(), true),
+        };
+        if letters.is_empty() || !letters.chars().all(|c| c.is_ascii_alphabetic()) {
+            continue;
+        }
+        if letters.contains('E') || ((bsd || legacy) && letters.contains('e')) {
+            return true;
+        }
+        takes_next(letters.ends_with(if bsd { PS_BSD_VALUES } else { PS_DASH_VALUES }), &mut args);
+    }
+    false
 }
 
 /// Why a tool call is refused for reaching interlock's own state: the store
@@ -528,13 +694,9 @@ mod tests {
         assert!(denied("Bash", json!({"command": "tr '\\0' '\\n' < /proc/4242/environ"})).contains("environments"));
         denied("Read", json!({"file_path": "/proc/self/environ"}));
         // ps prints them too: BSD-style e on Linux and macOS, -E on macOS.
-        for cmd in ["ps eww", "ps auxe", "ps -E -o command= -p 4242", "/bin/ps -axEww", "true && ps e -p 1"] {
-            assert!(denied("Bash", json!({ "command": cmd })).contains("environments"), "{cmd}");
-        }
+        assert!(denied("Bash", json!({"command": "ps eww"})).contains("environments"));
         // Listing processes is not reading their environments.
-        for cmd in ["ps -e", "ps -ef", "ps aux", "ps -o user,command -p 1", "ps -p 1 -o etime", "ps axo user,pid"] {
-            assert_eq!(pre(&s, "Bash", json!({ "command": cmd })).exit_code, 0, "{cmd}");
-        }
+        assert_eq!(pre(&s, "Bash", json!({"command": "ps -ef"})).exit_code, 0);
         // The attempt's own worktree, though it sits inside .interlock/, is open.
         assert_eq!(pre(&s, "Read", json!({"file_path": s.worktree.join("src/a.rs")})).exit_code, 0);
         assert_eq!(pre(&s, "Bash", json!({"command": "cat src/a.rs ./README.md"})).exit_code, 0);
@@ -661,6 +823,59 @@ mod tests {
         let r = pre(&s, "Bash", json!({"command": "git push origin fix"}));
         assert_eq!(r.exit_code, 0);
         assert!(r.stdout.contains("\"permissionDecision\":\"ask\""));
+    }
+
+    #[test]
+    fn ps_that_prints_environments_is_found_wherever_the_line_runs_it() {
+        for cmd in [
+            "ps eww",
+            "ps auxe",
+            "ps -E -o command= -p 4242",
+            "/bin/ps -axEww",
+            "true && ps e -p 1",
+            "ps eww>/tmp/x",
+            "ps -E>/tmp/x",
+            "\\ps eww",
+            "p''s eww",
+            "ps e''ww",
+            "ps axu e",
+            "ps u e",
+            "COMMAND_MODE=legacy ps -e",
+            "sudo -u root ps eww",
+            "timeout 5 ps e",
+            "timeout 1.5s ps e",
+            "env -i ps eww",
+            "nice -n 5 ps e",
+            "bash -c 'ps eww'",
+            "sh -lc \"ps -E\"",
+            "echo \"$(ps eww)\"",
+            "echo \"`ps eww`\"",
+            "echo $(ps eww)",
+            "eval ps eww",
+        ] {
+            assert!(shows_environments(cmd), "{cmd}");
+        }
+        for cmd in [
+            "ps -e",
+            "ps -ef",
+            "ps aux",
+            "ps -o user,command -p 1",
+            "ps -p 1 -o etime",
+            "ps axo user,pid",
+            "ps -C node -o pid=",
+            "ps -fC sleep",
+            "ps -eo pid,etime --sort etime",
+            "ps --user steve",
+            "git commit -m \"Refuse ps environment flags\"",
+            "git commit -m \"fix (ps e)\"",
+            "docker compose ps postgres",
+            "echo use ps to see processes",
+            "command -v ps",
+            "grep -n ps e.txt",
+            "bash script.sh e",
+        ] {
+            assert!(!shows_environments(cmd), "{cmd}");
+        }
     }
 
     #[test]

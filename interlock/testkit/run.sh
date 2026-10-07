@@ -547,7 +547,8 @@ EOF
 
 # The mount point holding a directory, and that filesystem's type, as the
 # operating system names it (statfs on Linux, mount(8) on macOS).
-mount_point() { df -P "$1" | awk 'NR == 2 { print $NF }'; }
+# df -P puts the mount point last, from the sixth field on; it may hold spaces.
+mount_point() { df -P "$1" | awk 'NR == 2 { for (i = 6; i <= NF; i++) printf "%s%s", $i, (i < NF ? " " : "\n") }'; }
 fs_type() {
   if [[ "$(uname -s)" == Linux ]]; then
     stat -f -c %T "$1" 2> /dev/null

@@ -360,9 +360,12 @@ fn signal_of(_: ExitStatus) -> Option<i32> {
 }
 
 fn signal_group(pgid: u32, signal: nix::sys::signal::Signal) {
-    // Group 0 is the caller's own, and 1 is init's: never a session's.
-    if pgid > 1 {
-        let _ = nix::sys::signal::killpg(nix::unistd::Pid::from_raw(pgid as i32), signal);
+    // Group 0 is the caller's own and 1 is init's, never a session's; a pgid
+    // past i32 would wrap to -1, every process.
+    if let Ok(pgid) = i32::try_from(pgid)
+        && pgid > 1
+    {
+        let _ = nix::sys::signal::killpg(nix::unistd::Pid::from_raw(pgid), signal);
     }
 }
 
@@ -385,19 +388,20 @@ fn stop_child(child: &mut Child, pgid: u32) {
 /// The kernel's start time for a process, which tells it apart from a later
 /// process that reuses its pid. `None` where processes cannot be read.
 pub fn process_start(pid: u32) -> Option<u64> {
-    procinfo::stat(pid).map(|s| s.start)
+    procinfo::stat(pid).and_then(|s| s.start)
 }
 
 /// Whether a process is still running: present, not a zombie, and the same
 /// process that was recorded when `process_start` is known.
 pub fn alive(pid: u32, process_start: Option<u64>) -> bool {
     match procinfo::stat(pid) {
-        Some(s) => !s.zombie && process_start.is_none_or(|start| start == s.start),
-        None if procinfo::SUPPORTED => false,
-        None => match nix::sys::signal::kill(nix::unistd::Pid::from_raw(pid as i32), None) {
+        Some(s) => !s.zombie && process_start.zip(s.start).is_none_or(|(want, now)| want == now),
+        None if procinfo::supported() => false,
+        // A pid past i32 would wrap to a process group.
+        None => i32::try_from(pid).is_ok_and(|p| match nix::sys::signal::kill(nix::unistd::Pid::from_raw(p), None) {
             Ok(()) => true,
             Err(e) => e == nix::errno::Errno::EPERM,
-        },
+        }),
     }
 }
 
@@ -643,7 +647,7 @@ mod tests {
 
     /// Runs its arguments in a new session, as setsid(1) does where there is
     /// one: macOS has none.
-    const SETSID: &str = "/usr/bin/perl -MPOSIX=setsid -e 'setsid(); exec @ARGV or die'";
+    const SETSID: &str = "/usr/bin/perl -MPOSIX=setsid -e 'setsid() or die; exec @ARGV or die'";
 
     fn sh(script: &str) -> CommandPlan {
         CommandPlan { program: "/bin/sh".into(), args: vec!["-c".into(), script.into()], stdin: None, env: vec![] }

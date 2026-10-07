@@ -1,8 +1,8 @@
 //! What interlock reads about other processes: each one's parent, process
 //! group, start time and state, the environment it started with, and its
 //! command line. On Linux from `/proc`; on macOS from libproc and `sysctl`.
-//! Both read what the same user may read, which covers every process a
-//! session starts.
+//! Environments and command lines are read for the same user's processes,
+//! which covers every process a session starts; parents and groups for any.
 
 /// One process, as the operating system reports it.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -12,15 +12,18 @@ pub struct Stat {
     /// When the process started, in this platform's units: clock ticks since
     /// boot on Linux, microseconds since the epoch on macOS. Compare it only
     /// with start times read here, to tell a process from a later one that
-    /// reuses its pid.
-    pub start: u64,
+    /// reuses its pid. macOS gives it only for the same user's processes.
+    pub start: Option<u64>,
     /// It has exited and waits for its parent to collect it.
     pub zombie: bool,
 }
 
-/// Whether this platform can read other processes. Where it cannot, callers
-/// fall back to what a signal can tell them, and lose the rest.
-pub const SUPPORTED: bool = cfg!(any(target_os = "linux", target_os = "macos"));
+/// Whether processes can be read here: on macOS always, on Linux when `/proc`
+/// is mounted (a chroot or sandbox may leave it out). Where they cannot,
+/// callers fall back to what a signal can tell them, and lose the rest.
+pub fn supported() -> bool {
+    imp::supported()
+}
 
 /// Every process id the system reports.
 pub fn pids() -> Vec<u32> {
@@ -61,6 +64,10 @@ pub fn started_with(pid: u32, name: &str, value: Option<&str>) -> bool {
 mod imp {
     use super::Stat;
 
+    pub fn supported() -> bool {
+        std::path::Path::new("/proc/self/stat").exists()
+    }
+
     /// NUL-separated strings, without the empty ones.
     fn entries(raw: &[u8]) -> Vec<Vec<u8>> {
         raw.split(|b| *b == 0).filter(|s| !s.is_empty()).map(<[u8]>::to_vec).collect()
@@ -80,7 +87,7 @@ mod imp {
         Some(Stat {
             parent: fields.get(1)?.parse().ok()?,
             group: fields.get(2)?.parse().ok()?,
-            start: fields.get(19)?.parse().ok()?,
+            start: Some(fields.get(19)?.parse().ok()?),
             zombie: matches!(state, 'Z' | 'X'),
         })
     }
@@ -95,8 +102,9 @@ mod imp {
     }
 }
 
-// The only unsafe code in interlock: six calls into Apple's process API,
-// each with the buffer it is given checked against the size it is told.
+// The only unsafe code in interlock: five calls into Apple's process API, each
+// with the buffer it is given checked against the size it is told, and the
+// zeroed structures they fill.
 #[cfg(target_os = "macos")]
 #[allow(unsafe_code)]
 #[warn(clippy::undocumented_unsafe_blocks)]
@@ -112,6 +120,10 @@ mod imp {
 
     /// `SZOMB` in `<sys/proc.h>`.
     const ZOMBIE: u32 = 5;
+
+    pub fn supported() -> bool {
+        true
+    }
 
     pub fn pids() -> Vec<u32> {
         // SAFETY: with no buffer, proc_listallpids only counts.
@@ -131,21 +143,36 @@ mod imp {
         buf.into_iter().filter(|p| *p > 0).map(|p| p as u32).collect()
     }
 
+    /// The full record, with the start time, for the same user's processes;
+    /// the short one, without it, for anyone's. A non-zero `arg` asks for
+    /// zombies too.
     pub fn stat(pid: u32) -> Option<Stat> {
         let pid = libc::pid_t::try_from(pid).ok()?;
         // SAFETY: proc_bsdinfo is plain data; all zeroes is a valid value.
         let mut info: libc::proc_bsdinfo = unsafe { std::mem::zeroed() };
         let size = size_of::<libc::proc_bsdinfo>() as libc::c_int;
         // SAFETY: the buffer is one proc_bsdinfo of `size` bytes.
-        let got = unsafe { libc::proc_pidinfo(pid, libc::PROC_PIDTBSDINFO, 0, (&raw mut info).cast::<c_void>(), size) };
-        if got != size {
-            return None;
+        let got = unsafe { libc::proc_pidinfo(pid, libc::PROC_PIDTBSDINFO, 1, (&raw mut info).cast::<c_void>(), size) };
+        if got == size {
+            return Some(Stat {
+                parent: info.pbi_ppid,
+                group: info.pbi_pgid,
+                start: Some(info.pbi_start_tvsec.saturating_mul(1_000_000).saturating_add(info.pbi_start_tvusec)),
+                zombie: info.pbi_status == ZOMBIE,
+            });
         }
-        Some(Stat {
-            parent: info.pbi_ppid,
-            group: info.pbi_pgid,
-            start: info.pbi_start_tvsec.saturating_mul(1_000_000).saturating_add(info.pbi_start_tvusec),
-            zombie: info.pbi_status == ZOMBIE,
+        // SAFETY: proc_bsdshortinfo is plain data; all zeroes is a valid value.
+        let mut short: libc::proc_bsdshortinfo = unsafe { std::mem::zeroed() };
+        let size = size_of::<libc::proc_bsdshortinfo>() as libc::c_int;
+        // SAFETY: the buffer is one proc_bsdshortinfo of `size` bytes.
+        let got = unsafe {
+            libc::proc_pidinfo(pid, libc::PROC_PIDT_SHORTBSDINFO, 1, (&raw mut short).cast::<c_void>(), size)
+        };
+        (got == size).then_some(Stat {
+            parent: short.pbsi_ppid,
+            group: short.pbsi_pgid,
+            start: None,
+            zombie: short.pbsi_status == ZOMBIE,
         })
     }
 
@@ -179,7 +206,11 @@ mod imp {
     }
 
     /// The arguments and the environment in a `KERN_PROCARGS2` area. The
-    /// environment ends at the first empty string.
+    /// environment ends at the first empty string. As in ps(1), an empty
+    /// first argument is taken for padding, which shifts the rest by one; and
+    /// where the kernel leaves the environment out (a process whose code
+    /// signature forbids reading it), it reads as empty, which is never a
+    /// marker.
     pub(super) fn split(area: &[u8]) -> Option<(Strings, Strings)> {
         let argc = usize::try_from(i32::from_ne_bytes(area.get(..4)?.try_into().ok()?)).ok()?;
         let rest = area.get(4..)?;
@@ -235,8 +266,11 @@ mod tests {
         let s = stat(me).expect("this process");
         assert_eq!(s.parent, std::os::unix::process::parent_id());
         assert_eq!(s.group, nix::unistd::getpgrp().as_raw() as u32);
-        assert!(s.start > 0 && !s.zombie);
+        assert!(supported());
+        assert!(s.start.is_some_and(|t| t > 0) && !s.zombie);
         assert_eq!(stat(me).unwrap().start, s.start, "a start time does not move");
+        // Another user's process (pid 1 is init or launchd) is seen too.
+        assert!(stat(1).is_some());
         assert!(stat(u32::MAX - 1).is_none());
     }
 
@@ -253,7 +287,7 @@ mod tests {
         let pid = child.id();
         let s = stat(pid).expect("the child");
         assert_eq!(s.parent, std::process::id());
-        assert!(stat(std::process::id()).unwrap().start <= s.start, "started after its parent");
+        assert!(stat(std::process::id()).unwrap().start.unwrap() <= s.start.unwrap(), "started after its parent");
         let env: Vec<String> = environ(pid).unwrap().iter().map(|e| String::from_utf8_lossy(e).into_owned()).collect();
         assert!(env.contains(&"INTERLOCK_PROBE=marker-1".to_string()), "{env:?}");
         assert!(env.contains(&"OTHER=x=y".to_string()), "{env:?}");

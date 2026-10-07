@@ -219,13 +219,13 @@ fn finish(child: Child) -> (i32, Value, String) {
 /// A stray that leaves the session's process group in a new session, and one
 /// that also drops its environment (so no marker) and loses its parent. Perl
 /// stands in for setsid(1), which macOS lacks.
-const STRAYS: &str = "/usr/bin/perl -MPOSIX=setsid -e 'setsid(); exec @ARGV or die' sleep 301 \
+const STRAYS: &str = "/usr/bin/perl -MPOSIX=setsid -e 'setsid() or die; exec @ARGV or die' sleep 301 \
 </dev/null >/dev/null 2>&1 & echo $! > \"$here/setsid.pid\"\n\
-( env -i /usr/bin/perl -MPOSIX=setsid -e 'setsid(); exec @ARGV or die' /bin/sleep 302 \
+( env -i /usr/bin/perl -MPOSIX=setsid -e 'setsid() or die; exec @ARGV or die' /bin/sleep 302 \
 </dev/null >/dev/null 2>&1 & echo $! > \"$here/stripped.pid\" )";
 
 /// setsid(1) for the fake host's shell fragments.
-const SETSID: &str = "/usr/bin/perl -MPOSIX=setsid -e 'setsid(); exec @ARGV or die'";
+const SETSID: &str = "/usr/bin/perl -MPOSIX=setsid -e 'setsid() or die; exec @ARGV or die'";
 
 #[test]
 fn processes_that_leave_the_session_are_stopped_when_it_ends() {
@@ -630,7 +630,8 @@ fn only_one_supervisor_gets_the_lock_however_many_race() {
 
 /// A worker's escaped process that waits for the verifier to start, reads its
 /// token from the verifier's environment (/proc on Linux, `ps -E` on macOS),
-/// and records assessments as the verifier.
+/// and records assessments as the verifier. It logs once that it can read
+/// tokens at all, so the test knows a failure to forge means something.
 const FORGER: &str = r#"#!/bin/sh
 out="$1"; me="$INTERLOCK_ATTEMPT"; i=0
 echo "watching as $me" >> "$out"
@@ -647,6 +648,10 @@ scan() {
 val() { printf '%s\n' "$line" | tr ' ' '\n' | sed -n "s/^$1=//p" | head -1; }
 while [ $i -lt 600 ]; do
   scan > "$out.scan"
+  # The positive control: it can see tokens (its own session's, at least).
+  if [ -s "$out.scan" ] && [ -z "$seen" ]; then
+    seen=1; echo "seen tokens: $(wc -l < "$out.scan" | tr -d ' ')" >> "$out"
+  fi
   while IFS= read -r line; do
     id=$(val INTERLOCK_ATTEMPT); db=$(val INTERLOCK_DB)
     [ -n "$id" ] && [ "$id" != "$me" ] && [ "$db" = "$INTERLOCK_DB" ] || continue
@@ -671,7 +676,9 @@ fn an_escaped_worker_process_cannot_forge_the_verifiers_evidence() {
         "",
         &format!(
             "if [ -z \"$INTERLOCK_TREE\" ]; then\n  perl -pi -e 's/a - b/a + b/' calc.py\n  \
-         {SETSID} \"$here/forger.sh\" \"$here/forger.log\" </dev/null >/dev/null 2>&1 &\nelse\n  sleep 8\nfi"
+         {SETSID} \"$here/forger.sh\" \"$here/forger.log\" </dev/null >/dev/null 2>&1 &\n  \
+         n=0; while [ $n -lt 100 ] && ! grep -q seen \"$here/forger.log\" 2>/dev/null; do n=$((n+1)); sleep 0.1; done\n\
+         else\n  sleep 8\nfi"
         ),
     );
     std::fs::write(f.here("forger.sh"), FORGER).unwrap();
@@ -686,9 +693,9 @@ fn an_escaped_worker_process_cannot_forge_the_verifiers_evidence() {
         .filter(|e| e["type"] == "assessment.added")
         .filter(|e| e["outcome"]["evidence"]["note"] == "forged by the worker")
         .count();
-    assert_eq!(forged, 0, "the forger was stopped with the worker's session: {}", {
-        std::fs::read_to_string(f.here("forger.log")).unwrap_or_default()
-    });
+    let log = std::fs::read_to_string(f.here("forger.log")).unwrap_or_default();
+    assert!(log.contains("watching as") && log.contains("seen tokens"), "the forger ran and could read tokens: {log}");
+    assert_eq!(forged, 0, "the forger was stopped with the worker's session: {log}");
     assert_ne!(report["final_state"], "done");
 }
 
