@@ -4,7 +4,9 @@ A workflow runtime that only lets work advance on evidence. Agents propose moves
 
 This directory builds the design draft "A workflow runtime that only lets work advance on evidence" (draft 1, October 4, 2026). Phases P0 to P4 have code, tests and recorded runs, except spike S2 (the Copilot SDK), which was not run. An independent audit checked the build against the design item by item: [docs/conformance.md](docs/conformance.md). Gates not met here are listed under [What is not proven](#what-is-not-proven).
 
-To run the tests still open yourself, on GitHub, Copilot's real model and your own repository, see [TESTING.md](TESTING.md): one command per test, in a Docker image that works on any computer.
+interlock runs on Linux and macOS. Every change is tested on both by GitHub Actions ([.github/workflows/interlock.yml](../.github/workflows/interlock.yml)): format, lint, and the whole suite with both hosts required, on Ubuntu 24.04 and on macOS 15 (Apple silicon). The same workflow builds interlock for macOS, one file for Apple silicon and Intel, and for Linux (see [Use](#use)). Windows is not supported; the Docker image in [TESTING.md](TESTING.md) runs it there.
+
+To run the tests still open yourself, on GitHub, Copilot's real model and your own repository, see [TESTING.md](TESTING.md): one command per test, on a Mac or Linux machine.
 
 ## Hosts
 
@@ -186,11 +188,13 @@ These are the defaults this build uses until they are decided:
 - **The six v1 skills and four workflows**: built as drafted; whether they cover what you need first is yours to say.
 - **Forge**: GitHub only.
 
-Of the draft's risks: S1 settled skill loading on both hosts; S2 (the Rust SDK) was not run, see above; a second host, Claude Code, is now tested, so portability is shown for two hosts; the store stays one controller per checkout, and it refuses to open on a network filesystem it recognizes (on Linux; on macOS the check is compiled but has not run).
+Of the draft's risks: S1 settled skill loading on both hosts; S2 (the Rust SDK) was not run, see above; a second host, Claude Code, is now tested, so portability is shown for two hosts; the store stays one controller per checkout, and it refuses to open on a network filesystem it recognizes (on Linux by filesystem magic number and mount table, on macOS by filesystem type name).
 
 ## What is not proven
 
 Each item below that can be tested has a command in [TESTING.md](TESTING.md).
+
+- **macOS beyond a CI runner.** The whole suite passes on GitHub's macOS 15 runners (Apple silicon). The Intel half of the macOS build is compiled but has not run, and no live model session has run on a Mac. One containment gap is macOS's own: a process that leaves its session's process group, clears its environment and loses its parent goes to launchd with nothing tying it to the session. Linux catches it by adopting orphans; macOS has no such setting ([docs/runtime.md](docs/runtime.md)).
 
 - **Live GitHub.** The container's GitHub token is invalid, so delivery ran against a fake `gh` and a local bare repository. An opt-in test that delivers to a separate test repository through the real `gh` is ready ([docs/live-tests.md](docs/live-tests.md)) and has not run. GitHub's real messages, timing and branch protection are untested; [docs/forge.md](docs/forge.md) lists what a live run would add. Under auto-merge, a base that moves while the merge waits is detected after the merge, not prevented, unless the branch requires up-to-date branches.
 - **Copilot CLI with a real model.** Copilot runs exercise the real CLI, hooks, permissions, skills and custom agents with a scripted model. Model behaviour under the skills, and under interlock's agent profiles, is evidenced on Claude Code only. Offline, Copilot offers no web or MCP tools, so the names the profiles give them are unchecked.
@@ -198,14 +202,29 @@ Each item below that can be tested has a command in [TESTING.md](TESTING.md).
 - **Skills in use.** The skills condition never saw a skill invoked by a live model, in v3 or v4.
 - **The real S3 task set and its baseline.** The evaluation runs on stand-in tasks.
 - **Spike S2.** The draft's P0 gate chose between a Rust SDK adapter and a Node sidecar after S2. S2 was not run; the decision taken instead is recorded under "Copilot through its CLI" above. It is the one design gate decided without its spike.
-- **A refusal on a real network filesystem.** The store's check classifies filesystems by `statfs` magic number and FUSE mount type and source. That classification is unit-tested, and FUSE mounts served on this machine with the types `fuse.sshfs` and `fuse.gocryptfs` over it were refused, but no NFS, SMB or real sshfs mount could be made here. On macOS the check reads `statfs` type names; it compiles there but has not run. encfs layered on a network mount, and sshfs on macOS, are not caught ([docs/runtime.md](docs/runtime.md)).
-- **Containment is not a security boundary.** Hooks read command text and do not parse shell grammar; a path computed at run time gets past them. Operator commands check their caller's process ancestry, which holds in sessions interlock launches; in a guided session a person drives, they rely on the hook asking the person, which a command hidden behind a shell variable gets past. A same-user process can read another's environment. Attempt tokens are bookkeeping. Real containment comes from the host's tool restrictions and the operating system ([docs/runtime.md](docs/runtime.md) says what holds).
+- **A refusal on a real network filesystem.** The store's check classifies filesystems by `statfs` magic number and FUSE mount type and source. That classification is unit-tested, and FUSE mounts served on this machine with the types `fuse.sshfs` and `fuse.gocryptfs` over it were refused, but no NFS, SMB or real sshfs mount could be made here. On macOS the check reads `statfs` type names; it runs in CI there, where it opens local disk, but has not met a real network share. encfs layered on a network mount, and sshfs on macOS, are not caught ([docs/runtime.md](docs/runtime.md)).
+- **Containment is not a security boundary.** Hooks read command text and do not parse shell grammar; a path computed at run time gets past them. Operator commands check their caller's process ancestry, which holds in sessions interlock launches; in a guided session a person drives, they rely on the hook asking the person, which a command hidden behind a shell variable gets past. A same-user process can read another's environment (`/proc` on Linux, `ps -E` on macOS); the hooks refuse both, but only as command text. Attempt tokens are bookkeeping. Real containment comes from the host's tool restrictions and the operating system ([docs/runtime.md](docs/runtime.md) says what holds).
 
 ## Use
+
+Build it, on Linux or macOS with Rust 1.89 or later:
 
 ```bash
 cargo build --release
 export PATH="$PWD/target/release:$PATH"
+```
+
+Or download a build: on GitHub, open the latest run of the `interlock` workflow (the Actions tab) and download `interlock-macos-universal` (Apple silicon and Intel) or `interlock-linux-x86_64`. Builds are kept for 90 days. Each holds a `.tar.gz` with the one file:
+
+```bash
+tar -xzf interlock-macos-universal.tar.gz
+xattr -d com.apple.quarantine interlock 2>/dev/null   # macOS holds back a downloaded program until this is cleared
+./interlock --version
+```
+
+Then:
+
+```bash
 
 interlock init
 interlock host inspect --save

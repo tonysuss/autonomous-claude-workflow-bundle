@@ -1,8 +1,8 @@
 # A Linux machine for interlock's remaining tests, with every tool they use.
 #
-# interlock runs on Linux only: it reads /proc for process ancestry and
-# containment. This image gives a Mac or Windows machine the environment the
-# build was tested in. From the interlock directory:
+# interlock runs on Linux and macOS. This image is for a Windows machine, or
+# for keeping the tools off a Mac: it gives any computer the Linux
+# environment the build was tested in. From the interlock directory:
 #
 #   docker build -t interlock-testkit -f testkit/Dockerfile .
 #   docker run -it --name interlock-testkit interlock-testkit

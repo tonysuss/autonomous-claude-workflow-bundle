@@ -317,7 +317,7 @@ cmd_suite() {
   if cargo fmt --all --check > "$OUT/fmt.txt" 2>&1; then lint="$lint, format clean"; else lint="$lint, format differs"; fi
   local summary harness_said=pass
   [[ $harness == 0 ]] || harness_said=FAIL
-  summary="$passed passed, $failed failed, $ignored ignored (350, 0 and 2 when this kit was made); evaluation harness tests $harness_said; $lint"
+  summary="$passed passed, $failed failed, $ignored ignored (352, 0 and 2 on Linux and 353, 0 and 2 on macOS when this kit was made); evaluation harness tests $harness_said; $lint"
   [[ $status == 0 && $failed == 0 && $passed -gt 0 && $harness == 0 ]] || end FAIL "$summary; see cargo-test.txt and harness-tests.txt"
   end PASS "$summary"
 }

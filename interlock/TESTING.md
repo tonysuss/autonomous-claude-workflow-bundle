@@ -1,6 +1,6 @@
 # Testing interlock yourself
 
-The build is tested: 350 automated tests pass, and live runs on Claude Code are recorded under `evidence/`. What is left needs things only you have: a GitHub token, a Copilot plan, a real repository for the baseline, and a network share. This kit runs each of those tests with one command and keeps what it saw, so the result can be checked afterwards.
+The build is tested on Linux and macOS: the whole suite passes on both (352 tests on Linux, 353 on macOS, where one more checks how macOS processes are read), and live runs on Claude Code are recorded under `evidence/`. What is left needs things only you have: a GitHub token, a Copilot plan, a real repository for the baseline, and a network share. This kit runs each of those tests with one command and keeps what it saw, so the result can be checked afterwards.
 
 Every command is `testkit/run.sh <test>`. It writes its evidence to `testkit-results/<test>-<time>/` and ends with one line:
 
@@ -10,29 +10,46 @@ Every command is `testkit/run.sh <test>`. It writes its evidence to `testkit-res
 
 When you are done, `testkit/run.sh pack` zips every result for you to send back (step 10).
 
-**Why so many tools.** Using interlock takes one program, `interlock` (its database is built in), plus git and the coding agent you already use. This kit installs more because it builds interlock from source and tests it from every side: Rust to compile it and its tests, Python and Go because the evaluation's tasks are small Python and Go projects, Node because Copilot CLI and Claude Code are Node programs, the GitHub CLI for delivery, and Docker because interlock runs on Linux only.
+**Why so many tools.** Using interlock takes one program, `interlock` (its database is built in), plus git and the coding agent you already use. This kit installs more because it builds interlock from source and tests it from every side: Rust to compile it and its tests, Python and Go because the evaluation's tasks are small Python and Go projects, Node because Copilot CLI and Claude Code are Node programs, and the GitHub CLI for delivery. On a Windows machine, where interlock does not run, Docker supplies a Linux one.
 
 ## What is left, and what each test proves
 
 | Step | Test | What it proves | You need | Cost |
 | --- | --- | --- | --- | --- |
-| 2 | `suite` | The 350 tests pass on your machine, not only in the build container | Docker | none |
+| 2 | `suite` | The whole suite passes on your machine, not only on the build machines | A Mac or a Linux machine | none |
 | 4 | `github` | Delivery on real GitHub: a pull request, the merge pinned to the verified commit, and the base branch holding exactly the verified files | A GitHub token and an empty test repository | none |
 | 5 | `copilot` | A whole task, worker and independent verifier, on Copilot CLI with its real model | A Copilot plan | about 3 premium requests |
 | 6 | `guided` | A person drives Copilot, the skills guide it, and interlock holds it to evidence | A Copilot plan, about 10 minutes at the keyboard | a few premium requests |
 | 7 | `eval` | Plain Copilot against Copilot with the skills against Copilot with skills and interlock, judged by hidden checks | A Copilot plan | about 20 to 30 premium requests |
 | 8 | `eval` on your own tasks | Whether interlock improves outcomes on tasks nobody tuned it for: the real S3 baseline | A repository with 10 to 15 closed issues | an afternoon, and more premium requests |
-| 9 | `netfs` | The store refuses a real network filesystem | An NFS, SMB or sshfs mount on a Linux machine | none |
+| 9 | `netfs` | The store refuses a real network filesystem | A network share: SMB or NFS on a Mac; NFS, SMB or sshfs on Linux | none |
 
 GitHub counts Copilot CLI use in premium requests, about one per prompt or headless session, times the model's rate. Your usage is at <https://github.com/settings/copilot>.
 
 The design's spike S2 (a Rust SDK for Copilot) is not a test. The CLI adapter was kept for v1; the README says why.
 
-## Step 1: a Linux machine
+## Step 1: a Mac or a Linux machine
 
-interlock runs on Linux only: it reads `/proc` to know which processes belong to an agent's session. On a Mac or Windows machine, use Docker, which gives you the same Linux environment the build was tested in.
+interlock runs on Linux and macOS. On Windows, use Docker (below).
 
-**With Docker** (any computer). Install Docker Desktop and give it at least 4 CPUs, 8 GB of memory and 20 GB of disk (Settings, Resources); compiling Rust needs the memory. Then, in a terminal:
+**On a Mac.** The suite is verified on macOS 15 on Apple silicon, on GitHub's macOS machines. In Terminal:
+
+1. Apple's developer tools, for git and the C compiler Rust uses: `xcode-select --install`. Skip it if `git --version` already works.
+2. Homebrew, from <https://brew.sh>, then the tools: `brew install python go node gh`. macOS's own `python3` is 3.9, which is too old; Homebrew's comes first once its setup lines are in your shell profile, as its installer says.
+3. Rust: `curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh`, then open a new Terminal window.
+4. The two hosts: `npm install -g @github/copilot@1.0.91 @anthropic-ai/claude-code@2.1.292`
+5. interlock itself:
+
+   ```bash
+   unzip interlock-test-kit.zip
+   cd interlock
+   cargo build --release
+   export PATH="$PWD/target/release:$PATH"      # again in each new Terminal window
+   ```
+
+**On Linux** (such as Ubuntu 24.04): install Rust 1.89 or later (<https://rustup.rs>), Python 3.11 or later, git, Go 1.22 or later, Node 22 or later and the GitHub CLI (<https://cli.github.com>), then do steps 4 and 5 above.
+
+**With Docker** (Windows, or to keep these tools off your machine). Install Docker Desktop and give it at least 4 CPUs, 8 GB of memory and 20 GB of disk (Settings, Resources); compiling Rust needs the memory. Then, in a terminal:
 
 ```bash
 unzip interlock-test-kit.zip
@@ -47,17 +64,7 @@ You are now inside the container, in `/home/tester/interlock`, with Rust, Python
 - Environment variables you `export` (step 3) are lost when you leave. Export them again when you come back.
 - The image was built and tested on an x86_64 machine. On an Apple Silicon Mac, Docker builds the arm64 version with the same steps; that has not been tried.
 
-**Without Docker** (a Linux machine, such as Ubuntu 24.04): install Rust 1.89 or later (<https://rustup.rs>), Python 3.11 or later, git, Go 1.22 or later, Node 22 or later, and then:
-
-```bash
-npm install -g @github/copilot@1.0.91 @anthropic-ai/claude-code
-# the GitHub CLI: https://cli.github.com
-cd interlock
-cargo build --release
-export PATH="$PWD/target/release:$PATH"
-```
-
-Either way, check what is ready:
+However you set it up, check what is ready:
 
 ```bash
 testkit/run.sh doctor
@@ -71,7 +78,7 @@ testkit/run.sh suite
 
 This builds interlock and runs every test with both hosts required, so no test can pass by skipping. It needs no account and makes no model calls: Copilot and Claude Code run offline against scripted models. It takes 10 to 30 minutes.
 
-Expected: `RESULT: PASS: 350 passed, 0 failed, 2 ignored ...`. The two ignored tests are the opt-in live ones (step 4 runs one of them).
+Expected: `RESULT: PASS: 352 passed, 0 failed, 2 ignored ...` on Linux, `353 passed` on macOS. The two ignored tests are the opt-in live ones (step 4 runs one of them).
 
 ## Step 3: a test repository and a token
 
@@ -83,7 +90,7 @@ For steps 4 to 8.
    - Repository access: **Only select repositories**, then `interlock-sandbox`.
    - Repository permissions: **Contents**: Read and write; **Pull requests**: Read and write. (Metadata: Read is added for you.)
    - Account permissions: **Copilot Requests**: Read, if it is offered. Without it, sign Copilot in separately (below).
-3. **Give it to the container, without it showing on screen or in your history.** Inside the container:
+3. **Give it to your terminal (or the container), without it showing on screen or in your history:**
 
    ```bash
    read -rs GH_TOKEN && export GH_TOKEN          # paste the token, press Enter; nothing is shown
@@ -164,13 +171,14 @@ For a final run, use a fresh container for it: agents run as the same user as th
 
 ## Step 9: a real network filesystem
 
-interlock refuses to keep its store on a network filesystem, where two machines could both believe they hold its lock. That check has only run against local mounts dressed up as network ones. On a Linux machine with a real NFS, SMB or sshfs mount (not inside Docker Desktop, which hands mounts to the container as a local filesystem):
+interlock refuses to keep its store on a network filesystem, where two machines could both believe they hold its lock. That check has only run against local mounts dressed up as network ones.
 
-```bash
-testkit/run.sh netfs /path/on/the/mount
-```
+- **On a Mac**: connect to a share in Finder (Go, Connect to Server, then `smb://<server>/<share>`). It appears under `/Volumes`. Then `testkit/run.sh netfs /Volumes/<share>`.
+- **On Linux**, with a real NFS, SMB or sshfs mount: `testkit/run.sh netfs /path/on/the/mount`.
 
-Expected: `RESULT: PASS: interlock refused a store on ... (nfs)`. It also records that `INTERLOCK_ALLOW_NETWORK_FS=1` lets you override the refusal.
+Not inside Docker Desktop, which hands mounts to the container as a local filesystem.
+
+Expected: `RESULT: PASS: interlock refused a store on ... (smbfs)`, or `(nfs)`, and so on. It also records that `INTERLOCK_ALLOW_NETWORK_FS=1` lets you override the refusal.
 
 ## Step 10: send the results back
 
@@ -178,7 +186,7 @@ Expected: `RESULT: PASS: interlock refused a store on ... (nfs)`. It also record
 testkit/run.sh pack
 ```
 
-It writes `testkit-results-<time>.zip` in the interlock directory, after removing the value of any credential in your environment from every file. From outside the container, copy it to your computer:
+It writes `testkit-results-<time>.zip` in the interlock directory, after removing the value of any credential in your environment from every file. If you used Docker, copy it out to your computer from outside the container:
 
 ```bash
 docker cp interlock-testkit:/home/tester/interlock/testkit-results-<time>.zip .
