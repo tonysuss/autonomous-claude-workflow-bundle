@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
-# interlock's remaining tests, one command each. Run on Linux, or inside the
-# image testkit/Dockerfile builds. Each command keeps what it saw under
+# interlock's remaining tests, one command each. Run on Linux or macOS (bash
+# 3.2 and BSD tools will do), or inside the image testkit/Dockerfile builds. Each command keeps what it saw under
 # testkit-results/<command>-<time>/ and ends with one line, RESULT: PASS,
 # FAIL or NOT RUN, which it also writes to RESULT.txt there.
 # Exit status: 0 PASS, 1 FAIL, 3 NOT RUN, 2 a usage error.
@@ -40,8 +40,21 @@ usage_error() {
 first_line() { "$@" 2>/dev/null | head -n1; }
 copilot_bin() { printf '%s' "${INTERLOCK_COPILOT_BIN:-$(command -v copilot || true)}"; }
 claude_bin() { printf '%s' "${INTERLOCK_CLAUDE_BIN:-$(command -v claude || true)}"; }
-# ver_ge HAVE WANT: whether version HAVE is at least WANT.
-ver_ge() { [[ "$(printf '%s\n%s\n' "$2" "$1" | sort -V | head -n1)" == "$2" ]]; }
+# ver_ge HAVE WANT: whether version HAVE is at least WANT, part by numeric part.
+ver_ge() {
+  local IFS=. i h w
+  local -a have want
+  read -r -a have <<< "$1"
+  read -r -a want <<< "$2"
+  for ((i = 0; i < ${#want[@]}; i++)); do
+    h="${have[i]:-0}" && h="${h%%[!0-9]*}" && h="${h:-0}"
+    w="${want[i]}" && w="${w%%[!0-9]*}" && w="${w:-0}"
+    ((10#$h > 10#$w)) && return 0
+    ((10#$h < 10#$w)) && return 1
+  done
+  return 0
+}
+lower() { printf '%s' "$1" | tr '[:upper:]' '[:lower:]'; }
 stamp() { date -u +%Y%m%dT%H%M%SZ; }
 # Free space, in whole gigabytes, on the filesystem holding the build.
 free_gb() { df -Pk "$ROOT" | awk 'NR == 2 { print int($4 / 1048576) }'; }
@@ -210,14 +223,13 @@ copilot_signed_in() {
 # ---------------------------------------------------------------- doctor
 
 cmd_doctor() {
-  local v c linux=0 rust=0 py=0 gitok=0 gook=0 nodeok=0 cop=0 cla=0 ghok=0 ghauth=0 repo=0 token=""
+  local v c os=0 rust=0 py=0 gitok=0 gook=0 nodeok=0 cop=0 cla=0 ghok=0 ghauth=0 repo=0 token=""
   row() { printf '  %-5s %-30s %s\n' "$1" "$2" "$3"; }
   echo "Tools"
-  if [[ "$(uname -s)" == Linux && -r /proc/self/stat ]]; then
-    linux=1 && row ok "Linux with /proc" "$(uname -sr)"
-  else
-    row MISS "Linux with /proc" "interlock runs on Linux only: use testkit/Dockerfile (TESTING.md, step 1)"
-  fi
+  case "$(uname -s)" in
+    Linux | Darwin) os=1 && row ok "Linux or macOS" "$(uname -sr)" ;;
+    *) row MISS "Linux or macOS" "interlock runs on Linux and macOS: use testkit/Dockerfile (TESTING.md, step 1)" ;;
+  esac
   v="$(free_gb)"
   if [[ "$v" -ge 8 ]]; then row ok "8 GB of free disk" "$v GB"; else row MISS "8 GB of free disk" "$v GB: compiling the tests needs about 6 GB"; fi
   v="$(first_line rustc --version | awk '{print $2}')"
@@ -248,7 +260,7 @@ cmd_doctor() {
   else
     row MISS "gh signed in" "export GH_TOKEN (TESTING.md, step 3)"
   fi
-  if [[ "${INTERLOCK_LIVE_GITHUB_REPO:-}" == */* && "${INTERLOCK_LIVE_GITHUB_REPO,,}" != "${THIS_REPOSITORY,,}" ]]; then
+  if [[ "${INTERLOCK_LIVE_GITHUB_REPO:-}" == */* && "$(lower "$INTERLOCK_LIVE_GITHUB_REPO")" != "$(lower "$THIS_REPOSITORY")" ]]; then
     repo=1 && row ok "test repository" "$INTERLOCK_LIVE_GITHUB_REPO"
   else
     row MISS "test repository" "export INTERLOCK_LIVE_GITHUB_REPO=<you>/interlock-sandbox (not $THIS_REPOSITORY)"
@@ -263,12 +275,12 @@ cmd_doctor() {
     for f in "$@"; do [[ "$f" == 1 ]] || { row no "$name" "$why"; return; }; done
     row ready "$name" ""
   }
-  ready suite "needs Linux, Rust, Python, git, Copilot CLI and Claude Code" "$linux" "$rust" "$py" "$gitok" "$cop" "$cla"
-  ready github "needs Linux, Rust, git, gh signed in, and the test repository" "$linux" "$rust" "$gitok" "$ghok" "$ghauth" "$repo"
-  ready copilot "needs Linux, Rust, Python, git, Node and Copilot CLI (and a Copilot sign-in)" "$linux" "$rust" "$py" "$gitok" "$nodeok" "$cop"
-  ready guided "needs the same as copilot" "$linux" "$rust" "$py" "$gitok" "$nodeok" "$cop"
-  ready eval "needs the same as copilot, and Go" "$linux" "$rust" "$py" "$gitok" "$nodeok" "$cop" "$gook"
-  ready netfs "needs Linux and Rust, and a network mount" "$linux" "$rust"
+  ready suite "needs Linux or macOS, Rust, Python, git, Copilot CLI and Claude Code" "$os" "$rust" "$py" "$gitok" "$cop" "$cla"
+  ready github "needs Linux or macOS, Rust, git, gh signed in, and the test repository" "$os" "$rust" "$gitok" "$ghok" "$ghauth" "$repo"
+  ready copilot "needs Linux or macOS, Rust, Python, git, Node and Copilot CLI (and a Copilot sign-in)" "$os" "$rust" "$py" "$gitok" "$nodeok" "$cop"
+  ready guided "needs the same as copilot" "$os" "$rust" "$py" "$gitok" "$nodeok" "$cop"
+  ready eval "needs the same as copilot, and Go" "$os" "$rust" "$py" "$gitok" "$nodeok" "$cop" "$gook"
+  ready netfs "needs Linux or macOS, Rust, and a network mount" "$os" "$rust"
 }
 
 # ---------------------------------------------------------------- suite
@@ -317,7 +329,7 @@ cmd_github() {
   begin github
   [[ "$repo" == */* ]] ||
     end "NOT RUN" "set INTERLOCK_LIVE_GITHUB_REPO=<owner>/<test-repo>, a separate repository made for this test"
-  [[ "${repo,,}" != "${THIS_REPOSITORY,,}" ]] ||
+  [[ "$(lower "$repo")" != "$(lower "$THIS_REPOSITORY")" ]] ||
     end "NOT RUN" "INTERLOCK_LIVE_GITHUB_REPO must name a separate test repository, not $THIS_REPOSITORY"
   command -v gh > /dev/null || end "NOT RUN" "gh is not installed"
   gh auth status > "$OUT/gh-auth.txt" 2>&1 || end "NOT RUN" "gh is not signed in, or GitHub refused its token: export GH_TOKEN (TESTING.md, step 3); see gh-auth.txt"
@@ -520,7 +532,7 @@ EOF
   python3 "$H" run --host copilot --conditions "$conditions" \
     --skills-generate --interlock-skills --budget-usd 1000 --repeats "$repeats" \
     --state-dir "$state" --results "$OUT/results" --run-base "$runs" --label main \
-    --interlock-bin "$BIN" --copilot-bin "$cop" "${extra[@]}" > "$OUT/run.txt" 2>&1
+    --interlock-bin "$BIN" --copilot-bin "$cop" ${extra[@]+"${extra[@]}"} > "$OUT/run.txt" 2>&1
   status=$?
   rmdir "$runs" 2> /dev/null
   python3 "$H" report --results "$OUT/results" > "$OUT/report.txt" 2>&1
@@ -533,6 +545,17 @@ EOF
 
 # ---------------------------------------------------------------- netfs
 
+# The mount point holding a directory, and that filesystem's type, as the
+# operating system names it (statfs on Linux, mount(8) on macOS).
+mount_point() { df -P "$1" | awk 'NR == 2 { print $NF }'; }
+fs_type() {
+  if [[ "$(uname -s)" == Linux ]]; then
+    stat -f -c %T "$1" 2> /dev/null
+  else
+    mount | grep -F " on $(mount_point "$1") (" | sed -e 's/.* (//' -e 's/[,)].*//'
+  fi
+}
+
 cmd_netfs() {
   local dir="${1:-}" probe status
   [[ -n "$dir" && -d "$dir" ]] || usage_error "netfs needs a directory on a network filesystem (NFS, SMB, sshfs)"
@@ -540,8 +563,9 @@ cmd_netfs() {
   build
   {
     echo "path: $dir"
-    stat -f -c 'statfs type: %T, magic 0x%t' "$dir"
-    findmnt -T "$dir" -o TARGET,SOURCE,FSTYPE 2> /dev/null || true
+    echo "filesystem type: $(fs_type "$dir")"
+    df -P "$dir"
+    findmnt -T "$dir" -o TARGET,SOURCE,FSTYPE 2> /dev/null || mount | grep -F " on $(mount_point "$dir") (" || true
   } > "$OUT/mount.txt" 2>&1
   probe="$(mktemp -d "$dir/interlock-netfs-probe-XXXXXX")" || end "NOT RUN" "cannot write in $dir"
   (cd "$probe" && git init -q && "$BIN" init) > "$OUT/init.json" 2> "$OUT/init.err"
@@ -550,7 +574,7 @@ cmd_netfs() {
   echo "with INTERLOCK_ALLOW_NETWORK_FS=1: exit $?" >> "$OUT/mount.txt"
   rm -rf "${probe:?}"
   local fs
-  fs="$(stat -f -c %T "$dir" 2> /dev/null)"
+  fs="$(fs_type "$dir")"
   if [[ $status == 2 ]] && grep -q network_filesystem "$OUT/init.err" "$OUT/init.json"; then
     end PASS "interlock refused a store on $dir ($fs): $(head -c 300 "$OUT/init.err")"
   fi

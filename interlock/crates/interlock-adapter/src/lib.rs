@@ -10,6 +10,7 @@ mod copilot;
 pub mod env;
 pub mod hooks;
 mod probe;
+pub mod procinfo;
 mod session;
 
 use interlock_core::capability::{CONTRACT_VERSION, Capability, CapabilitySet};

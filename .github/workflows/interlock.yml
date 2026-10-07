@@ -1,0 +1,134 @@
+# interlock on Linux and macOS: format, lint, the whole test suite with both
+# hosts required (Copilot CLI and Claude Code run offline against scripted
+# models, so no account and no secrets), and the evaluation harness's tests.
+# The binaries job builds interlock for macOS (one universal file for Apple
+# silicon and Intel) and Linux, smoke-tests each, and keeps them as artifacts.
+name: interlock
+
+on:
+  pull_request:
+    paths: ["interlock/**", ".github/workflows/interlock.yml"]
+  push:
+    branches: [main]
+    paths: ["interlock/**", ".github/workflows/interlock.yml"]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: interlock-${{ github.ref }}
+  cancel-in-progress: true
+
+defaults:
+  run:
+    working-directory: interlock
+
+env:
+  CARGO_TERM_COLOR: always
+  RUST_VERSION: "1.97.0"
+  COPILOT_VERSION: "1.0.91"
+  CLAUDE_VERSION: "2.1.292"
+
+jobs:
+  test:
+    name: test (${{ matrix.os }})
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-24.04, macos-15]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 75
+    steps:
+      - uses: actions/checkout@v4
+      - name: Rust
+        run: |
+          rustup toolchain install "$RUST_VERSION" --profile minimal -c clippy -c rustfmt
+          rustup default "$RUST_VERSION"
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: interlock
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - uses: actions/setup-go@v5
+        with:
+          go-version: "1.22"
+          cache: false
+      - name: The hosts
+        run: npm install -g "@github/copilot@$COPILOT_VERSION" "@anthropic-ai/claude-code@$CLAUDE_VERSION"
+      - name: Format
+        run: cargo fmt --all --check
+      - name: Lint
+        run: cargo clippy --workspace --all-targets --locked -- -D warnings
+      - name: Tests, with both hosts required
+        env:
+          INTERLOCK_REQUIRE_HOSTS: "1"
+        run: cargo test --workspace --locked
+      - name: Evaluation harness tests
+        run: python3 eval/test_harness.py
+      - name: Test kit, under the system's own bash
+        run: /bin/bash testkit/run.sh doctor
+
+  binaries:
+    name: binary (${{ matrix.name }})
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: macos-universal
+            os: macos-15
+          - name: linux-x86_64
+            os: ubuntu-24.04
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - name: Rust
+        run: |
+          rustup toolchain install "$RUST_VERSION" --profile minimal
+          rustup default "$RUST_VERSION"
+          if [ "$RUNNER_OS" = macOS ]; then rustup target add aarch64-apple-darwin x86_64-apple-darwin; fi
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: interlock
+          key: release
+      - name: Build
+        run: |
+          mkdir -p dist
+          if [ "$RUNNER_OS" = macOS ]; then
+            for t in aarch64-apple-darwin x86_64-apple-darwin; do
+              cargo build --release --locked -p interlock-cli --target "$t"
+            done
+            lipo -create -output dist/interlock \
+              target/aarch64-apple-darwin/release/interlock target/x86_64-apple-darwin/release/interlock
+            lipo -info dist/interlock
+          else
+            cargo build --release --locked -p interlock-cli
+            cp target/release/interlock dist/interlock
+          fi
+          file dist/interlock
+      - name: Smoke test
+        run: |
+          dist/interlock --version
+          repo="$(mktemp -d)"
+          cp -R examples/export-retry/. "$repo"
+          cd "$repo"
+          git init -q && git -c user.name=ci -c user.email=ci@ci add -A
+          git -c user.name=ci -c user.email=ci@ci commit -qm "Exporter with retry"
+          "$GITHUB_WORKSPACE/interlock/dist/interlock" init
+          "$GITHUB_WORKSPACE/interlock/dist/interlock" task create task.toml
+          "$GITHUB_WORKSPACE/interlock/dist/interlock" run export-retry --host copilot --max-sessions 0 \
+            --capabilities session_start,session_collect,session_cancel,tool_restriction || test $? -eq 5
+          "$GITHUB_WORKSPACE/interlock/dist/interlock" status export-retry
+      - name: Package
+        # A tarball keeps the executable bit, which an artifact's zip drops.
+        run: tar -czf "dist/interlock-${{ matrix.name }}.tar.gz" -C dist interlock
+      - uses: actions/upload-artifact@v4
+        with:
+          name: interlock-${{ matrix.name }}
+          path: interlock/dist/interlock-${{ matrix.name }}.tar.gz
+          if-no-files-found: error

@@ -183,6 +183,38 @@ fn canonical(p: &Path) -> PathBuf {
     resolve(Path::new("/"), &p.display().to_string())
 }
 
+/// Options of `ps` that take a value, which may contain an `e` or an `E`.
+const PS_VALUE_OPTS: &[char] = &['o', 'O', 'p', 'q', 'U', 'u', 'G', 'g', 't', 'M', 'N', 'J', 'k'];
+
+/// Whether a shell line runs `ps` so that it prints processes' environments,
+/// where running sessions keep their attempt tokens: BSD-style options with an
+/// `e` (`ps eww`, Linux and macOS) or `-E` (macOS). Linux's `-e`, all
+/// processes, is not one.
+fn shows_environments(command: &str) -> bool {
+    command.split(|c: char| ";|&()\n`".contains(c)).any(|part| {
+        let words: Vec<&str> = part.split_whitespace().map(|w| w.trim_matches(['\'', '"'])).collect();
+        let Some(at) = words.iter().position(|w| w.rsplit('/').next() == Some("ps")) else { return false };
+        let mut args = words[at + 1..].iter();
+        while let Some(arg) = args.next() {
+            let (letters, bsd) = match arg.strip_prefix('-') {
+                Some(rest) if rest.starts_with('-') => continue,
+                Some(rest) => (rest, false),
+                None => (*arg, true),
+            };
+            if !letters.chars().all(|c| c.is_ascii_alphabetic()) {
+                continue;
+            }
+            if letters.contains('E') || (bsd && letters.contains('e')) {
+                return true;
+            }
+            if letters.ends_with(PS_VALUE_OPTS) {
+                args.next();
+            }
+        }
+        false
+    })
+}
+
 /// Why a tool call is refused for reaching interlock's own state: the store
 /// itself, the directory holding attempt tokens, another process's
 /// environment, and, for headless sessions, anything in the store directory
@@ -200,6 +232,9 @@ pub fn forbidden(ctx: &HookContext, worktree: Option<&Path>, cwd: Option<&Path>,
     let mut texts: Vec<&str> = PATH_FIELDS.iter().filter_map(|f| input[f].as_str()).collect();
     let command = input["command"].as_str();
     texts.extend(command);
+    if command.is_some_and(shows_environments) {
+        return Some("other processes' environments are off limits".into());
+    }
     for text in texts {
         if text.contains("/proc/") && text.contains("environ") {
             return Some("other processes' environments are off limits".into());
@@ -492,6 +527,14 @@ mod tests {
         // Other processes' environments, where a running session's token lives.
         assert!(denied("Bash", json!({"command": "tr '\\0' '\\n' < /proc/4242/environ"})).contains("environments"));
         denied("Read", json!({"file_path": "/proc/self/environ"}));
+        // ps prints them too: BSD-style e on Linux and macOS, -E on macOS.
+        for cmd in ["ps eww", "ps auxe", "ps -E -o command= -p 4242", "/bin/ps -axEww", "true && ps e -p 1"] {
+            assert!(denied("Bash", json!({ "command": cmd })).contains("environments"), "{cmd}");
+        }
+        // Listing processes is not reading their environments.
+        for cmd in ["ps -e", "ps -ef", "ps aux", "ps -o user,command -p 1", "ps -p 1 -o etime", "ps axo user,pid"] {
+            assert_eq!(pre(&s, "Bash", json!({ "command": cmd })).exit_code, 0, "{cmd}");
+        }
         // The attempt's own worktree, though it sits inside .interlock/, is open.
         assert_eq!(pre(&s, "Read", json!({"file_path": s.worktree.join("src/a.rs")})).exit_code, 0);
         assert_eq!(pre(&s, "Bash", json!({"command": "cat src/a.rs ./README.md"})).exit_code, 0);

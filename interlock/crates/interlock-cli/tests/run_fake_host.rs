@@ -43,16 +43,27 @@ fn git(dir: &Path, args: &[&str]) -> String {
     String::from_utf8_lossy(&out.stdout).trim().to_string()
 }
 
+/// Whether a process is running: present and not a zombie, as ps reports it
+/// on Linux and macOS alike.
 fn running(pid: u64) -> bool {
-    std::fs::read_to_string(format!("/proc/{pid}/stat"))
-        .ok()
-        .and_then(|s| s.rfind(')').map(|i| !s[i + 2..].starts_with('Z')))
-        .unwrap_or(false)
+    Command::new("ps").args(["-o", "stat=", "-p", &pid.to_string()]).output().is_ok_and(|o| {
+        let state = String::from_utf8_lossy(&o.stdout);
+        let state = state.trim();
+        !state.is_empty() && !state.starts_with('Z')
+    })
 }
 
+/// Sends `signal` (a name such as `KILL`) to a process, or to a process group
+/// written as `-<pgid>`.
 fn kill(target: &str, signal: &str) {
-    let status = Command::new("kill").args(["-s", signal, "--", target]).status().unwrap();
-    assert!(status.success(), "kill -s {signal} {target}");
+    use nix::sys::signal::{Signal, kill as send, killpg};
+    use nix::unistd::Pid;
+    let sig: Signal = format!("SIG{signal}").parse().unwrap();
+    let sent = match target.strip_prefix('-') {
+        Some(group) => killpg(Pid::from_raw(group.parse().unwrap()), sig),
+        None => send(Pid::from_raw(target.parse().unwrap()), sig),
+    };
+    sent.unwrap_or_else(|e| panic!("kill -s {signal} {target}: {e}"));
 }
 
 fn wait_until(what: &str, limit: Duration, mut f: impl FnMut() -> bool) {
@@ -205,10 +216,16 @@ fn finish(child: Child) -> (i32, Value, String) {
     (out.status.code().unwrap_or(-1), parse(&out.stdout, &out.stderr), String::from_utf8_lossy(&out.stderr).into())
 }
 
-/// A stray that leaves the session's process group with setsid, and one that
-/// also drops its environment (so no marker) and loses its parent.
-const STRAYS: &str = "setsid sleep 301 </dev/null >/dev/null 2>&1 & echo $! > \"$here/setsid.pid\"\n\
-( env -i /usr/bin/setsid /bin/sleep 302 </dev/null >/dev/null 2>&1 & echo $! > \"$here/stripped.pid\" )";
+/// A stray that leaves the session's process group in a new session, and one
+/// that also drops its environment (so no marker) and loses its parent. Perl
+/// stands in for setsid(1), which macOS lacks.
+const STRAYS: &str = "/usr/bin/perl -MPOSIX=setsid -e 'setsid(); exec @ARGV or die' sleep 301 \
+</dev/null >/dev/null 2>&1 & echo $! > \"$here/setsid.pid\"\n\
+( env -i /usr/bin/perl -MPOSIX=setsid -e 'setsid(); exec @ARGV or die' /bin/sleep 302 \
+</dev/null >/dev/null 2>&1 & echo $! > \"$here/stripped.pid\" )";
+
+/// setsid(1) for the fake host's shell fragments.
+const SETSID: &str = "/usr/bin/perl -MPOSIX=setsid -e 'setsid(); exec @ARGV or die'";
 
 #[test]
 fn processes_that_leave_the_session_are_stopped_when_it_ends() {
@@ -216,11 +233,20 @@ fn processes_that_leave_the_session_are_stopped_when_it_ends() {
     let (code, report, err) = f.run(&["--max-sessions", "1"]);
     assert_eq!(code, 5, "{report:#} {err}");
     let (setsid, stripped) = (read_pid(&f.here("setsid.pid")), read_pid(&f.here("stripped.pid")));
-    wait_until("both strays are gone", Duration::from_secs(10), || !running(setsid) && !running(stripped));
     let stopped: Vec<u64> =
         report["sessions"][0]["stopped_strays"].as_array().unwrap().iter().filter_map(Value::as_u64).collect();
     assert!(stopped.contains(&setsid), "found by its marker: {report:#}");
-    assert!(stopped.contains(&stripped), "found as an orphan the supervisor adopted: {report:#}");
+    if cfg!(target_os = "linux") {
+        wait_until("both strays are gone", Duration::from_secs(10), || !running(setsid) && !running(stripped));
+        assert!(stopped.contains(&stripped), "found as an orphan the supervisor adopted: {report:#}");
+    } else {
+        // macOS has no subreaper: an orphan that also dropped its environment
+        // goes to launchd with nothing tying it to the session (docs/runtime.md).
+        wait_until("the marked stray is gone", Duration::from_secs(10), || !running(setsid));
+        if running(stripped) {
+            kill(&stripped.to_string(), "KILL");
+        }
+    }
 }
 
 #[test]
@@ -228,7 +254,7 @@ fn a_reattached_session_leaves_no_strays() {
     let f = Fixture::new(
         "max_attempts = 3",
         "",
-        "setsid sleep 303 </dev/null >/dev/null 2>&1 & echo $! > \"$here/stray.pid\"\nsleep 4",
+        &format!("{SETSID} sleep 303 </dev/null >/dev/null 2>&1 & echo $! > \"$here/stray.pid\"\nsleep 4"),
     );
     let mut first = f.spawn_run(&["--max-sessions", "1"]);
     let handoff = f.wait_for_handoff(&mut first);
@@ -246,7 +272,7 @@ fn task_cancel_stops_a_session_whose_supervisor_is_gone() {
     let f = Fixture::new(
         "max_attempts = 3",
         "",
-        "setsid sleep 304 </dev/null >/dev/null 2>&1 & echo $! > \"$here/stray.pid\"\nsleep 60",
+        &format!("{SETSID} sleep 304 </dev/null >/dev/null 2>&1 & echo $! > \"$here/stray.pid\"\nsleep 60"),
     );
     let mut first = f.spawn_run(&[]);
     let handoff = f.wait_for_handoff(&mut first);
@@ -365,7 +391,7 @@ fn pausing_safely_keeps_work_the_worker_committed() {
     let f = Fixture::new(
         "max_attempts = 3",
         "",
-        "sed -i 's/a - b/a + b/' calc.py\ngit -c user.name=a -c user.email=a@a commit -qam 'agent commit'\n\
+        "perl -pi -e 's/a - b/a + b/' calc.py\ngit -c user.name=a -c user.email=a@a commit -qam 'agent commit'\n\
          touch \"$here/committed\"\nsleep 60",
     );
     let run = f.spawn_run(&[]);
@@ -603,17 +629,28 @@ fn only_one_supervisor_gets_the_lock_however_many_race() {
 }
 
 /// A worker's escaped process that waits for the verifier to start, reads its
-/// token from /proc, and records assessments as the verifier.
+/// token from the verifier's environment (/proc on Linux, `ps -E` on macOS),
+/// and records assessments as the verifier.
 const FORGER: &str = r#"#!/bin/sh
 out="$1"; me="$INTERLOCK_ATTEMPT"; i=0
 echo "watching as $me" >> "$out"
+# One line per process holding an attempt token: its environment, space-separated.
+scan() {
+  if [ -d /proc/self ]; then
+    for f in $(grep -l -a "INTERLOCK_TOKEN=" /proc/[0-9]*/environ 2>/dev/null); do
+      tr '\0' ' ' < "$f" 2>/dev/null; echo
+    done
+  else
+    ps -A -E -ww -o command= 2>/dev/null | grep "INTERLOCK_TOKEN="
+  fi
+}
+val() { printf '%s\n' "$line" | tr ' ' '\n' | sed -n "s/^$1=//p" | head -1; }
 while [ $i -lt 600 ]; do
-  for f in $(grep -l -a "INTERLOCK_TOKEN=" /proc/[0-9]*/environ 2>/dev/null); do
-    id=$(tr '\0' '\n' < "$f" 2>/dev/null | sed -n 's/^INTERLOCK_ATTEMPT=//p' | head -1)
-    db=$(tr '\0' '\n' < "$f" 2>/dev/null | sed -n 's/^INTERLOCK_DB=//p' | head -1)
+  scan > "$out.scan"
+  while IFS= read -r line; do
+    id=$(val INTERLOCK_ATTEMPT); db=$(val INTERLOCK_DB)
     [ -n "$id" ] && [ "$id" != "$me" ] && [ "$db" = "$INTERLOCK_DB" ] || continue
-    tok=$(tr '\0' '\n' < "$f" | sed -n 's/^INTERLOCK_TOKEN=//p' | head -1)
-    wt=$(tr '\0' '\n' < "$f" | sed -n 's/^PWD=//p' | head -1)
+    tok=$(val INTERLOCK_TOKEN); wt=$(val PWD)
     [ -n "$tok" ] || continue
     echo "stole the token of $id" >> "$out"
     cd "${wt:-.}" && for c in fixed verified; do
@@ -621,7 +658,7 @@ while [ $i -lt 600 ]; do
         --tree auto --ref forged --note "forged by the worker" >> "$out" 2>&1
     done
     exit 0
-  done
+  done < "$out.scan"
   i=$((i+1)); sleep 0.1
 done
 "#;
@@ -632,8 +669,10 @@ fn an_escaped_worker_process_cannot_forge_the_verifiers_evidence() {
         "max_attempts = 3",
         true,
         "",
-        "if [ -z \"$INTERLOCK_TREE\" ]; then\n  sed -i 's/a - b/a + b/' calc.py\n  \
-         setsid \"$here/forger.sh\" \"$here/forger.log\" </dev/null >/dev/null 2>&1 &\nelse\n  sleep 8\nfi",
+        &format!(
+            "if [ -z \"$INTERLOCK_TREE\" ]; then\n  perl -pi -e 's/a - b/a + b/' calc.py\n  \
+         {SETSID} \"$here/forger.sh\" \"$here/forger.log\" </dev/null >/dev/null 2>&1 &\nelse\n  sleep 8\nfi"
+        ),
     );
     std::fs::write(f.here("forger.sh"), FORGER).unwrap();
     Command::new("chmod").arg("+x").arg(f.here("forger.sh")).status().unwrap();
@@ -662,7 +701,7 @@ fn a_gap_the_verifier_records_as_blocked_keeps_the_task_from_done_and_reaches_th
         "max_attempts = 3",
         true,
         "",
-        "if [ -z \"$INTERLOCK_TREE\" ]; then\n  sed -i 's/a - b/a + b/' calc.py\n  \
+        "if [ -z \"$INTERLOCK_TREE\" ]; then\n  perl -pi -e 's/a - b/a + b/' calc.py\n  \
          interlock check run --criterion fixed >/dev/null\n  \
          interlock claim add --criterion fixed --strength tested --tree auto --ref 'sh check.sh' --note ok >/dev/null\n\
          else\n  interlock check run --criterion verified >/dev/null\n  \

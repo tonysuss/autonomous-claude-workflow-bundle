@@ -12,7 +12,8 @@ use std::process::Command;
 use fake_model::{FakeModel, Script};
 use serde_json::Value;
 
-const FIX: &str = "sed -i 's/a - b/a + b/' calc.py";
+/// The fix, as one shell command that edits in place on Linux and macOS alike.
+const FIX: &str = "perl -pi -e 's/a - b/a + b/' calc.py";
 const CLAIM: &str = "interlock claim add --criterion fixed --strength tested --tree auto --ref 'sh check.sh'";
 const CHECK_FIXED: &str = "interlock check run --criterion fixed";
 

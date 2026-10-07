@@ -16,7 +16,8 @@ use std::time::{Duration, Instant};
 use fake_model::{FakeModel, Script};
 use serde_json::Value;
 
-const FIX: &str = "sed -i 's/a - b/a + b/' calc.py";
+/// The fix, as one shell command that edits in place on Linux and macOS alike.
+const FIX: &str = "perl -pi -e 's/a - b/a + b/' calc.py";
 const CLAIM: &str = "interlock claim add --criterion fixed --strength tested --tree auto --ref 'sh check.sh'";
 const CHECK_FIXED: &str = "interlock check run --criterion fixed";
 
@@ -79,17 +80,27 @@ fn verifier_pass() -> Vec<String> {
     ])
 }
 
-/// Whether a process is running: present and not a zombie.
+/// Whether a process is running: present and not a zombie, as ps reports it
+/// on Linux and macOS alike.
 fn running(pid: u64) -> bool {
-    std::fs::read_to_string(format!("/proc/{pid}/stat"))
-        .ok()
-        .and_then(|s| s.rfind(')').map(|i| !s[i + 2..].starts_with('Z')))
-        .unwrap_or(false)
+    Command::new("ps").args(["-o", "stat=", "-p", &pid.to_string()]).output().is_ok_and(|o| {
+        let state = String::from_utf8_lossy(&o.stdout);
+        let state = state.trim();
+        !state.is_empty() && !state.starts_with('Z')
+    })
 }
 
-fn kill(pid: &str, signal: &str) {
-    let status = Command::new("kill").args(["-s", signal, "--", pid]).status().unwrap();
-    assert!(status.success(), "kill -s {signal} {pid}");
+/// Sends `signal` (a name such as `KILL`) to a process, or to a process group
+/// written as `-<pgid>`.
+fn kill(target: &str, signal: &str) {
+    use nix::sys::signal::{Signal, kill as send, killpg};
+    use nix::unistd::Pid;
+    let sig: Signal = format!("SIG{signal}").parse().unwrap();
+    let sent = match target.strip_prefix('-') {
+        Some(group) => killpg(Pid::from_raw(group.parse().unwrap()), sig),
+        None => send(Pid::from_raw(target.parse().unwrap()), sig),
+    };
+    sent.unwrap_or_else(|e| panic!("kill -s {signal} {target}: {e}"));
 }
 
 fn wait_until(what: &str, limit: Duration, mut f: impl FnMut() -> bool) {
@@ -229,18 +240,12 @@ fn worker_sessions(model: &FakeModel) -> usize {
 /// Live processes of a session, found by the marker interlock puts in every
 /// session's environment, with their command lines.
 fn session_processes(attempt: &str) -> Vec<(u64, String)> {
-    let marker = format!("INTERLOCK_SESSION={attempt}");
-    let Ok(dir) = std::fs::read_dir("/proc") else { return vec![] };
-    dir.filter_map(|e| e.ok()?.file_name().to_str()?.parse::<u64>().ok())
-        .filter(|pid| running(*pid))
-        .filter(|pid| {
-            std::fs::read(format!("/proc/{pid}/environ"))
-                .is_ok_and(|env| env.split(|b| *b == 0).any(|kv| kv == marker.as_bytes()))
-        })
-        .filter_map(|pid| {
-            let cmd = std::fs::read(format!("/proc/{pid}/cmdline")).ok()?;
-            Some((pid, String::from_utf8_lossy(&cmd).replace('\0', " ").trim().to_string()))
-        })
+    use interlock_adapter::procinfo;
+    procinfo::pids()
+        .into_iter()
+        .filter(|pid| procinfo::stat(*pid).is_some_and(|s| !s.zombie))
+        .filter(|pid| procinfo::started_with(*pid, interlock_adapter::SESSION_MARKER, Some(attempt)))
+        .filter_map(|pid| Some((u64::from(pid), procinfo::command_line(pid)?.join(" "))))
         .collect()
 }
 

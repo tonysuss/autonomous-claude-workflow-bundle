@@ -37,7 +37,9 @@ toml = "1"
 uuid = { version = "1", features = ["v4"] }
 
 [workspace.lints.rust]
-unsafe_code = "forbid"
+# Denied everywhere; allowed only in the macOS half of
+# crates/interlock-adapter/src/procinfo.rs, which calls Apple's process API.
+unsafe_code = "deny"
 
 [workspace.lints.clippy]
 all = { level = "warn", priority = -1 }

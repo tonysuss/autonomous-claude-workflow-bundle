@@ -70,7 +70,7 @@ fn steps(list: &[&str]) -> Vec<String> {
 fn script() -> Script {
     Script {
         worker: vec![steps(&[
-            "sed -i 's/a - b/a + b/' calc.py",
+            "perl -pi -e 's/a - b/a + b/' calc.py",
             "interlock check run --criterion fixed",
             "interlock claim add --criterion fixed --strength tested --tree auto --ref 'sh check.sh'",
         ])],

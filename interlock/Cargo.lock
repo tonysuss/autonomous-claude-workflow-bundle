@@ -529,6 +529,7 @@ dependencies = [
  "interlock-skillgen",
  "interlock-store",
  "interlock-supervisor",
+ "nix",
  "serde",
  "serde_json",
  "signal-hook",

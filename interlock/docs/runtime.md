@@ -55,7 +55,7 @@ The exit code of a process the supervisor did not start cannot be read, so a re-
 | Anyone else ends the attempt (`task retry`, `task fail`) | Stopped the same way | keeps the status they gave it | as they left it | |
 | Session timeout | Stopped | `failed`, reason `timeout` | R3, or failed when the attempts are spent | |
 
-The terminal sends Ctrl-C to the supervisor's process group, never to the host's, so the host is always stopped by the supervisor and the attempt is always recorded. Further signals do nothing more: exiting early would leave the host running unseen, and stopping it takes at most a few seconds. The report names the first signal that arrived. Signals are handled with `signal-hook`; the workspace still forbids unsafe code.
+The terminal sends Ctrl-C to the supervisor's process group, never to the host's, so the host is always stopped by the supervisor and the attempt is always recorded. Further signals do nothing more: exiting early would leave the host running unseen, and stopping it takes at most a few seconds. The report names the first signal that arrived. Signals are handled with `signal-hook`. The workspace denies unsafe code; the one exception is the macOS half of `crates/interlock-adapter/src/procinfo.rs`, six calls into Apple's process API.
 
 A cancelled worker's unfinished work is exported before its worktree is removed (see pausing safely below).
 

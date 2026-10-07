@@ -194,18 +194,30 @@ def out_of_scope(paths, scope):
 # Process trees
 
 
-def _children_map():
-    kids = {}
+def _parents():
+    """(pid, parent) for every process: from /proc on Linux, from ps elsewhere."""
+    if not os.path.isdir("/proc/self"):
+        ps = subprocess.Popen(["ps", "-A", "-o", "pid=,ppid="], stdout=subprocess.PIPE, text=True)
+        out, _ = ps.communicate()
+        pairs = [tuple(int(x) for x in line.split()) for line in out.splitlines() if len(line.split()) == 2]
+        return [(pid, ppid) for pid, ppid in pairs if pid != ps.pid]
+    pairs = []
     for name in os.listdir("/proc"):
         if not name.isdigit():
             continue
         try:
             with open(f"/proc/{name}/stat") as f:
                 stat = f.read()
-            ppid = int(stat[stat.rindex(")") + 2 :].split()[1])
+            pairs.append((int(name), int(stat[stat.rindex(")") + 2 :].split()[1])))
         except (OSError, ValueError, IndexError):
             continue
-        kids.setdefault(ppid, []).append(int(name))
+    return pairs
+
+
+def _children_map():
+    kids = {}
+    for pid, ppid in _parents():
+        kids.setdefault(ppid, []).append(pid)
     return kids
 
 

@@ -18,6 +18,8 @@ use std::time::{Duration, Instant, SystemTime};
 use interlock_schema::{EndReason, ToolPolicy};
 use serde::{Deserialize, Serialize};
 
+use crate::procinfo;
+
 /// What to run, in host-neutral terms.
 #[derive(Debug, Clone)]
 pub struct SessionSpec {
@@ -232,7 +234,7 @@ impl Spawned {
             std::thread::sleep(Duration::from_millis(100));
         };
         // Anything the host left behind in its group goes with it.
-        signal_group(self.pgid, "KILL");
+        signal_group(self.pgid, nix::sys::signal::Signal::SIGKILL);
         // 97 is the gate's own exit only when the host was never released;
         // any code from a host that ran is the host's.
         let code = if !self.released && code == Some(NEVER_RELEASED) { None } else { code };
@@ -270,7 +272,7 @@ pub fn attach(target: &Target, cancel: &AtomicBool, summarize: impl Fn(&[String]
         }
         std::thread::sleep(Duration::from_millis(100));
     };
-    signal_group(target.pgid, "KILL");
+    signal_group(target.pgid, nix::sys::signal::Signal::SIGKILL);
     let took = SystemTime::now().duration_since(target.started_at).unwrap_or_default();
     let mut out = finish(exit, None, None, took, &target.transcript, summarize);
     // Its exit status is not observable from here: a host that ended without
@@ -357,22 +359,21 @@ fn signal_of(_: ExitStatus) -> Option<i32> {
     None
 }
 
-fn signal_group(pgid: u32, signal: &str) {
-    let _ = Command::new("kill")
-        .args(["-s", signal, "--", &format!("-{pgid}")])
-        .stdout(Stdio::null())
-        .stderr(Stdio::null())
-        .status();
+fn signal_group(pgid: u32, signal: nix::sys::signal::Signal) {
+    // Group 0 is the caller's own, and 1 is init's: never a session's.
+    if pgid > 1 {
+        let _ = nix::sys::signal::killpg(nix::unistd::Pid::from_raw(pgid as i32), signal);
+    }
 }
 
 /// Asks the group to stop, then kills it after a grace period.
 fn stop_group(pgid: u32, mut still_running: impl FnMut() -> bool) {
-    signal_group(pgid, "TERM");
+    signal_group(pgid, nix::sys::signal::Signal::SIGTERM);
     let asked = Instant::now();
     while still_running() && asked.elapsed() < GRACE {
         std::thread::sleep(Duration::from_millis(50));
     }
-    signal_group(pgid, "KILL");
+    signal_group(pgid, nix::sys::signal::Signal::SIGKILL);
 }
 
 fn stop_child(child: &mut Child, pgid: u32) {
@@ -381,35 +382,22 @@ fn stop_child(child: &mut Child, pgid: u32) {
     let _ = child.wait();
 }
 
-/// The process's state and the kernel's start time for it, from /proc.
-fn proc_stat(pid: u32) -> Option<(char, u64)> {
-    let stat = std::fs::read_to_string(format!("/proc/{pid}/stat")).ok()?;
-    // The command name is in parentheses and may contain spaces.
-    let rest = stat.get(stat.rfind(')')? + 1..)?;
-    let fields: Vec<&str> = rest.split_whitespace().collect();
-    let state = fields.first()?.chars().next()?;
-    let start = fields.get(19)?.parse().ok()?;
-    Some((state, start))
-}
-
 /// The kernel's start time for a process, which tells it apart from a later
-/// process that reuses its pid. `None` where /proc is unavailable.
+/// process that reuses its pid. `None` where processes cannot be read.
 pub fn process_start(pid: u32) -> Option<u64> {
-    proc_stat(pid).map(|(_, start)| start)
+    procinfo::stat(pid).map(|s| s.start)
 }
 
 /// Whether a process is still running: present, not a zombie, and the same
 /// process that was recorded when `process_start` is known.
 pub fn alive(pid: u32, process_start: Option<u64>) -> bool {
-    match proc_stat(pid) {
-        Some((state, start)) => !matches!(state, 'Z' | 'X') && process_start.is_none_or(|s| s == start),
-        None if Path::new("/proc/self/stat").exists() => false,
-        None => Command::new("kill")
-            .args(["-0", &pid.to_string()])
-            .stdout(Stdio::null())
-            .stderr(Stdio::null())
-            .status()
-            .is_ok_and(|s| s.success()),
+    match procinfo::stat(pid) {
+        Some(s) => !s.zombie && process_start.is_none_or(|start| start == s.start),
+        None if procinfo::SUPPORTED => false,
+        None => match nix::sys::signal::kill(nix::unistd::Pid::from_raw(pid as i32), None) {
+            Ok(()) => true,
+            Err(e) => e == nix::errno::Errno::EPERM,
+        },
     }
 }
 
@@ -468,6 +456,8 @@ pub const SESSION_MARKER: &str = "INTERLOCK_SESSION";
 
 /// Makes this process adopt its orphaned descendants (Linux), so a session's
 /// processes that escape their group and lose their parent come back here.
+/// macOS has no such setting: there an orphan goes to launchd, and only its
+/// marker ties it to its session.
 #[cfg(target_os = "linux")]
 pub fn become_subreaper() -> bool {
     nix::sys::prctl::set_child_subreaper(true).is_ok()
@@ -479,22 +469,16 @@ pub fn become_subreaper() -> bool {
 }
 
 fn pids() -> Vec<u32> {
-    let Ok(dir) = std::fs::read_dir("/proc") else { return vec![] };
-    dir.filter_map(|e| e.ok()?.file_name().to_str()?.parse().ok()).collect()
+    procinfo::pids()
 }
 
-/// A process's parent and process group, from /proc.
+/// A process's parent and process group.
 fn parent_and_group(pid: u32) -> Option<(u32, u32)> {
-    let stat = std::fs::read_to_string(format!("/proc/{pid}/stat")).ok()?;
-    let fields: Vec<&str> = stat.get(stat.rfind(')')? + 1..)?.split_whitespace().collect();
-    Some((fields.get(1)?.parse().ok()?, fields.get(2)?.parse().ok()?))
+    procinfo::stat(pid).map(|s| (s.parent, s.group))
 }
 
 fn carries_marker(pid: u32, session: &str) -> bool {
-    let want = format!("{SESSION_MARKER}={session}");
-    std::fs::read(format!("/proc/{pid}/environ"))
-        .map(|env| env.split(|b| *b == 0).any(|kv| kv == want.as_bytes()))
-        .unwrap_or(false)
+    procinfo::started_with(pid, SESSION_MARKER, Some(session))
 }
 
 /// Whether this process runs inside a session interlock launched: its own
@@ -506,12 +490,7 @@ pub fn in_launched_session() -> bool {
     if own("INTERLOCK_ATTEMPT") || own("INTERLOCK_TOKEN") || own(SESSION_MARKER) {
         return true;
     }
-    let prefix = format!("{SESSION_MARKER}=");
-    let marked = |pid: u32| {
-        std::fs::read(format!("/proc/{pid}/environ"))
-            .map(|env| env.split(|b| *b == 0).any(|kv| kv.starts_with(prefix.as_bytes()) && kv.len() > prefix.len()))
-            .unwrap_or(false)
-    };
+    let marked = |pid: u32| procinfo::started_with(pid, SESSION_MARKER, None);
     let mut pid = std::process::id();
     for _ in 0..128 {
         match parent_and_group(pid) {
@@ -661,6 +640,10 @@ mod tests {
     }
 
     const CLAUDE_AUTH: &[&str] = crate::claude_code::AUTH_FAILURES;
+
+    /// Runs its arguments in a new session, as setsid(1) does where there is
+    /// one: macOS has none.
+    const SETSID: &str = "/usr/bin/perl -MPOSIX=setsid -e 'setsid(); exec @ARGV or die'";
 
     fn sh(script: &str) -> CommandPlan {
         CommandPlan { program: "/bin/sh".into(), args: vec!["-c".into(), script.into()], stdin: None, env: vec![] }
@@ -880,7 +863,7 @@ mod tests {
         let dir = tempfile::tempdir().unwrap();
         let pidfile = dir.path().join("stray.pid");
         // The host starts a process in a new session, outside its group, and exits.
-        let mut plan = sh(&format!("setsid sleep 30 </dev/null >/dev/null 2>&1 & echo $! > {}", pidfile.display()));
+        let mut plan = sh(&format!("{SETSID} sleep 30 </dev/null >/dev/null 2>&1 & echo $! > {}", pidfile.display()));
         let marker = format!("att-marker-{}", std::process::id());
         plan.env = vec![(SESSION_MARKER.into(), marker.clone())];
         let out = run(&plan, &spec(dir.path(), 5000), &AtomicBool::new(false), count);
@@ -923,7 +906,7 @@ mod tests {
     fn a_reused_pid_is_not_mistaken_for_the_session() {
         let me = std::process::id();
         let start = process_start(me);
-        assert!(start.is_some(), "this platform has /proc");
+        assert!(start.is_some(), "this platform reads process start times");
         assert!(alive(me, start));
         assert!(!alive(me, start.map(|s| s + 1)), "same pid, different process");
         assert!(!alive(u32::MAX - 1, None));
