@@ -169,8 +169,17 @@ collect_task() {
   il attempts attempt list "$task"
   il notes note list --task "$task"
   il brief brief "$task"
-  git show --stat --patch "refs/interlock/tasks/$task" > "$OUT/verified-output.diff" 2> /dev/null ||
-    echo "no verified output: the task did not reach done" > "$OUT/verified-output.diff"
+  # A guided task keeps its verified output at a ref; a headless run records its tree.
+  # Either way the repository's HEAD is the input snapshot: no branch moves.
+  local tree
+  tree="$(json "$OUT/status.json" 'd["task"].get("current_tree") or ""')"
+  if git rev-parse -q --verify "refs/interlock/tasks/$task" > /dev/null; then
+    git show --stat --patch "refs/interlock/tasks/$task" > "$OUT/verified-output.diff"
+  elif [[ -n "$tree" ]]; then
+    git diff --stat --patch HEAD "$tree" > "$OUT/verified-output.diff"
+  else
+    echo "no output tree: the task has no accepted result" > "$OUT/verified-output.diff"
+  fi
   mkdir -p "$OUT/store"
   (cd .interlock && tar --exclude=./worktrees --exclude=./scratch -cf - .) | (cd "$OUT/store" && tar -xf -)
 }
