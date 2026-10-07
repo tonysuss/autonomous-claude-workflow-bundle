@@ -43,6 +43,8 @@ claude_bin() { printf '%s' "${INTERLOCK_CLAUDE_BIN:-$(command -v claude || true)
 # ver_ge HAVE WANT: whether version HAVE is at least WANT.
 ver_ge() { [[ "$(printf '%s\n%s\n' "$2" "$1" | sort -V | head -n1)" == "$2" ]]; }
 stamp() { date -u +%Y%m%dT%H%M%SZ; }
+# Free space, in whole gigabytes, on the filesystem holding the build.
+free_gb() { df -Pk "$ROOT" | awk 'NR == 2 { print int($4 / 1048576) }'; }
 # json FILE EXPR: a value from a JSON file, by a Python expression on `d`.
 json() { python3 -I -c 'import json, sys; d = json.load(open(sys.argv[1])); print(eval(sys.argv[2]))' "$1" "$2" 2>/dev/null; }
 
@@ -216,6 +218,8 @@ cmd_doctor() {
   else
     row MISS "Linux with /proc" "interlock runs on Linux only: use testkit/Dockerfile (TESTING.md, step 1)"
   fi
+  v="$(free_gb)"
+  if [[ "$v" -ge 8 ]]; then row ok "8 GB of free disk" "$v GB"; else row MISS "8 GB of free disk" "$v GB: compiling the tests needs about 6 GB"; fi
   v="$(first_line rustc --version | awk '{print $2}')"
   if [[ -n "$v" ]] && ver_ge "$v" 1.89; then rust=1 && row ok "Rust 1.89 or later" "$v"; else row MISS "Rust 1.89 or later" "${v:-not found}: https://rustup.rs"; fi
   v="$(first_line python3 --version | awk '{print $2}')"
@@ -276,6 +280,7 @@ cmd_suite() {
   cla="$(claude_bin)"
   [[ -n "$cop" && -n "$cla" ]] ||
     end "NOT RUN" "the suite needs both host binaries (copilot: ${cop:-missing}, claude: ${cla:-missing}); see run.sh doctor"
+  [[ "$(free_gb)" -ge 6 ]] || end "NOT RUN" "only $(free_gb) GB of disk is free, and compiling the tests needs about 6 GB"
   build
   cd "$ROOT" || exit 2
   say "running every workspace test with both hosts required (10 to 30 minutes)"

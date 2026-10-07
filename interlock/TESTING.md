@@ -195,6 +195,7 @@ It holds the transcripts of the agent sessions, interlock's records, and the ver
 | `this token cannot read <repo>` | The token's repository access does not include the test repository |
 | `has no commits yet` | The test repository was made without a README. Add any file to it on github.com |
 | The Docker build stops while compiling | Give Docker more memory (8 GB) |
+| `No space left on device`, or `suite` says too little disk is free | Give Docker more disk (Settings, Resources), or remove old images with `docker system prune`. The suite's compiled tests take about 6 GB |
 | A network that inspects HTTPS | Build a base image that trusts your network's certificate and pass it with `--build-arg BASE=<that image>` |
 | Anything else | Run `testkit/run.sh pack` and send the zip: the `.err` and `.txt` files in each result say what happened |
 
