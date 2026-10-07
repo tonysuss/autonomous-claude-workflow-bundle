@@ -1,6 +1,6 @@
 # Testing interlock yourself
 
-The build is tested on Linux and macOS: the whole suite passes on both (352 tests on Linux, 353 on macOS, where one more checks how macOS processes are read), and live runs on Claude Code are recorded under `evidence/`. What is left needs things only you have: a GitHub token, a Copilot plan, a real repository for the baseline, and a network share. This kit runs each of those tests with one command and keeps what it saw, so the result can be checked afterwards.
+The build is tested on Linux and macOS: the whole suite passes on both (353 tests on Linux, 354 on macOS, where one more checks how macOS processes are read), and live runs on Claude Code are recorded under `evidence/`. What is left needs things only you have: a GitHub token, a Copilot plan, a real repository for the baseline, and a network share. This kit runs each of those tests with one command and keeps what it saw, so the result can be checked afterwards.
 
 Every command is `testkit/run.sh <test>`. It writes its evidence to `testkit-results/<test>-<time>/` and ends with one line:
 
@@ -78,7 +78,7 @@ testkit/run.sh suite
 
 This builds interlock and runs every test with both hosts required, so no test can pass by skipping. It needs no account and makes no model calls: Copilot and Claude Code run offline against scripted models. It takes 10 to 30 minutes.
 
-Expected: `RESULT: PASS: 352 passed, 0 failed, 2 ignored ...` on Linux, `353 passed` on macOS. The two ignored tests are the opt-in live ones (step 4 runs one of them).
+Expected: `RESULT: PASS: 353 passed, 0 failed, 2 ignored ...` on Linux, `354 passed` on macOS. The two ignored tests are the opt-in live ones (step 4 runs one of them).
 
 ## Step 3: a test repository and a token
 
@@ -209,15 +209,10 @@ It holds the transcripts of the agent sessions, interlock's records, and the ver
 
 ## What I checked before handing this over
 
-In a fresh container built from `testkit/Dockerfile` out of the zip:
+On GitHub's machines, for every change (`.github/workflows/interlock.yml`), on Ubuntu 24.04 and on macOS 15 (Apple silicon): format and lint, the whole suite with both hosts required (353 passed on Linux, 354 on macOS, none failed), the evaluation harness's 41 tests, and, under the system's own bash (3.2 on macOS), `doctor`, `eval --fake-model` on two tasks, `netfs` on local disk (which it correctly reports as not refused) and `pack`. The same workflow builds interlock for macOS and Linux and smoke-tests each.
 
-- `doctor` found every tool at its pinned version.
-- `suite`: 350 passed, 0 failed, 2 ignored; the evaluation harness's 41 tests passed; clippy reported no warnings and the format was clean. Claude Code's load test passed there without any account.
-- `eval --fake-model`: the whole evaluation path on Copilot CLI with its scripted model, 12 runs, every one judged. Plumbing, as said above, not evidence.
-- `guided`: the repository, setup and instructions. `guided-collect` was checked on a guided session acted out by hand, with a recorded Copilot transcript standing in for Copilot's own session record. It found the skills the transcript invoked and reported the task done.
-- Each test stops with `NOT RUN` and the reason when something it needs is missing: no test repository, this project's repository, no working token, no Copilot, or Copilot pointed at a scripted model.
-- `pack` removed a planted token from a text file, removed a binary file holding it, and left the harness's working copy out.
+Before the macOS changes, in a fresh container built from `testkit/Dockerfile` out of the zip (the Dockerfile has changed only in its comments since): `doctor` and the whole `suite`, `eval --fake-model` on four tasks, `guided` up to the session, and `guided-collect` on a guided session acted out by hand with a recorded Copilot transcript standing in for Copilot's own session record. Each test stops with `NOT RUN` and the reason when something it needs is missing, and `pack` removed a planted token.
 
-On the build machine, with Claude Code signed in: `testkit/run.sh copilot --host claude-code`, the same steps as the Copilot test, finished `done` with moves G1 G2 G3 G4 G7 for $0.24. `netfs` on a local directory reported, correctly, that interlock opened the store.
+On the build machine, with Claude Code signed in: `testkit/run.sh copilot --host claude-code`, the same steps as the Copilot test, finished `done` with moves G1 G2 G3 G4 G7 for $0.24.
 
-What I could not check needs your account: GitHub delivery, and Copilot with its real model.
+What I could not check needs your account: GitHub delivery, and Copilot with its real model. Nor has anything run on an Intel Mac, though the macOS build includes it.
