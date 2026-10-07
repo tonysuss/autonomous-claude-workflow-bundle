@@ -561,7 +561,19 @@ cmd_pack() {
   cmd_doctor > "$RESULTS/doctor.txt" 2>&1
   versions > "$RESULTS/versions.txt"
   redact "$RESULTS"
-  (cd "$(dirname "$RESULTS")" && python3 -I -m zipfile -c "$zipfile" "$(basename "$RESULTS")") || exit 1
+  # eval-state is the harness's working copy of the task set: rebuilt on demand, never evidence.
+  python3 -I - "$RESULTS" "$zipfile" << 'ZIP' || exit 1
+import os, sys, zipfile
+root, dest = sys.argv[1], sys.argv[2]
+top = os.path.basename(root.rstrip("/"))
+with zipfile.ZipFile(dest, "w", zipfile.ZIP_DEFLATED) as z:
+    for d, dirs, files in os.walk(root):
+        if d == root and "eval-state" in dirs:
+            dirs.remove("eval-state")
+        for f in files:
+            p = os.path.join(d, f)
+            z.write(p, os.path.join(top, os.path.relpath(p, root)))
+ZIP
   say "packed: $zipfile ($(du -h "$zipfile" | cut -f1))"
   say "credential values were removed from it; check REDACTED.txt files if any were found"
   [[ -f /.dockerenv ]] && say "from your own machine: docker cp interlock-testkit:$zipfile ."

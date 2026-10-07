@@ -200,4 +200,15 @@ It holds the transcripts of the agent sessions, interlock's records, and the ver
 
 ## What I checked before handing this over
 
-So far, in a fresh container built from `testkit/Dockerfile`: the image builds with every tool at its pinned version, `doctor` reports them, and `github` refuses to start without a test repository, with this project's repository, or without a working token, leaving no token value in its results. `testkit/run.sh` passes ShellCheck. The rest of the kit is being checked now, and this section will say what was checked when the zip is made. What I cannot check is what needs your account: GitHub delivery, and Copilot with its real model.
+In a fresh container built from `testkit/Dockerfile` out of the zip:
+
+- `doctor` found every tool at its pinned version.
+- `suite`: 350 passed, 0 failed, 2 ignored; the evaluation harness's 41 tests passed; clippy reported no warnings and the format was clean. Claude Code's load test passed there without any account.
+- `eval --fake-model`: the whole evaluation path on Copilot CLI with its scripted model, 12 runs, every one judged. Plumbing, as said above, not evidence.
+- `guided`: the repository, setup and instructions. `guided-collect` was checked on a guided session acted out by hand, with a recorded Copilot transcript standing in for Copilot's own session record. It found the skills the transcript invoked and reported the task done.
+- Each test stops with `NOT RUN` and the reason when something it needs is missing: no test repository, this project's repository, no working token, no Copilot, or Copilot pointed at a scripted model.
+- `pack` removed a planted token from a text file, removed a binary file holding it, and left the harness's working copy out.
+
+On the build machine, with Claude Code signed in: `testkit/run.sh copilot --host claude-code`, the same steps as the Copilot test, finished `done` with moves G1 G2 G3 G4 G7 for $0.24. `netfs` on a local directory reported, correctly, that interlock opened the store.
+
+What I could not check needs your account: GitHub delivery, and Copilot with its real model.
