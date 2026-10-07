@@ -4,6 +4,8 @@ A workflow runtime that only lets work advance on evidence. Agents propose moves
 
 This directory builds the design draft "A workflow runtime that only lets work advance on evidence" (draft 1, October 4, 2026). Phases P0 to P4 have code, tests and recorded runs, except spike S2 (the Copilot SDK), which was not run. An independent audit checked the build against the design item by item: [docs/conformance.md](docs/conformance.md). Gates not met here are listed under [What is not proven](#what-is-not-proven).
 
+To run the tests still open yourself, on GitHub, Copilot's real model and your own repository, see [TESTING.md](TESTING.md): one command per test, in a Docker image that works on any computer.
+
 ## Hosts
 
 The core is host-agnostic. Hosts sit behind one adapter contract (`interlock-adapter`): each reports versioned capabilities, plans headless sessions, reads their output, and translates the core's host-neutral tool names into its own permission patterns.
@@ -187,6 +189,8 @@ These are the defaults this build uses until they are decided:
 Of the draft's risks: S1 settled skill loading on both hosts; S2 (the Rust SDK) was not run, see above; a second host, Claude Code, is now tested, so portability is shown for two hosts; the store stays one controller per checkout, and it refuses to open on a network filesystem it recognizes (on Linux; on macOS the check is compiled but has not run).
 
 ## What is not proven
+
+Each item below that can be tested has a command in [TESTING.md](TESTING.md).
 
 - **Live GitHub.** The container's GitHub token is invalid, so delivery ran against a fake `gh` and a local bare repository. An opt-in test that delivers to a separate test repository through the real `gh` is ready ([docs/live-tests.md](docs/live-tests.md)) and has not run. GitHub's real messages, timing and branch protection are untested; [docs/forge.md](docs/forge.md) lists what a live run would add. Under auto-merge, a base that moves while the merge waits is detected after the merge, not prevented, unless the branch requires up-to-date branches.
 - **Copilot CLI with a real model.** Copilot runs exercise the real CLI, hooks, permissions, skills and custom agents with a scripted model. Model behaviour under the skills, and under interlock's agent profiles, is evidenced on Claude Code only. Offline, Copilot offers no web or MCP tools, so the names the profiles give them are unchecked.

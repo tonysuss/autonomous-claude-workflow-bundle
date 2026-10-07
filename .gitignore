@@ -52,3 +52,5 @@ htmlcov/
 # interlock
 target/
 .interlock/
+testkit-results/
+testkit-results-*.zip

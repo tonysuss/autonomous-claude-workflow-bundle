@@ -1,0 +1,4 @@
+target/
+testkit-results/
+**/__pycache__/
+**/.interlock/
