@@ -10,6 +10,8 @@ Every command is `testkit/run.sh <test>`. It writes its evidence to `testkit-res
 
 When you are done, `testkit/run.sh pack` zips every result for you to send back (step 10).
 
+**Why so many tools.** Using interlock takes one program, `interlock` (its database is built in), plus git and the coding agent you already use. This kit installs more because it builds interlock from source and tests it from every side: Rust to compile it and its tests, Python and Go because the evaluation's tasks are small Python and Go projects, Node because Copilot CLI and Claude Code are Node programs, the GitHub CLI for delivery, and Docker because interlock runs on Linux only.
+
 ## What is left, and what each test proves
 
 | Step | Test | What it proves | You need | Cost |
