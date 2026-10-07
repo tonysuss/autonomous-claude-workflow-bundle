@@ -61,8 +61,20 @@ fn copilot() -> Option<PathBuf> {
     std::env::split_paths(&std::env::var_os("PATH")?).map(|d| d.join("copilot")).find(|p| p.is_file())
 }
 
+/// Runs git with an identity of its own, so a commit made here does not depend
+/// on the machine's git configuration (CI runners have none).
 fn git(dir: &Path, args: &[&str]) -> String {
-    let out = Command::new("git").args(args).current_dir(dir).output().unwrap();
+    let out = Command::new("git")
+        .args(args)
+        .current_dir(dir)
+        .envs([
+            ("GIT_AUTHOR_NAME", "t"),
+            ("GIT_AUTHOR_EMAIL", "t@t"),
+            ("GIT_COMMITTER_NAME", "t"),
+            ("GIT_COMMITTER_EMAIL", "t@t"),
+        ])
+        .output()
+        .unwrap();
     assert!(out.status.success(), "git {args:?}: {}", String::from_utf8_lossy(&out.stderr));
     String::from_utf8_lossy(&out.stdout).trim().to_string()
 }
