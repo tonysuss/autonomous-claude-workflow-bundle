@@ -1,0 +1,56 @@
+# A task for interlock. Copy this into your repository, fill it in, then:
+#   interlock task create task.toml
+#   interlock run <id> --host copilot
+#
+# Lines starting with # are comments. README.md, "Writing a task", explains each part.
+
+# A short name, unique in this repository: letters, digits, - and _.
+id = "fix-something"
+
+# The repository the task works on, relative to this file. "." is the usual.
+repository = "."
+
+# bug-fix, feature, refactor (change code), or investigation (answer a question, change nothing).
+workflow = "bug-fix"
+
+# What you want, in plain words, as you would tell a colleague. The agents get this.
+intent = '''
+Describe the problem or the change here. Say what is wrong, where you saw it,
+and what "fixed" looks like.
+'''
+
+# Where the checks run. Free text, recorded with every result.
+environment = "macos"
+
+# Set to true to have interlock deliver the change to GitHub (README.md, "Delivering to GitHub").
+integration_required = false
+
+[budget]
+max_attempts = 3              # how many worker sessions it may take
+# max_wall_secs = 1800        # total session time, all attempts together
+# max_premium_requests = 20   # Copilot CLI premium requests, all sessions together
+# max_cost_usd = 5.00         # where the agent reports dollars (Claude Code)
+
+[scope]
+# The files the agent may change, as paths or globs. Anything else is refused.
+paths = ["src/**", "tests/**"]
+
+# Each criterion is one thing that must be true when the task is done. Give a
+# check (a shell command, run from the repository root, that exits 0 when it
+# holds) wherever you can: interlock runs it itself, so the evidence is real.
+
+[[criterion]]
+id = "repro"
+statement = "The bug no longer happens"
+check = "sh checks/repro.sh"          # a script that shows the bug: fails now, passes once fixed
+min_strength = "observed"             # observed: interlock must see the check pass
+producer = "independent"              # only the separate verifier's evidence counts
+baseline = "fails"                    # interlock first checks that it does fail today
+
+[[criterion]]
+id = "regression"
+statement = "The existing tests still pass"
+check = "npm test"                    # your normal test command
+min_strength = "tested"
+producer = "self"                     # the worker's own (interlock-run) evidence is enough
+baseline = "passes"                   # interlock first checks that it passes today

@@ -136,6 +136,10 @@ jobs:
       - name: Package
         # A tarball keeps the executable bit, which an artifact's zip drops.
         run: tar -czf "dist/interlock-${{ matrix.name }}.tar.gz" -C dist interlock
+      - name: The release installer takes the package
+        run: |
+          release/install.sh --from "dist/interlock-${{ matrix.name }}.tar.gz" --prefix "$RUNNER_TEMP/bin"
+          "$RUNNER_TEMP/bin/interlock" --version
       - uses: actions/upload-artifact@v4
         with:
           name: interlock-${{ matrix.name }}

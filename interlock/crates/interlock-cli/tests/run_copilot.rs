@@ -162,6 +162,14 @@ fn a_bug_fix_runs_to_done_on_copilot() {
     assert!(git(f.repo.path(), &["show", &format!("{tree}:calc.py")]).contains("a + b"));
     assert!(std::fs::read_to_string(f.repo.path().join("calc.py")).unwrap().contains("a - b"));
     assert!(git(f.repo.path(), &["status", "--porcelain"]).lines().all(|l| !l.contains("calc.py")));
+    // It is kept as a commit on the input snapshot, which the person applies.
+    assert_eq!(report["output_ref"], "refs/interlock/tasks/fix-add", "{report:#}");
+    assert_eq!(report["apply_with"], "git cherry-pick refs/interlock/tasks/fix-add");
+    assert_eq!(git(f.repo.path(), &["rev-parse", "refs/interlock/tasks/fix-add^{tree}"]), tree);
+    assert_eq!(
+        git(f.repo.path(), &["rev-parse", "refs/interlock/tasks/fix-add^"]),
+        git(f.repo.path(), &["rev-parse", "HEAD"])
+    );
 }
 
 #[test]

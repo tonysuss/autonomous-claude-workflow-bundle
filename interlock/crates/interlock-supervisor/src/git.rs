@@ -184,6 +184,11 @@ pub fn object_type(repo: &Path, spec: &str) -> Option<String> {
     git(repo, &["cat-file", "-t", spec], &[]).ok()
 }
 
+/// Whether a file in the working directory differs from its copy in `commit`.
+pub fn file_differs(repo: &Path, commit: &str, path: &str) -> bool {
+    git(repo, &["diff", "--quiet", commit, "--", path], &[]).is_err()
+}
+
 /// Paths that differ between two trees or commits.
 pub fn changed_paths(repo: &Path, from: &str, to: &str) -> Result<Vec<String>> {
     let out = git(repo, &["diff", "--name-only", from, to], &[])?;

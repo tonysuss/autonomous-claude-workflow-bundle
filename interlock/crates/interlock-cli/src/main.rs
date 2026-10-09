@@ -897,6 +897,12 @@ fn run(cli: &Cli) -> Result<()> {
                         .as_ref()
                         .map(|root| interlock_supervisor::checks::protected_paths(root, base, &criteria))
                         .unwrap_or_default();
+                    if let Some(root) = &root {
+                        let uncommitted = interlock_supervisor::checks::uncommitted_check_files(root, base, &criteria);
+                        if !uncommitted.is_empty() {
+                            bail!("{}", interlock_supervisor::checks::uncommitted_message(&uncommitted));
+                        }
+                    }
                     // Untracked inputs are part of the snapshot unless the caller names them.
                     let untracked = match (untracked_hash, &root) {
                         (Some(h), _) => Some(h.clone()),
@@ -1416,7 +1422,34 @@ fn run_task(
         eprintln!("{}", json!({"interrupted": name, "final_state": report.final_state, "resume": resume}));
         return Ok(ExitCode::from(6));
     }
+    eprintln!("{}", run_summary(task, &report));
     Ok(if report.final_state == State::Done { ExitCode::SUCCESS } else { ExitCode::from(5) })
+}
+
+/// One line for the person at the terminal; the report on stdout says the rest.
+fn run_summary(task: &str, report: &interlock_supervisor::RunReport) -> String {
+    let sessions = match report.sessions.len() {
+        1 => "1 session".to_string(),
+        n => format!("{n} sessions"),
+    };
+    match (report.final_state, &report.apply_with) {
+        (State::Done, Some(apply)) => {
+            format!("interlock: {task} is done after {sessions}. Apply the verified change with: {apply}")
+        }
+        (State::Done, None) => format!("interlock: {task} is done after {sessions}."),
+        // The input snapshot and its baseline runs are fixed, so unblocking would block again.
+        (State::Blocked, _) if report.baseline.iter().any(|b| b.problem.is_some()) => format!(
+            "interlock: {task} is {}. Its checks are fixed into the task: cancel it (`interlock task cancel {task} \
+             --reason \"...\"`), correct the check, commit, and create the task again under a new id.",
+            report.stopped_because
+        ),
+        (State::Blocked, _) => format!(
+            "interlock: {task} is {}. `interlock status {task}` shows what it needs; `interlock task unblock {task}` \
+             once that is fixed.",
+            report.stopped_because
+        ),
+        (state, _) => format!("interlock: {task} stopped ({state}): {}", report.stopped_because),
+    }
 }
 
 /// A host report fit to save: re-probed once if the first probe came back

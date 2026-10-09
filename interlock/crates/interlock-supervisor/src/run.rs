@@ -118,6 +118,12 @@ pub struct RunReport {
     pub spent: Spent,
     /// Work salvaged from orphaned workers.
     pub exports: Vec<Export>,
+    /// A done task's verified output, kept as a commit on the input snapshot
+    /// (`refs/interlock/tasks/<id>`), and how to apply it. No branch moves.
+    pub output_ref: Option<String>,
+    pub apply_with: Option<String>,
+    /// Why the output could not be kept, when it could not.
+    pub output_problem: Option<String>,
 }
 
 #[derive(Debug, Clone, Serialize)]
@@ -274,6 +280,9 @@ impl Supervisor {
             pin: None,
             spent: Spent::default(),
             exports: vec![],
+            output_ref: None,
+            apply_with: None,
+            output_problem: None,
         };
 
         self.restart_reconcile(task_id, &mut report)?;
@@ -313,6 +322,10 @@ impl Supervisor {
             match task.state {
                 State::Pending => {
                     let base_commit = git::head(&self.repo)?;
+                    let uncommitted = checks::uncommitted_check_files(&self.repo, &base_commit, &task.criteria);
+                    if !uncommitted.is_empty() {
+                        break format!("cannot start: {}", checks::uncommitted_message(&uncommitted));
+                    }
                     let snapshot = Snapshot {
                         repository: self.repo.display().to_string(),
                         protected_paths: checks::protected_paths(&self.repo, &base_commit, &task.criteria),
@@ -392,7 +405,25 @@ impl Supervisor {
         report.stopped_because = stopped;
         report.final_state = self.store.task(task_id)?.state;
         report.spent = self.store.spent(task_id)?;
+        self.keep_output(task_id, &mut report);
         Ok(report)
+    }
+
+    /// Keeps a done task's verified output as a ref the person can apply, as
+    /// `interlock advance` does in guided sessions. The task has already
+    /// moved, so a problem here is reported, not raised.
+    fn keep_output(&self, task_id: &str, report: &mut RunReport) {
+        if report.final_state != State::Done {
+            return;
+        }
+        match crate::guided::keep_output(&self.store, &self.repo, task_id) {
+            Ok(Some(name)) => {
+                report.apply_with = Some(format!("git cherry-pick {name}"));
+                report.output_ref = Some(name);
+            }
+            Ok(None) => {}
+            Err(e) => report.output_problem = Some(e.to_string()),
+        }
     }
 
     /// Accounts for every session a previous supervisor left without a
@@ -610,6 +641,9 @@ impl Supervisor {
             pin: None,
             spent: Spent::default(),
             exports: vec![],
+            output_ref: None,
+            apply_with: None,
+            output_problem: None,
         };
         self.restart_reconcile(task_id, &mut report)?;
         self.config = Config::load(&dir).map_err(RunError::Other)?;
@@ -625,6 +659,7 @@ impl Supervisor {
         self.store.advance(task_id, Utc::now())?;
         report.final_state = self.store.task(task_id)?.state;
         report.stopped_because = "the verifier session ended".into();
+        self.keep_output(task_id, &mut report);
         Ok(report)
     }
 

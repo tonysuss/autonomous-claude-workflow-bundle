@@ -137,23 +137,56 @@ pub fn run_check_cancellable(
     Ok(Some(run))
 }
 
-/// Files in the base tree that a criterion's check command names. A result
-/// may not change them, so a worker cannot weaken the check it is judged by.
-pub fn protected_paths(repo: &Path, base: &str, criteria: &[Criterion]) -> Vec<String> {
+/// The words of the criteria's check commands that could name a file in the
+/// repository: relative, not an option or an assignment, each once.
+fn check_words(criteria: &[Criterion]) -> Vec<String> {
     let mut out: Vec<String> = Vec::new();
     for command in criteria.iter().filter_map(|c| c.check.as_deref()) {
         for token in command.split_whitespace() {
             let token = token.trim_matches(|c| matches!(c, '"' | '\'' | ';' | '(' | ')'));
             let token = token.strip_prefix("./").unwrap_or(token);
-            if token.is_empty() || token.starts_with('-') || token.contains('=') || out.iter().any(|p| p == token) {
+            if token.is_empty() || token.starts_with(['-', '/', '~']) || token.contains('=') || token.contains("..") {
                 continue;
             }
-            if git::object_type(repo, &format!("{base}:{token}")).as_deref() == Some("blob") {
+            if !out.iter().any(|p| p == token) {
                 out.push(token.to_string());
             }
         }
     }
     out
+}
+
+fn committed(repo: &Path, base: &str, path: &str) -> bool {
+    git::object_type(repo, &format!("{base}:{path}")).as_deref() == Some("blob")
+}
+
+/// Files in the base tree that a criterion's check command names. A result
+/// may not change them, so a worker cannot weaken the check it is judged by.
+pub fn protected_paths(repo: &Path, base: &str, criteria: &[Criterion]) -> Vec<String> {
+    check_words(criteria).into_iter().filter(|w| committed(repo, base, w)).collect()
+}
+
+/// Files a check command names that are in the working directory but not as
+/// committed in `base`: missing from the snapshot that interlock's own check
+/// runs and the agents work on, or different there. A check that runs one
+/// would test something other than what the person sees, so the task does
+/// not start until they are committed.
+pub fn uncommitted_check_files(repo: &Path, base: &str, criteria: &[Criterion]) -> Vec<String> {
+    check_words(criteria)
+        .into_iter()
+        .filter(|w| repo.join(w).is_file() && (!committed(repo, base, w) || git::file_differs(repo, base, w)))
+        .collect()
+}
+
+/// Why a task with uncommitted check files cannot start, and what to do.
+pub fn uncommitted_message(files: &[String]) -> String {
+    let (them, are) = if files.len() == 1 { ("it", "is") } else { ("them", "are") };
+    format!(
+        "{} {are} run by a check but not committed as {} in your working directory. interlock and the agents work on \
+         the committed snapshot, where the check would run something else. Commit {them}, then try again",
+        files.join(", "),
+        if files.len() == 1 { "it is" } else { "they are" },
+    )
 }
 
 #[cfg(test)]
@@ -207,6 +240,20 @@ mod tests {
             },
         )
         .unwrap()
+    }
+
+    #[test]
+    fn check_files_that_are_not_committed_as_they_are_on_disk_are_found() {
+        let (repo, store, base) = setup();
+        let mut criteria = store.task("t").unwrap().criteria;
+        assert!(uncommitted_check_files(repo.path(), &base, &criteria).is_empty(), "committed and unchanged");
+        std::fs::write(repo.path().join("checks/add.sh"), "true\n").unwrap();
+        assert_eq!(uncommitted_check_files(repo.path(), &base, &criteria), ["checks/add.sh"], "changed since");
+        std::fs::write(repo.path().join("checks/new.sh"), "true\n").unwrap();
+        criteria[1].check = Some("sh checks/new.sh && /usr/bin/env true".into());
+        assert_eq!(uncommitted_check_files(repo.path(), &base, &criteria), ["checks/add.sh", "checks/new.sh"]);
+        let why = uncommitted_message(&["checks/new.sh".into()]);
+        assert!(why.starts_with("checks/new.sh is run by a check but not committed as it is"), "{why}");
     }
 
     #[test]
