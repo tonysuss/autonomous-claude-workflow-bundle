@@ -1,0 +1,5 @@
+I rewrote `parse_amount` in `tally/money.py`, and `12.5` now parses to 1250 cents. The old code took the digits after the decimal point as a plain number of cents, so `12.5` became 12.05. It also applied the sign only to the whole part, so `-0.50` came out wrong.
+
+The new version strips the sign first and applies it to the whole amount. It pads a one-digit fraction to tenths, raises `ValueError` for more than two decimal places, and rejects malformed text. Thousands separators, whole numbers and surrounding spaces still work. `ValueError` is still raised for text that isn't an amount, including cases like `"1."` and `"1.-5"`, and a leading `+` is still accepted. `parse_amount` has only one caller, `csvio.py`, which needed no change.
+
+I added tests to `tests/test_money.py` for tenths, the sign cases, `"1.234"` and malformed input. interlock ran `checks/parse-repro.sh` and the full unit suite on the result, and both passed (23 tests). I recorded claims for all three criteria. `spec` rests on the unit tests I added plus the existing ones, and it still needs the independent verifier.

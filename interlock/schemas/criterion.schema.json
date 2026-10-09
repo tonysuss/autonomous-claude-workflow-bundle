@@ -1,0 +1,22 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.interlock.dev/v1/criterion.schema.json",
+  "title": "Criterion",
+  "description": "One acceptance criterion. Lives on its task; changing it changes the task's policy digest, which invalidates existing evidence.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["id", "statement", "min_strength", "producer"],
+  "properties": {
+    "id": { "$ref": "common.schema.json#/$defs/id" },
+    "statement": { "type": "string", "minLength": 1 },
+    "check": { "type": ["string", "null"], "description": "Reference to the check that tests this criterion, such as a script path." },
+    "check_version": { "type": "string", "minLength": 1, "default": "1" },
+    "min_strength": { "$ref": "common.schema.json#/$defs/min_strength" },
+    "producer": { "$ref": "common.schema.json#/$defs/producer" },
+    "baseline": {
+      "description": "What the check must do on the task's input snapshot for its passes to count. fails: it reproduces the problem. passes: it already held, as a regression guard. any: no requirement.",
+      "enum": ["fails", "passes", "any"],
+      "default": "any"
+    }
+  }
+}

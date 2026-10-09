@@ -1,0 +1,7 @@
+I added `--since DATE` and `--until DATE` to `balances` and `settle`. `checks/date-filter.sh` and the unit tests both pass when interlock runs them on the final tree. The `spec` criterion still needs an independent verifier, since my claim for it is only `tested`.
+
+- **Behaviour:** both dates are inclusive and either can be given alone. An invalid DATE is rejected by the argument parser with exit status 2. With either option set, every entry's date must be a valid `YYYY-MM-DD`, otherwise the command exits 1 with `tally: <file>:<line>: invalid date '<value>'`. Without the options nothing changes.
+- **Where:** the filtering is in `tally/csvio.py`, the options in `tally/cli.py`, and each entry now records its source line in `tally/ledger.py`. The README documents the options, and `tests/test_cli.py` has new tests for inclusive `--until`, a `--since` plus `--until` range on `settle`, the exit-2 case, and the file-and-line error.
+- **Not run by hand:** I did not run the commands separately to see the exit codes. The unit tests cover them.
+
+I made no commits and did not touch the check itself.

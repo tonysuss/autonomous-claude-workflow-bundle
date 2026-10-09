@@ -1,0 +1,7 @@
+`balances` and `settle` now take `--since DATE` and `--until DATE`, and both bounds are inclusive. The date-filter check and the 22 unit tests (19 existing plus 3 new) pass on the final tree.
+
+- **Option dates:** an invalid `DATE` is rejected by the argument parser with status 2. Only strict `YYYY-MM-DD` is accepted, so `2026-6-2` is rejected too.
+- **Entry dates:** when either option is given, an invalid entry date fails with status 1 and an error like `/tmp/b.csv:2: invalid date '2026-13-01'`. Without the options, nothing changes.
+- **Code and docs:** the changes are in `tally/cli.py`, `tally/csvio.py` and `tally/ledger.py` (`Entry` gains a `line` field), plus tests in `tests/test_cli.py` and a short README note. `export` is untouched.
+
+I recorded claims for all three criteria. The `spec` criterion needs `observed` strength from an independent verifier, so my `tested` claim won't satisfy it. `spec` is still open until a verifier runs.

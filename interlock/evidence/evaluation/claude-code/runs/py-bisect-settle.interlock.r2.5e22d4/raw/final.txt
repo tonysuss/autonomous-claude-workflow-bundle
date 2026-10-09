@@ -1,0 +1,5 @@
+I ran `checks/settle-repro.sh` against a clean export of each of the 10 commits, from a copy outside the tree. The script fails at `6fb44a0` ("ledger: tidy settle loop") and at every newer commit, and passes at its parent `2efc4f9` and every older one. I changed no files.
+
+I recorded an `observed` claim for the `answer` criterion. `interlock check run --criterion answer` reported that the criterion has no check to run, so interlock has not run its own check on this.
+
+ANSWER: 6fb44a053405cf209422a5ba505fa0bb929b18d4

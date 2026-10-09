@@ -1,0 +1,19 @@
+{
+  "id": "m07a-no-disarm",
+  "finding": "7: revoked authority leaves auto-merge armed",
+  "undo": [
+    [
+      "crates/interlock-forge/src/deliver.rs",
+      "    if armed && !interlock_merges(",
+      "    if false && armed && !interlock_merges("
+    ]
+  ],
+  "results": [
+    {
+      "test": "-p interlock-forge --test regressions -- a_grant_revoked_while_auto_merge_is_armed_disarms_it",
+      "exit": 101,
+      "failed": true,
+      "tail": "        verdict: Pending {\n            reason: \"pull request #1 is queued to merge at the verified head\",\n        },\n        moves: [],\n    },\n]\n  left: 0\n right: 1\nstack backtrace:\n   0: __rustc::rust_begin_unwind\n   1: core::panicking::panic_fmt\n   2: core::panicking::assert_failed_inner\n   3: core::panicking::assert_failed::<usize, usize>\n   4: regressions::a_grant_revoked_while_auto_merge_is_armed_disarms_it\n   5: regressions::a_grant_revoked_while_auto_merge_is_armed_disarms_it::{closure#0}\n   6: <regressions::a_grant_revoked_while_auto_merge_is_armed_disarms_it::{closure#0} as core::ops::function::FnOnce<()>>::call_once\nnote: Some details are omitted, run with `RUST_BACKTRACE=full` for a verbose backtrace.\n\n\nfailures:\n    a_grant_revoked_while_auto_merge_is_armed_disarms_it\n\ntest result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 13 filtered out; finished in 0.91s\n\nerror: test failed, to rerun pass `-p interlock-forge --test regressions`"
+    }
+  ]
+}

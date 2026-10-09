@@ -1,0 +1,14 @@
+mount type: fuse.fuse-overlayfs
+statfs magic: 0x65735546
+== interlock init, no override
+{
+  "error": "failed",
+  "message": "opening mnt/.interlock/state.db: cannot create mnt/.interlock: Read-only file system (os error 30)"
+}
+exit 1
+== interlock init, INTERLOCK_ALLOW_NETWORK_FS=1
+{
+  "error": "failed",
+  "message": "opening mnt/.interlock/state.db: cannot create mnt/.interlock: Read-only file system (os error 30)"
+}
+exit 1

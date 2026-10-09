@@ -1,0 +1,76 @@
+[
+  {
+    "created_at": "2026-10-06T01:11:56.600891530Z",
+    "id": "op-9b223700f2234939",
+    "intent": {
+      "base": "main",
+      "expected_head_sha": "b76ef6e302f4a52a6ceee68aa80094da6ff1c920",
+      "pull_request": 1
+    },
+    "kind": "merge",
+    "outcome": {
+      "seen": {
+        "observation": {
+          "detail": {
+            "auto_merge": false,
+            "base_branch": "main",
+            "head": "b76ef6e302f4a52a6ceee68aa80094da6ff1c920",
+            "landed": {
+              "on_base": true,
+              "onto": "c4975679de46756d924dada7b88acfab1885e527",
+              "tree": "7ac394c3a02f149443dab9d788856cd284dc2677"
+            },
+            "merged_at": "2026-10-06T01:11:57.116981Z",
+            "number": 1,
+            "state": "merged"
+          },
+          "seen": "pr"
+        },
+        "reconciled": true
+      },
+      "verdict": {
+        "merged_at": "2026-10-06T01:11:57.116981Z",
+        "report": {
+          "head_sha": "b76ef6e302f4a52a6ceee68aa80094da6ff1c920",
+          "outcome": "merged"
+        },
+        "verdict": "land"
+      }
+    },
+    "state": "confirmed",
+    "task_id": "fix-add",
+    "updated_at": "2026-10-06T01:11:57.537817101Z"
+  },
+  {
+    "created_at": "2026-10-06T01:11:56.727914896Z",
+    "id": "op-a0acb10db71c4144",
+    "intent": {
+      "base": "main",
+      "expected_head_sha": "b76ef6e302f4a52a6ceee68aa80094da6ff1c920"
+    },
+    "kind": "open_pr",
+    "outcome": {
+      "seen": {
+        "errors": [],
+        "observation": {
+          "detail": {
+            "auto_merge": false,
+            "base_branch": "main",
+            "head": "b76ef6e302f4a52a6ceee68aa80094da6ff1c920",
+            "landed": null,
+            "merged_at": null,
+            "number": 1,
+            "state": "open"
+          },
+          "seen": "pr"
+        }
+      },
+      "verdict": {
+        "verdict": "confirmed"
+      }
+    },
+    "state": "confirmed",
+    "task_id": "fix-add",
+    "updated_at": "2026-10-06T01:11:56.939623337Z"
+  }
+]

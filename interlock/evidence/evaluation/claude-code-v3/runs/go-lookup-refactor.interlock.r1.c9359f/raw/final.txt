@@ -1,0 +1,5 @@
+I added `lookup(section, key string) (string, error)` to `getters.go`, and `Get`, `GetInt`, `GetBool` and `GetDuration` now all call it. Only `lookup` reads `c.sections` now.
+
+`GetBool` reports a missing key as `key %q not set`, while the other three say `no key %q`. To keep both wordings exact, `lookup` returns an unexported `noKeyError`, and `GetBool` detects it and rewrites the message.
+
+`go vet ./...` is clean and `go test ./...` passes (interlock run run-3e58ac7147e349d6). I recorded the `behaviour` claim as static only, so interlock warned it needs a tested claim. I did not add a test for the `GetBool` missing-key message, so that wording is checked by reading the code only.

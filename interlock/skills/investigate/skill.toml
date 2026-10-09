@@ -1,0 +1,6 @@
+name = "investigate"
+description = "Use this skill whenever you are asked how something works, why it was built that way, or which change caused a behavior: load it before you start reading. It answers with file and line evidence and the history behind it, and changes nothing. Also grounds a bug fix, feature or refactor, and is the worker of an interlock investigation task. Works on its own."
+invocation = "model"
+requires = ["interlock-cli"]
+standalone = true
+pack = "core"

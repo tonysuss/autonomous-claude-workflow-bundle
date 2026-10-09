@@ -1,0 +1,11 @@
+`balances` and `settle` now take `--since DATE` and `--until DATE`, and I've recorded my claims in interlock. The independent verifier hasn't checked it yet, and the `since` and `spec` criteria need that.
+
+- **Cause:** nothing filtered entries by date. Entries also didn't remember their source line, which the error message needs.
+- **Change:** `tally/cli.py` adds the two options to `balances` and `settle` (not `export`). `tally/csvio.py` adds strict `YYYY-MM-DD` parsing and the inclusive filter. `tally/ledger.py` gives `Entry` an optional `line` field that doesn't affect equality. I also updated `README.md` and added tests in `tests/test_cli.py`.
+- **Checks:** `interlock check run` passed for `since` and `regression` (the unit tests run 22, all passing).
+- **Manual runs:**
+  - A bad option date like `2026-6-2` exits 2.
+  - An invalid entry date gives `file:line: invalid date '…'` with status 1, but only when a filter is given.
+  - `settle --until 2026-06-01` works.
+
+I didn't edit `checks/date-filter.sh`.

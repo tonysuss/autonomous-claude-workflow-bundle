@@ -1,0 +1,111 @@
+{
+  "task_id": "go-duration-days",
+  "host": "claude-code",
+  "final_state": "done",
+  "stopped_because": "done",
+  "reconciled": [],
+  "reattached": [],
+  "interrupted": false,
+  "baseline": [
+    {
+      "criterion_id": "repro",
+      "run_id": "run-da7be20bf6dd47e3",
+      "exit_code": 1,
+      "vacuous": null,
+      "problem": null
+    },
+    {
+      "criterion_id": "regression",
+      "run_id": "run-459e4fa6840f4f08",
+      "exit_code": 0,
+      "vacuous": null,
+      "problem": null
+    }
+  ],
+  "sessions": [
+    {
+      "role": "worker",
+      "attempt_id": "att-e3bdedc047df4577",
+      "epoch": 1,
+      "exit": {
+        "exit": "completed"
+      },
+      "duration_ms": 29663,
+      "summary": "`GetDuration` now accepts `d` as a unit of 24 hours, so `30d` reads as `720h0m0s`. interlock ran both checks on the final tree and both passed: `sh checks/days.sh` and `go test ./...`.\n\n**Cause and fix:** `GetDuration` passed the value straight to `time.ParseDuration`, which has no day unit. It now calls a new `parseDuration` in `getters.go`, which handles a leading `d` and otherwise defers to `time.ParseDuration`. The input forms it accepts:\n- **Old forms:** whole seconds (`90`) and Go syntax (`1m30s`) behave as before.\n- **Day forms:** `30d`, `1.5d`, `-2d` and `1d12h` work.\n- **Rejected:** `1h1d`, `1d-1h`, `1d5` and values too large to fit in a duration give an error.\n\nI added `TestParseDurationDays` in `getters_test.go` and a sentence to `README.md`. The `repro` check is recorded as observed, and `regression` and `spec` as tested. `spec` still needs the independent verifier.",
+      "denials": 0,
+      "transcript": "/tmp/agent-ws/6216dec5ce/kvconf/.interlock/transcripts/att-e3bdedc047df4577.jsonl",
+      "moves": [
+        {
+          "signal": "G3",
+          "from": "running",
+          "to": "awaiting_verification",
+          "reason": "result accepted from attempt att-e3bdedc047df4577 at epoch 1"
+        }
+      ],
+      "ended_because": "completed",
+      "end_detail": null,
+      "spent": {
+        "wall_ms": 29663,
+        "cost_usd": 0.12447040000000001,
+        "premium_requests": null,
+        "turns": 8,
+        "model": "claude-sonnet-5-5"
+      },
+      "cost_usd": 0.12447040000000001,
+      "premium_requests": null,
+      "host_session_id": "abf434e6-1bc1-4799-aa39-628687fc9b34",
+      "reattached": false,
+      "stopped_strays": [],
+      "export": null
+    },
+    {
+      "role": "verifier",
+      "attempt_id": "att-c74f2df69e1c42d4",
+      "epoch": 1,
+      "exit": {
+        "exit": "completed"
+      },
+      "duration_ms": 15831,
+      "summary": "- **repro**: holds (observed). `sh checks/days.sh`, run by interlock on tree e30ae61, passes and prints `30d is 720h0m0s`.\n- **spec**: holds (tested). A throwaway probe test, deleted afterwards and nothing left in the worktree, shows `30d`, `1.5d`, `-2d`, `1d12h` and `1d500ms` parse as days. `1h`, `1m30s`, `0`, `1h30m` and `-1h30m` give the same results as `time.ParseDuration`. Plain integers are still handled earlier in `GetDuration`. `1d1d`, `1D` and an overflowing day count return errors.\n- **regression**: holds (tested). `go test ./...`, run by interlock on this tree, passes.",
+      "denials": 0,
+      "transcript": "/tmp/agent-ws/6216dec5ce/kvconf/.interlock/transcripts/att-c74f2df69e1c42d4.jsonl",
+      "moves": [
+        {
+          "signal": "G4",
+          "from": "awaiting_verification",
+          "to": "verified",
+          "reason": "every required criterion has current passing evidence"
+        },
+        {
+          "signal": "G7",
+          "from": "verified",
+          "to": "done",
+          "reason": "verified; the workflow needs no delivery"
+        }
+      ],
+      "ended_because": "completed",
+      "end_detail": null,
+      "spent": {
+        "wall_ms": 15831,
+        "cost_usd": 0.0838528,
+        "premium_requests": null,
+        "turns": 4,
+        "model": "claude-sonnet-5-5"
+      },
+      "cost_usd": 0.0838528,
+      "premium_requests": null,
+      "host_session_id": "76d20e05-5288-4f17-8022-833af16b96e9",
+      "reattached": false,
+      "stopped_strays": [],
+      "export": null
+    }
+  ],
+  "pin": null,
+  "spent": {
+    "wall_ms": 45494,
+    "cost_usd": 0.20832320000000001,
+    "premium_requests": null,
+    "turns": 12
+  },
+  "exports": []
+}

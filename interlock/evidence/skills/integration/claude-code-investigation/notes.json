@@ -1,0 +1,9 @@
+[
+  {
+    "seq": 1,
+    "task_id": "ttl-boundary",
+    "kind": "answer",
+    "body": "## Overview\nYes. TTLCache.get still returns a value when the age is exactly ttl; it expires only when strictly older than ttl.\n\n## How it works\nput() stores (value, clock()) at cache.py:13. get() computes age = clock() - stored and expires on `age > ttl` (cache.py:20); expired entries are deleted and `default` returned (21-22). Otherwise the value is returned (23).\n\n## Why it is this way\nDirect: commit e6ed919 \"Keep cache entries through their last second (#12)\" (Ana) changed `>=` to `>`. Message: \"On coarse clocks (time.monotonic on some platforms ticks in 15 ms steps) entries stored with ttl=1 expired on the first read after a one-tick advance. Serve an entry until it is strictly older than ttl, so ttl is the minimum lifetime callers can rely on.\" The original bdf7b91 (Sam) used `>=`. Searched: git log/blame on cache.py (only two commits); no tests or docs in the repo.\n\n## Evidence\nfake clock, ttl=10: age 10 -> \"v\"; age 10.001 -> \"MISS\". git blame -L 20,20 -> e6ed919.\n\n## Gotchas\nThe class docstring (cache.py:5) says entries \"expire after ttl seconds\", which reads as expiry at ttl; actual behavior is ttl is a minimum lifetime, expiry just after.\n",
+    "at": "2026-10-06T02:29:08.410092626+00:00"
+  }
+]

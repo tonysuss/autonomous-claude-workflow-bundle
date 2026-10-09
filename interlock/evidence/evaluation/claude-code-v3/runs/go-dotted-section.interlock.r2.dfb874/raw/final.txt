@@ -1,0 +1,3 @@
+I fixed `splitName` in `cmd/kvconf/main.go` so it splits on the last dot. `db.eu.host` is now the key `host` in the section `db.eu`, and a name with no dot is still a key in the unnamed section.
+
+I added `TestSplitName` in `cmd/kvconf/main_test.go`, covering names with no dot, one dot and several dots. interlock ran `checks/dotted.sh`, which now prints `db1.example.org`, and `go test ./...`, which passes. I recorded claims for `repro` (observed), `regression` (tested) and `spec` (tested). The `repro` and `spec` criteria still need the independent verifier.

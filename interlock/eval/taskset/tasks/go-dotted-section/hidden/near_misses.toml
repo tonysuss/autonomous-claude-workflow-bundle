@@ -1,0 +1,17 @@
+# Plausible partial fixes. selftest requires each to fail at least one hidden case.
+
+[[near_miss]]
+name = "fix the reported call site only (the CLI); Lookup still splits at the first dot"
+from = "start"
+[[near_miss.edit]]
+path = "cmd/kvconf/main.go"
+old = "\tsection, key, ok := strings.Cut(name, \".\")\n\tif !ok {\n\t\treturn \"\", name\n\t}\n\treturn section, key\n"
+new = "\ti := strings.LastIndex(name, \".\")\n\tif i < 0 {\n\t\treturn \"\", name\n\t}\n\treturn name[:i], name[i+1:]\n"
+
+[[near_miss]]
+name = "fix Lookup only; the CLI still splits at the first dot"
+from = "start"
+[[near_miss.edit]]
+path = "config.go"
+old = "\tsection, key, ok := strings.Cut(name, \".\")\n\tif !ok {\n\t\treturn c.Get(\"\", name)\n\t}\n\treturn c.Get(section, key)\n"
+new = "\ti := strings.LastIndex(name, \".\")\n\tif i < 0 {\n\t\treturn c.Get(\"\", name)\n\t}\n\treturn c.Get(name[:i], name[i+1:])\n"

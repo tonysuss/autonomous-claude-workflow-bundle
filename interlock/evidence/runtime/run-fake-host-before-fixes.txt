@@ -1,0 +1,559 @@
+   Compiling interlock-cli v0.1.0 (/home/user/autonomous-claude-workflow-bundle/.claude/worktrees/agent-a015a201024863c38/interlock/crates/interlock-cli)
+    Finished `test` profile [unoptimized] target(s) in 0.70s
+     Running tests/run_fake_host.rs (target/debug/deps/run_fake_host-c1dc6a6efc3887b5)
+
+running 16 tests
+test a_bad_config_does_not_stand_in_the_way_of_recovery ... FAILED
+test a_restart_for_one_task_ends_sessions_left_by_another ... FAILED
+test a_signal_while_the_host_is_inspected_opens_no_attempt ... FAILED
+test an_effort_the_host_cannot_take_is_refused_before_anything_starts ... FAILED
+test a_dead_sessions_children_are_stopped_at_restart ... FAILED
+test budgets_must_be_finite_amounts ... FAILED
+test max_sessions_zero_runs_the_baseline_only ... FAILED
+test an_escaped_worker_process_cannot_forge_the_verifiers_evidence ... FAILED
+test pausing_safely_keeps_work_the_worker_committed ... FAILED
+test only_one_supervisor_gets_the_lock_however_many_race ... FAILED
+test sessions_get_an_allowlisted_environment_and_the_effort_asked_for ... FAILED
+test sighup_stops_a_run_like_sigterm ... FAILED
+test task_cancel_stops_a_session_whose_supervisor_is_gone ... FAILED
+test a_reattached_session_leaves_no_strays ... FAILED
+test processes_that_leave_the_session_are_stopped_when_it_ends ... FAILED
+test a_signal_during_a_baseline_check_stops_it_and_the_first_signal_is_reported ... FAILED
+
+failures:
+
+---- a_bad_config_does_not_stand_in_the_way_of_recovery stdout ----
+
+thread 'a_bad_config_does_not_stand_in_the_way_of_recovery' (26942) panicked at crates/interlock-cli/tests/run_fake_host.rs:394:5:
+assertion `left == right` failed: recovered before the config was read: {
+  "agent": "interlock-worker",
+  "effective_grant": {
+    "action_classes": [
+      "read",
+      "local_reversible"
+    ],
+    "grant_ids": [],
+    "landing_authority": "none",
+    "tools": {
+      "allow": [
+        "read",
+        "edit",
+        "shell"
+      ],
+      "deny": [
+        "shell:git push"
+      ]
+    }
+  },
+  "ended_at": null,
+  "epoch": 1,
+  "handoff": {
+    "budget_deadline": false,
+    "deadline": "2026-10-06T01:20:45.067400843Z",
+    "host": "claude-code",
+    "host_session_id": "271d2ca4-165b-4989-8210-c6f9efb8d487",
+    "pgid": 27155,
+    "pid": 27155,
+    "process_start": 707140,
+    "started_at": "2026-10-06T01:18:45.067400843Z",
+    "supervisor_pid": 27037,
+    "transcript": "/tmp/.tmpC713Q5/.interlock/transcripts/att-94c7e91d9d95464a.jsonl"
+  },
+  "host": {
+    "host": "claude-code",
+    "version": "2.1.289"
+  },
+  "id": "att-94c7e91d9d95464a",
+  "model": null,
+  "role": "worker",
+  "started_at": "2026-10-06T01:18:44.986109844Z",
+  "status": "running",
+  "task_id": "fix-add",
+  "token_hash": "33650f9d158f00af9ca0e67c2c6111d1ac950e03cac68f0237e88ec87347d5c2",
+  "worktree": "/tmp/.tmpC713Q5/.interlock/worktrees/fix-add-worker-1"
+}
+  left: Null
+ right: "crash"
+stack backtrace:
+   0: __rustc::rust_begin_unwind
+   1: core::panicking::panic_fmt
+   2: core::panicking::assert_failed_inner
+   3: core::panicking::assert_failed::<serde_json::value::Value, &str>
+   4: run_fake_host::a_bad_config_does_not_stand_in_the_way_of_recovery
+   5: run_fake_host::a_bad_config_does_not_stand_in_the_way_of_recovery::{closure#0}
+   6: <run_fake_host::a_bad_config_does_not_stand_in_the_way_of_recovery::{closure#0} as core::ops::function::FnOnce<()>>::call_once
+note: Some details are omitted, run with `RUST_BACKTRACE=full` for a verbose backtrace.
+
+---- a_restart_for_one_task_ends_sessions_left_by_another stdout ----
+
+thread 'a_restart_for_one_task_ends_sessions_left_by_another' (26945) panicked at crates/interlock-cli/tests/run_fake_host.rs:289:5:
+assertion `left == right` failed: {
+  "baseline": [],
+  "exports": [],
+  "final_state": "ready",
+  "host": "claude-code",
+  "interrupted": false,
+  "pin": null,
+  "reattached": [],
+  "reconciled": [],
+  "sessions": [],
+  "spent": {
+    "cost_usd": null,
+    "premium_requests": null,
+    "turns": null,
+    "wall_ms": 0
+  },
+  "stopped_because": "used all 0 sessions this run allows",
+  "task_id": "other"
+}
+  left: Array []
+ right: Array [String("att-fd609ba16f5b4353")]
+stack backtrace:
+   0: __rustc::rust_begin_unwind
+   1: core::panicking::panic_fmt
+   2: core::panicking::assert_failed_inner
+   3: core::panicking::assert_failed::<serde_json::value::Value, serde_json::value::Value>
+   4: run_fake_host::a_restart_for_one_task_ends_sessions_left_by_another
+   5: run_fake_host::a_restart_for_one_task_ends_sessions_left_by_another::{closure#0}
+   6: <run_fake_host::a_restart_for_one_task_ends_sessions_left_by_another::{closure#0} as core::ops::function::FnOnce<()>>::call_once
+note: Some details are omitted, run with `RUST_BACKTRACE=full` for a verbose backtrace.
+
+---- a_signal_while_the_host_is_inspected_opens_no_attempt stdout ----
+
+thread 'a_signal_while_the_host_is_inspected_opens_no_attempt' (27260) panicked at crates/interlock-cli/tests/run_fake_host.rs:344:5:
+assertion `left == right` failed
+  left: Array [Object {"attempt_id": String("att-d0e368d670d347b6"), "denials": Number(0), "duration_ms": Number(106), "end_detail": Null, "ended_because": String("completed"), "epoch": Number(1), "exit": Object {"exit": String("completed")}, "export": Null, "host_session_id": String("4551addd-9ddb-43c1-8580-3118d826460b"), "moves": Array [Object {"from": String("running"), "reason": String("result accepted from attempt att-d0e368d670d347b6 at epoch 1"), "signal": String("G3"), "to": String("awaiting_verification")}], "reattached": Bool(false), "role": String("worker"), "spent": Object {"cost_usd": Number(0.01), "premium_requests": Null, "turns": Number(1), "wall_ms": Number(106)}, "summary": String("done"), "transcript": String("/tmp/.tmpHI7ryw/.interlock/transcripts/att-d0e368d670d347b6.jsonl")}]
+ right: Array []
+stack backtrace:
+   0: __rustc::rust_begin_unwind
+   1: core::panicking::panic_fmt
+   2: core::panicking::assert_failed_inner
+   3: core::panicking::assert_failed::<serde_json::value::Value, serde_json::value::Value>
+   4: run_fake_host::a_signal_while_the_host_is_inspected_opens_no_attempt
+   5: run_fake_host::a_signal_while_the_host_is_inspected_opens_no_attempt::{closure#0}
+   6: <run_fake_host::a_signal_while_the_host_is_inspected_opens_no_attempt::{closure#0} as core::ops::function::FnOnce<()>>::call_once
+note: Some details are omitted, run with `RUST_BACKTRACE=full` for a verbose backtrace.
+
+---- an_effort_the_host_cannot_take_is_refused_before_anything_starts stdout ----
+
+thread 'an_effort_the_host_cannot_take_is_refused_before_anything_starts' (27747) panicked at crates/interlock-cli/tests/run_fake_host.rs:456:5:
+assertion `left == right` failed
+  left: 2
+ right: 1
+stack backtrace:
+   0: __rustc::rust_begin_unwind
+   1: core::panicking::panic_fmt
+   2: core::panicking::assert_failed_inner
+   3: core::panicking::assert_failed::<i32, i32>
+   4: run_fake_host::an_effort_the_host_cannot_take_is_refused_before_anything_starts
+   5: run_fake_host::an_effort_the_host_cannot_take_is_refused_before_anything_starts::{closure#0}
+   6: <run_fake_host::an_effort_the_host_cannot_take_is_refused_before_anything_starts::{closure#0} as core::ops::function::FnOnce<()>>::call_once
+note: Some details are omitted, run with `RUST_BACKTRACE=full` for a verbose backtrace.
+
+---- a_dead_sessions_children_are_stopped_at_restart stdout ----
+
+thread 'a_dead_sessions_children_are_stopped_at_restart' (26943) panicked at crates/interlock-cli/tests/run_fake_host.rs:61:9:
+gave up waiting until the child is gone
+stack backtrace:
+   0: __rustc::rust_begin_unwind
+   1: core::panicking::panic_fmt
+   2: run_fake_host::wait_until::<run_fake_host::a_dead_sessions_children_are_stopped_at_restart::{closure#1}>
+   3: run_fake_host::a_dead_sessions_children_are_stopped_at_restart
+   4: run_fake_host::a_dead_sessions_children_are_stopped_at_restart::{closure#0}
+   5: <run_fake_host::a_dead_sessions_children_are_stopped_at_restart::{closure#0} as core::ops::function::FnOnce<()>>::call_once
+note: Some details are omitted, run with `RUST_BACKTRACE=full` for a verbose backtrace.
+
+---- budgets_must_be_finite_amounts stdout ----
+
+thread 'budgets_must_be_finite_amounts' (28694) panicked at crates/interlock-cli/tests/run_fake_host.rs:554:5:
+assertion `left == right` failed: {
+  "attempts_used": 0,
+  "blocked_reason": null,
+  "budget": {
+    "max_attempts": 3,
+    "max_cost_usd": null
+  },
+  "created_at": "2026-10-06T01:18:55.661978372Z",
+  "criteria": [
+    {
+      "baseline": "fails",
+      "check": "sh check.sh",
+      "check_version": "1",
+      "id": "fixed",
+      "min_strength": "tested",
+      "producer": "self",
+      "statement": "add(2, 3) returns 5"
+    }
+  ],
+  "current_attempt": null,
+  "current_tree": null,
+  "dependencies": [],
+  "environment": "",
+  "id": "nan-budget",
+  "input_snapshot": null,
+  "integration_required": false,
+  "intent": "add() returns the difference",
+  "lease_epoch": 0,
+  "policy_digest": "sha256:d8572826d133ee3e3cf1b67fc513f2d8d1cc0ccf61cc52b1f3f5a4c7245be8b6",
+  "repository": ".",
+  "resume_point": null,
+  "scope": {
+    "description": null,
+    "paths": [
+      "calc.py",
+      "tests/**"
+    ]
+  },
+  "state": "pending",
+  "updated_at": "2026-10-06T01:18:55.661978372Z",
+  "workflow": {
+    "name": "bug-fix",
+    "version": 1
+  }
+}
+  left: 0
+ right: 2
+stack backtrace:
+   0: __rustc::rust_begin_unwind
+   1: core::panicking::panic_fmt
+   2: core::panicking::assert_failed_inner
+   3: core::panicking::assert_failed::<i32, i32>
+   4: run_fake_host::budgets_must_be_finite_amounts
+   5: run_fake_host::budgets_must_be_finite_amounts::{closure#0}
+   6: <run_fake_host::budgets_must_be_finite_amounts::{closure#0} as core::ops::function::FnOnce<()>>::call_once
+note: Some details are omitted, run with `RUST_BACKTRACE=full` for a verbose backtrace.
+
+---- max_sessions_zero_runs_the_baseline_only stdout ----
+
+thread 'max_sessions_zero_runs_the_baseline_only' (28772) panicked at crates/interlock-cli/tests/run_fake_host.rs:470:5:
+assertion `left == right` failed: {
+  "baseline": [],
+  "exports": [],
+  "final_state": "ready",
+  "host": "claude-code",
+  "interrupted": false,
+  "pin": null,
+  "reattached": [],
+  "reconciled": [],
+  "sessions": [],
+  "spent": {
+    "cost_usd": null,
+    "premium_requests": null,
+    "turns": null,
+    "wall_ms": 0
+  },
+  "stopped_because": "used all 0 sessions this run allows",
+  "task_id": "fix-add"
+}
+  left: Null
+ right: "fixed"
+stack backtrace:
+   0: __rustc::rust_begin_unwind
+   1: core::panicking::panic_fmt
+   2: core::panicking::assert_failed_inner
+   3: core::panicking::assert_failed::<serde_json::value::Value, &str>
+   4: run_fake_host::max_sessions_zero_runs_the_baseline_only
+   5: run_fake_host::max_sessions_zero_runs_the_baseline_only::{closure#0}
+   6: <run_fake_host::max_sessions_zero_runs_the_baseline_only::{closure#0} as core::ops::function::FnOnce<()>>::call_once
+note: Some details are omitted, run with `RUST_BACKTRACE=full` for a verbose backtrace.
+
+---- an_escaped_worker_process_cannot_forge_the_verifiers_evidence stdout ----
+
+thread 'an_escaped_worker_process_cannot_forge_the_verifiers_evidence' (27801) panicked at crates/interlock-cli/tests/run_fake_host.rs:539:5:
+assertion `left == right` failed: the forger was stopped with the worker's session: watching as att-f7f097e4005947cd
+stole the token of att-846d7e875d7d49d5
+{
+  "event_id": "evt-d27ac5201412479d",
+  "duplicate": false,
+  "outcome": {
+    "evidence": {
+      "id": "asm-e8e1df21f48442f7",
+      "task_id": "fix-add",
+      "criterion_id": "fixed",
+      "attempt_id": "att-846d7e875d7d49d5",
+      "strength": "observed",
+      "currency": {
+        "tree": "1c67017f3df78419482f36c6f491ceae5dbb2842",
+        "check_version": "1",
+        "environment": "",
+        "policy_digest": "sha256:162e0eb7fb53c1ab8b4272cbad54a6a21397389f78a4b19eb020636ef051f432"
+      },
+      "evidence_refs": [
+        "forged"
+      ],
+      "note": "forged by the worker",
+      "recorded_at": "2026-10-06T01:18:51.059268569Z"
+    },
+    "current": true
+  }
+}
+{
+  "event_id": "evt-a354931ef7874b5d",
+  "duplicate": false,
+  "outcome": {
+    "evidence": {
+      "id": "asm-28e55ef727f04e5c",
+      "task_id": "fix-add",
+      "criterion_id": "verified",
+      "attempt_id": "att-846d7e875d7d49d5",
+      "strength": "observed",
+      "currency": {
+        "tree": "1c67017f3df78419482f36c6f491ceae5dbb2842",
+        "check_version": "1",
+        "environment": "",
+        "policy_digest": "sha256:162e0eb7fb53c1ab8b4272cbad54a6a21397389f78a4b19eb020636ef051f432"
+      },
+      "evidence_refs": [
+        "forged"
+      ],
+      "note": "forged by the worker",
+      "recorded_at": "2026-10-06T01:18:51.117195643Z"
+    },
+    "current": true
+  }
+}
+
+  left: 2
+ right: 0
+stack backtrace:
+   0: __rustc::rust_begin_unwind
+   1: core::panicking::panic_fmt
+   2: core::panicking::assert_failed_inner
+   3: core::panicking::assert_failed::<usize, usize>
+   4: run_fake_host::an_escaped_worker_process_cannot_forge_the_verifiers_evidence
+   5: run_fake_host::an_escaped_worker_process_cannot_forge_the_verifiers_evidence::{closure#0}
+   6: <run_fake_host::an_escaped_worker_process_cannot_forge_the_verifiers_evidence::{closure#0} as core::ops::function::FnOnce<()>>::call_once
+note: Some details are omitted, run with `RUST_BACKTRACE=full` for a verbose backtrace.
+
+---- pausing_safely_keeps_work_the_worker_committed stdout ----
+
+thread 'pausing_safely_keeps_work_the_worker_committed' (29059) panicked at crates/interlock-cli/tests/run_fake_host.rs:377:5:
+assertion `left == right` failed: {
+  "baseline": [
+    {
+      "criterion_id": "fixed",
+      "exit_code": 1,
+      "problem": null,
+      "run_id": "run-9dd9e54ad1044bca",
+      "vacuous": null
+    }
+  ],
+  "exports": [],
+  "final_state": "ready",
+  "host": "claude-code",
+  "interrupted": true,
+  "pin": null,
+  "reattached": [],
+  "reconciled": [],
+  "sessions": [
+    {
+      "attempt_id": "att-b37fa4671f3c43c9",
+      "denials": 0,
+      "duration_ms": 260,
+      "end_detail": null,
+      "ended_because": "cancelled",
+      "epoch": 1,
+      "exit": {
+        "exit": "cancelled"
+      },
+      "export": null,
+      "host_session_id": "fc2247e5-2db4-495f-9767-c505857068fd",
+      "moves": [
+        {
+          "from": "running",
+          "reason": "session ended (cancelled)",
+          "signal": "R3",
+          "to": "ready"
+        }
+      ],
+      "reattached": false,
+      "role": "worker",
+      "spent": {
+        "cost_usd": null,
+        "premium_requests": null,
+        "turns": null,
+        "wall_ms": 260
+      },
+      "summary": null,
+      "transcript": "/tmp/.tmp64A2ru/.interlock/transcripts/att-b37fa4671f3c43c9.jsonl"
+    }
+  ],
+  "spent": {
+    "cost_usd": null,
+    "premium_requests": null,
+    "turns": null,
+    "wall_ms": 260
+  },
+  "stopped_because": "interrupted by a signal; any running session was stopped and the task can resume from ready",
+  "task_id": "fix-add"
+}
+  left: Null
+ right: "refs/heads/interlock/wip/fix-add"
+stack backtrace:
+   0: __rustc::rust_begin_unwind
+   1: core::panicking::panic_fmt
+   2: core::panicking::assert_failed_inner
+   3: core::panicking::assert_failed::<serde_json::value::Value, &str>
+   4: run_fake_host::pausing_safely_keeps_work_the_worker_committed
+   5: run_fake_host::pausing_safely_keeps_work_the_worker_committed::{closure#0}
+   6: <run_fake_host::pausing_safely_keeps_work_the_worker_committed::{closure#0} as core::ops::function::FnOnce<()>>::call_once
+note: Some details are omitted, run with `RUST_BACKTRACE=full` for a verbose backtrace.
+
+---- only_one_supervisor_gets_the_lock_however_many_race stdout ----
+
+thread 'only_one_supervisor_gets_the_lock_however_many_race' (28823) panicked at crates/interlock-cli/tests/run_fake_host.rs:489:9:
+assertion `left == right` failed: exactly one of six held the lock (stale file: true): [
+    (
+        1,
+        String("{\n  \"error\": \"failed\",\n  \"message\": \"another supervisor (pid 1) is running; lock at /tmp/.tmptI2sZP/.interlock/supervisor.lock\"\n}\n"),
+        "{\n  \"error\": \"failed\",\n  \"message\": \"another supervisor (pid 1) is running; lock at /tmp/.tmptI2sZP/.interlock/supervisor.lock\"\n}\n",
+    ),
+    (
+        1,
+        String("{\n  \"error\": \"failed\",\n  \"message\": \"another supervisor (pid 1) is running; lock at /tmp/.tmptI2sZP/.interlock/supervisor.lock\"\n}\n"),
+        "{\n  \"error\": \"failed\",\n  \"message\": \"another supervisor (pid 1) is running; lock at /tmp/.tmptI2sZP/.interlock/supervisor.lock\"\n}\n",
+    ),
+    (
+        1,
+        String("{\n  \"error\": \"failed\",\n  \"message\": \"another supervisor (pid 1) is running; lock at /tmp/.tmptI2sZP/.interlock/supervisor.lock\"\n}\n"),
+        "{\n  \"error\": \"failed\",\n  \"message\": \"another supervisor (pid 1) is running; lock at /tmp/.tmptI2sZP/.interlock/supervisor.lock\"\n}\n",
+    ),
+    (
+        1,
+        String("{\n  \"error\": \"failed\",\n  \"message\": \"another supervisor (pid 1) is running; lock at /tmp/.tmptI2sZP/.interlock/supervisor.lock\"\n}\n"),
+        "{\n  \"error\": \"failed\",\n  \"message\": \"another supervisor (pid 1) is running; lock at /tmp/.tmptI2sZP/.interlock/supervisor.lock\"\n}\n",
+    ),
+    (
+        1,
+        String("{\n  \"error\": \"failed\",\n  \"message\": \"another supervisor (pid 1) is running; lock at /tmp/.tmptI2sZP/.interlock/supervisor.lock\"\n}\n"),
+        "{\n  \"error\": \"failed\",\n  \"message\": \"another supervisor (pid 1) is running; lock at /tmp/.tmptI2sZP/.interlock/supervisor.lock\"\n}\n",
+    ),
+    (
+        1,
+        String("{\n  \"error\": \"failed\",\n  \"message\": \"another supervisor (pid 1) is running; lock at /tmp/.tmptI2sZP/.interlock/supervisor.lock\"\n}\n"),
+        "{\n  \"error\": \"failed\",\n  \"message\": \"another supervisor (pid 1) is running; lock at /tmp/.tmptI2sZP/.interlock/supervisor.lock\"\n}\n",
+    ),
+]
+  left: 6
+ right: 5
+stack backtrace:
+   0: __rustc::rust_begin_unwind
+   1: core::panicking::panic_fmt
+   2: core::panicking::assert_failed_inner
+   3: core::panicking::assert_failed::<usize, usize>
+   4: run_fake_host::only_one_supervisor_gets_the_lock_however_many_race
+   5: run_fake_host::only_one_supervisor_gets_the_lock_however_many_race::{closure#0}
+   6: <run_fake_host::only_one_supervisor_gets_the_lock_however_many_race::{closure#0} as core::ops::function::FnOnce<()>>::call_once
+note: Some details are omitted, run with `RUST_BACKTRACE=full` for a verbose backtrace.
+
+---- sessions_get_an_allowlisted_environment_and_the_effort_asked_for stdout ----
+
+thread 'sessions_get_an_allowlisted_environment_and_the_effort_asked_for' (29296) panicked at crates/interlock-cli/tests/run_fake_host.rs:423:5:
+assertion `left == right` failed: error: unexpected argument '--effort' found
+
+  tip: to pass '--effort' as a value, use '-- --effort'
+
+Usage: interlock run --host <HOST> --timeout <TIMEOUT> --max-sessions <MAX_SESSIONS> <TASK>
+
+For more information, try '--help'.
+
+  left: Some(2)
+ right: Some(5)
+stack backtrace:
+   0: __rustc::rust_begin_unwind
+   1: core::panicking::panic_fmt
+   2: core::panicking::assert_failed_inner
+   3: core::panicking::assert_failed::<core::option::Option<i32>, core::option::Option<i32>>
+   4: run_fake_host::sessions_get_an_allowlisted_environment_and_the_effort_asked_for
+   5: run_fake_host::sessions_get_an_allowlisted_environment_and_the_effort_asked_for::{closure#0}
+   6: <run_fake_host::sessions_get_an_allowlisted_environment_and_the_effort_asked_for::{closure#0} as core::ops::function::FnOnce<()>>::call_once
+note: Some details are omitted, run with `RUST_BACKTRACE=full` for a verbose backtrace.
+
+---- sighup_stops_a_run_like_sigterm stdout ----
+
+thread 'sighup_stops_a_run_like_sigterm' (29344) panicked at crates/interlock-cli/tests/run_fake_host.rs:356:5:
+assertion `left == right` failed: "" 
+  left: -1
+ right: 6
+stack backtrace:
+   0: __rustc::rust_begin_unwind
+   1: core::panicking::panic_fmt
+   2: core::panicking::assert_failed_inner
+   3: core::panicking::assert_failed::<i32, i32>
+   4: run_fake_host::sighup_stops_a_run_like_sigterm
+   5: run_fake_host::sighup_stops_a_run_like_sigterm::{closure#0}
+   6: <run_fake_host::sighup_stops_a_run_like_sigterm::{closure#0} as core::ops::function::FnOnce<()>>::call_once
+note: Some details are omitted, run with `RUST_BACKTRACE=full` for a verbose backtrace.
+
+---- task_cancel_stops_a_session_whose_supervisor_is_gone stdout ----
+
+thread 'task_cancel_stops_a_session_whose_supervisor_is_gone' (29408) panicked at crates/interlock-cli/tests/run_fake_host.rs:255:5:
+the token is kept outside the repository
+stack backtrace:
+   0: __rustc::rust_begin_unwind
+   1: core::panicking::panic_fmt
+   2: run_fake_host::task_cancel_stops_a_session_whose_supervisor_is_gone
+   3: run_fake_host::task_cancel_stops_a_session_whose_supervisor_is_gone::{closure#0}
+   4: <run_fake_host::task_cancel_stops_a_session_whose_supervisor_is_gone::{closure#0} as core::ops::function::FnOnce<()>>::call_once
+note: Some details are omitted, run with `RUST_BACKTRACE=full` for a verbose backtrace.
+
+---- a_reattached_session_leaves_no_strays stdout ----
+
+thread 'a_reattached_session_leaves_no_strays' (26944) panicked at crates/interlock-cli/tests/run_fake_host.rs:61:9:
+gave up waiting until the stray is gone
+stack backtrace:
+   0: __rustc::rust_begin_unwind
+   1: core::panicking::panic_fmt
+   2: run_fake_host::wait_until::<run_fake_host::a_reattached_session_leaves_no_strays::{closure#0}>
+   3: run_fake_host::a_reattached_session_leaves_no_strays
+   4: run_fake_host::a_reattached_session_leaves_no_strays::{closure#0}
+   5: <run_fake_host::a_reattached_session_leaves_no_strays::{closure#0} as core::ops::function::FnOnce<()>>::call_once
+note: Some details are omitted, run with `RUST_BACKTRACE=full` for a verbose backtrace.
+
+---- processes_that_leave_the_session_are_stopped_when_it_ends stdout ----
+
+thread 'processes_that_leave_the_session_are_stopped_when_it_ends' (29174) panicked at crates/interlock-cli/tests/run_fake_host.rs:61:9:
+gave up waiting until both strays are gone
+stack backtrace:
+   0: __rustc::rust_begin_unwind
+   1: core::panicking::panic_fmt
+   2: run_fake_host::wait_until::<run_fake_host::processes_that_leave_the_session_are_stopped_when_it_ends::{closure#0}>
+   3: run_fake_host::processes_that_leave_the_session_are_stopped_when_it_ends
+   4: run_fake_host::processes_that_leave_the_session_are_stopped_when_it_ends::{closure#0}
+   5: <run_fake_host::processes_that_leave_the_session_are_stopped_when_it_ends::{closure#0} as core::ops::function::FnOnce<()>>::call_once
+note: Some details are omitted, run with `RUST_BACKTRACE=full` for a verbose backtrace.
+
+---- a_signal_during_a_baseline_check_stops_it_and_the_first_signal_is_reported stdout ----
+
+thread 'a_signal_during_a_baseline_check_stops_it_and_the_first_signal_is_reported' (27255) panicked at crates/interlock-cli/tests/run_fake_host.rs:328:5:
+the run did not wait out the 30s check
+stack backtrace:
+   0: __rustc::rust_begin_unwind
+   1: core::panicking::panic_fmt
+   2: run_fake_host::a_signal_during_a_baseline_check_stops_it_and_the_first_signal_is_reported
+   3: run_fake_host::a_signal_during_a_baseline_check_stops_it_and_the_first_signal_is_reported::{closure#0}
+   4: <run_fake_host::a_signal_during_a_baseline_check_stops_it_and_the_first_signal_is_reported::{closure#0} as core::ops::function::FnOnce<()>>::call_once
+note: Some details are omitted, run with `RUST_BACKTRACE=full` for a verbose backtrace.
+
+
+failures:
+    a_bad_config_does_not_stand_in_the_way_of_recovery
+    a_dead_sessions_children_are_stopped_at_restart
+    a_reattached_session_leaves_no_strays
+    a_restart_for_one_task_ends_sessions_left_by_another
+    a_signal_during_a_baseline_check_stops_it_and_the_first_signal_is_reported
+    a_signal_while_the_host_is_inspected_opens_no_attempt
+    an_effort_the_host_cannot_take_is_refused_before_anything_starts
+    an_escaped_worker_process_cannot_forge_the_verifiers_evidence
+    budgets_must_be_finite_amounts
+    max_sessions_zero_runs_the_baseline_only
+    only_one_supervisor_gets_the_lock_however_many_race
+    pausing_safely_keeps_work_the_worker_committed
+    processes_that_leave_the_session_are_stopped_when_it_ends
+    sessions_get_an_allowlisted_environment_and_the_effort_asked_for
+    sighup_stops_a_run_like_sigterm
+    task_cancel_stops_a_session_whose_supervisor_is_gone
+
+test result: FAILED. 0 passed; 16 failed; 0 ignored; 0 measured; 0 filtered out; finished in 32.09s
+
+error: test failed, to rerun pass `-p interlock-cli --test run_fake_host`

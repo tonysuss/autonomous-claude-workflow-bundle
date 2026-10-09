@@ -1,0 +1,30 @@
+{
+  "id": "m03-forge-commands-inside-attempts",
+  "finding": "3 (major): an agent can run forge commands and point interlock at a forged gh",
+  "undo": [
+    [
+      "crates/interlock-cli/src/forge.rs",
+      "    if inside_attempt() {\n        bail!",
+      "    if false && inside_attempt() {\n        bail!"
+    ],
+    [
+      "crates/interlock-core/src/classify.rs",
+      "    &[\"integrate\", \"run\"],\n    &[\"reconcile\"],\n",
+      ""
+    ]
+  ],
+  "results": [
+    {
+      "test": "-p interlock-cli --test forge_cli -- r3_forge_commands_are_the_operators_inside_an_attempt",
+      "exit": 101,
+      "failed": true,
+      "tail": "failures:\n\n---- r3_forge_commands_are_the_operators_inside_an_attempt stdout ----\n\nthread 'r3_forge_commands_are_the_operators_inside_an_attempt' (21079) panicked at crates/interlock-cli/tests/forge_cli.rs:498:9:\nassertion `left == right` failed: interlock reconcile fix-add: \n  left: Some(0)\n right: Some(2)\nstack backtrace:\n   0: __rustc::rust_begin_unwind\n   1: core::panicking::panic_fmt\n   2: core::panicking::assert_failed_inner\n   3: core::panicking::assert_failed::<core::option::Option<i32>, core::option::Option<i32>>\n   4: forge_cli::r3_forge_commands_are_the_operators_inside_an_attempt\n   5: forge_cli::r3_forge_commands_are_the_operators_inside_an_attempt::{closure#0}\n   6: <forge_cli::r3_forge_commands_are_the_operators_inside_an_attempt::{closure#0} as core::ops::function::FnOnce<()>>::call_once\nnote: Some details are omitted, run with `RUST_BACKTRACE=full` for a verbose backtrace.\n\n\nfailures:\n    r3_forge_commands_are_the_operators_inside_an_attempt\n\ntest result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 8 filtered out; finished in 1.52s\n\nerror: test failed, to rerun pass `-p interlock-cli --test forge_cli`"
+    },
+    {
+      "test": "-p interlock-core --lib -- classify::tests::forge_commands_belong_to_the_operator",
+      "exit": 101,
+      "failed": true,
+      "tail": "failures:\n\n---- classify::tests::forge_commands_belong_to_the_operator stdout ----\n\nthread 'classify::tests::forge_commands_belong_to_the_operator' (21217) panicked at crates/interlock-core/src/classify.rs:346:13:\nassertion `left == right` failed: interlock integrate run fix-add\n  left: Read\n right: Irreversible\nstack backtrace:\n   0: __rustc::rust_begin_unwind\n   1: core::panicking::panic_fmt\n   2: core::panicking::assert_failed_inner\n   3: core::panicking::assert_failed::<interlock_schema::records::ActionClass, interlock_schema::records::ActionClass>\n   4: interlock_core::classify::tests::forge_commands_belong_to_the_operator\n   5: interlock_core::classify::tests::forge_commands_belong_to_the_operator::{closure#0}\n   6: <interlock_core::classify::tests::forge_commands_belong_to_the_operator::{closure#0} as core::ops::function::FnOnce<()>>::call_once\nnote: Some details are omitted, run with `RUST_BACKTRACE=full` for a verbose backtrace.\n\n\nfailures:\n    classify::tests::forge_commands_belong_to_the_operator\n\ntest result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 19 filtered out; finished in 0.09s\n\nerror: test failed, to rerun pass `-p interlock-core --lib`"
+    }
+  ]
+}

@@ -1,0 +1,25 @@
+# Plausible partial fixes. selftest requires each to fail at least one hidden case.
+
+[[near_miss]]
+name = "csv.writer's default \\r\\n line endings"
+from = "solution"
+[[near_miss.edit]]
+path = "tally/report.py"
+old = "csv.writer(out, lineterminator=\"\\n\")"
+new = "csv.writer(out)"
+
+[[near_miss]]
+name = "manual join, no quoting"
+from = "solution"
+[[near_miss.edit]]
+path = "tally/report.py"
+old = "    out = io.StringIO()\n    writer = csv.writer(out, lineterminator=\"\\n\")\n    writer.writerow(header)\n    writer.writerows(rows)\n    return out.getvalue()\n"
+new = "    return \"\".join(\",\".join(map(str, r)) + \"\\n\" for r in [header, *rows])\n"
+
+[[near_miss]]
+name = "CSV for balances only; settle ignores --format"
+from = "solution"
+[[near_miss.edit]]
+path = "tally/cli.py"
+old = "        render = report.render_transfers_csv if csv_out else report.render_transfers\n"
+new = "        render = report.render_transfers\n"

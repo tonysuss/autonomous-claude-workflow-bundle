@@ -1,0 +1,122 @@
+{
+  "task_id": "go-env-expand",
+  "host": "claude-code",
+  "final_state": "done",
+  "stopped_because": "done",
+  "reconciled": [
+    "att-195ba6b5b8bd490c"
+  ],
+  "reattached": [],
+  "interrupted": false,
+  "baseline": [
+    {
+      "criterion_id": "expand",
+      "run_id": "run-8e58143a1e1e4428",
+      "exit_code": 1,
+      "vacuous": null,
+      "problem": null
+    },
+    {
+      "criterion_id": "regression",
+      "run_id": "run-8fd5b74c922a4f89",
+      "exit_code": 0,
+      "vacuous": null,
+      "problem": null
+    }
+  ],
+  "sessions": [
+    {
+      "role": "worker",
+      "attempt_id": "att-bc106525300945d5",
+      "epoch": 2,
+      "exit": {
+        "exit": "completed"
+      },
+      "duration_ms": 32388,
+      "summary": "`Parse` and `Load` now expand `${NAME}`, `${NAME:-fallback}` and `$$` in unquoted and double-quoted values. An unset variable with no fallback fails with `kvconf: line N: undefined variable \"NAME\"`. `go test ./...` passes, including a new `TestExpand`, and `sh checks/expand.sh` passes when run through interlock.\n\n- **API:** I added `ParseOptions{NoExpand}` and `ParseWithOptions`. I also added `LoadWithOptions`, which you didn't ask for. The CLI needs it to pass the option to `Load`.\n- **CLI:** `kvconf get` and `kvconf dump` accept `--no-expand` before the file name. I only checked it by hand on `get` (it printed `${DATA_ROOT}/data`), not on `dump`, and no test covers it.\n- **Unterminated `${`:** this wasn't in the spec. I made it a parse error (`unterminated ${ in value`) rather than keeping it literally.\n- **Files changed:** `parser.go`, `config.go`, `cmd/kvconf/main.go`, `parser_test.go` and `README.md`.\n- **Claims recorded:** I recorded claims for `expand` (observed), `regression` (tested) and `spec` (tested). `expand` and `spec` still need the independent verifier.",
+      "denials": 0,
+      "transcript": "/tmp/agent-ws/c44d25a438/kvconf/.interlock/transcripts/att-bc106525300945d5.jsonl",
+      "moves": [
+        {
+          "signal": "G3",
+          "from": "running",
+          "to": "awaiting_verification",
+          "reason": "result accepted from attempt att-bc106525300945d5 at epoch 2"
+        }
+      ],
+      "ended_because": "completed",
+      "end_detail": null,
+      "spent": {
+        "wall_ms": 32388,
+        "cost_usd": 0.1268524,
+        "premium_requests": null,
+        "turns": 7
+      },
+      "cost_usd": 0.1268524,
+      "premium_requests": null,
+      "host_session_id": "061ab037-c69d-4c01-a985-a5c619cf8e0e",
+      "reattached": false,
+      "stopped_strays": [],
+      "export": null
+    },
+    {
+      "role": "verifier",
+      "attempt_id": "att-eb05aee5e2f94bae",
+      "epoch": 2,
+      "exit": {
+        "exit": "completed"
+      },
+      "duration_ms": 22672,
+      "summary": "I've recorded an assessment for each criterion. All three hold on tree 3a8e3dc.\n\n- **expand:** holds (observed). `interlock check run --criterion expand` passed on this tree and printed `ok: paths.data expanded to /srv/data`.\n- **spec:** holds (tested). `TestExpand` passes. I also built `kvconf` and ran `get` and `dump` on sample configs.\n  - `${X}`, `${U:-fb}` and an empty variable with a fallback all expanded correctly.\n  - `$$` became `$`, and a lone `$` was kept.\n  - An unset variable with no fallback failed with `kvconf: line 4: undefined variable \"NOPE\"`.\n  - `--no-expand` kept values literally on both `get` and `dump`.\n  - `ParseOptions` and `ParseWithOptions` exist, and `Parse` delegates to `ParseWithOptions(r, ParseOptions{})`.\n\n  No Go test covers `--no-expand` on the CLI; I only checked it by hand.\n- **regression:** holds (tested). I ran `interlock check run --criterion regression` and `go test ./...`. All Go tests pass.",
+      "denials": 0,
+      "transcript": "/tmp/agent-ws/c44d25a438/kvconf/.interlock/transcripts/att-eb05aee5e2f94bae.jsonl",
+      "moves": [
+        {
+          "signal": "G4",
+          "from": "awaiting_verification",
+          "to": "verified",
+          "reason": "every required criterion has current passing evidence"
+        },
+        {
+          "signal": "G7",
+          "from": "verified",
+          "to": "done",
+          "reason": "verified; the workflow needs no delivery"
+        }
+      ],
+      "ended_because": "completed",
+      "end_detail": null,
+      "spent": {
+        "wall_ms": 22672,
+        "cost_usd": 0.10241660000000001,
+        "premium_requests": null,
+        "turns": 7
+      },
+      "cost_usd": 0.10241660000000001,
+      "premium_requests": null,
+      "host_session_id": "eb92d64d-0abe-4b9d-a99d-ad96bd70dfa7",
+      "reattached": false,
+      "stopped_strays": [],
+      "export": null
+    }
+  ],
+  "pin": null,
+  "spent": {
+    "wall_ms": 75536,
+    "cost_usd": 0.229269,
+    "premium_requests": null,
+    "turns": 14
+  },
+  "exports": [
+    {
+      "task_id": "go-env-expand",
+      "commit": "6a7357968c284821d6648001656ff086dc1b1dfc",
+      "tree": "4f5175e86e32960bffb3786eec0f1e260aaea5df",
+      "base": "5de281b734d79d8cc6b3021086d2235aa7fa7090",
+      "reference": "refs/heads/interlock/wip/go-env-expand",
+      "source": "/tmp/agent-ws/c44d25a438/kvconf/.interlock/worktrees/go-env-expand-worker-1",
+      "attempt_id": "att-195ba6b5b8bd490c",
+      "note": "/tmp/agent-ws/c44d25a438/kvconf/.interlock/exports/go-env-expand.md"
+    }
+  ]
+}

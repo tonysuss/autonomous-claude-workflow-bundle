@@ -1,0 +1,12 @@
+run 1: running 2 tests
+run 1: test an_investigation_runs_end_to_end_in_guidance_mode ... ok
+run 1: test a_bug_fix_runs_end_to_end_in_guidance_mode ... ok
+run 1: test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 19.12s
+run 2: running 2 tests
+run 2: test a_bug_fix_runs_end_to_end_in_guidance_mode ... ok
+run 2: test an_investigation_runs_end_to_end_in_guidance_mode ... ok
+run 2: test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 20.30s
+run 3: running 2 tests
+run 3: test an_investigation_runs_end_to_end_in_guidance_mode ... ok
+run 3: test a_bug_fix_runs_end_to_end_in_guidance_mode ... ok
+run 3: test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 23.31s

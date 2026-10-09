@@ -1,0 +1,15 @@
+id = "hook-probe"
+repository = "."
+workflow = "bug-fix"
+intent = "Probe the guided hooks: compound durations should sum"
+
+[scope]
+paths = ["durations.py", "tests/**"]
+
+[[criterion]]
+id = "repro"
+statement = "parse_duration(\"1h30m\") is 5400"
+check = "python3 -c 'from durations import parse_duration as p; assert p(\"1h30m\") == 5400'"
+min_strength = "observed"
+producer = "independent"
+baseline = "fails"

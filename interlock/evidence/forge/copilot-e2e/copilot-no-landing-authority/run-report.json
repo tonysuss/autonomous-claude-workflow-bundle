@@ -1,0 +1,65 @@
+{
+  "baseline": [
+    {
+      "criterion_id": "fixed",
+      "exit_code": 1,
+      "problem": null,
+      "run_id": "run-72dac453f8094754",
+      "vacuous": null
+    },
+    {
+      "criterion_id": "verified",
+      "exit_code": 1,
+      "problem": null,
+      "run_id": "run-5a943f85b5cb4b42",
+      "vacuous": null
+    }
+  ],
+  "final_state": "blocked",
+  "host": "copilot",
+  "reconciled": [],
+  "sessions": [
+    {
+      "attempt_id": "att-6c12cd54bb7b4f1b",
+      "denials": 0,
+      "duration_ms": 2207,
+      "epoch": 1,
+      "exit": {
+        "exit": "completed"
+      },
+      "moves": [
+        {
+          "from": "running",
+          "reason": "result accepted from attempt att-6c12cd54bb7b4f1b at epoch 1",
+          "signal": "G3",
+          "to": "awaiting_verification"
+        }
+      ],
+      "role": "worker",
+      "summary": "worker finished after 3 commands.",
+      "transcript": "/tmp/.tmpiMvTQJ/repo/.interlock/transcripts/att-6c12cd54bb7b4f1b.jsonl"
+    },
+    {
+      "attempt_id": "att-7dac7d69b4af4417",
+      "denials": 0,
+      "duration_ms": 2506,
+      "epoch": 1,
+      "exit": {
+        "exit": "completed"
+      },
+      "moves": [
+        {
+          "from": "awaiting_verification",
+          "reason": "every required criterion has current passing evidence",
+          "signal": "G4",
+          "to": "verified"
+        }
+      ],
+      "role": "verifier",
+      "summary": "verifier finished after 4 commands.",
+      "transcript": "/tmp/.tmpiMvTQJ/repo/.interlock/transcripts/att-7dac7d69b4af4417.jsonl"
+    }
+  ],
+  "stopped_because": "blocked: no landing authority is granted for this task",
+  "task_id": "fix-add"
+}

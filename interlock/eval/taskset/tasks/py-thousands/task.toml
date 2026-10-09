@@ -1,0 +1,37 @@
+id = "py-thousands"
+repository = "."
+workflow = "feature"
+environment = "linux-python3"
+intent = '''
+Large amounts are hard to read in the output of `python3 -m tally balances` and `python3 -m tally settle`: a balance prints as `-121810.78`. Print the amounts in both commands with thousands separators, `-121,810.78`. Nothing else about the program's behaviour should change.
+
+`checks/thousands.sh` checks `balances` for `examples/big.csv`. The tests run with `python3 -m unittest discover -s tests -q`.
+'''
+
+[budget]
+max_attempts = 3
+
+[scope]
+paths = ["tally/**", "tests/**", "README.md"]
+
+[[criterion]]
+id = "balances"
+statement = "`balances` prints the amounts of `examples/big.csv` with thousands separators"
+check = "sh checks/thousands.sh"
+min_strength = "observed"
+producer = "independent"
+baseline = "fails"
+
+[[criterion]]
+id = "spec"
+statement = "`balances` and `settle` print amounts with thousands separators, and nothing else about the program's behaviour changes"
+min_strength = "observed"
+producer = "independent"
+
+[[criterion]]
+id = "regression"
+statement = "The existing unit tests pass"
+check = "python3 -m unittest discover -s tests -q"
+min_strength = "tested"
+producer = "self"
+baseline = "passes"

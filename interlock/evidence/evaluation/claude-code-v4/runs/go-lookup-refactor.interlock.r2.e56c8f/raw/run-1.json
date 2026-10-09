@@ -1,0 +1,104 @@
+{
+  "task_id": "go-lookup-refactor",
+  "host": "claude-code",
+  "final_state": "done",
+  "stopped_because": "done",
+  "reconciled": [],
+  "reattached": [],
+  "interrupted": false,
+  "baseline": [
+    {
+      "criterion_id": "regression",
+      "run_id": "run-da48d758a2f04aa0",
+      "exit_code": 0,
+      "vacuous": null,
+      "problem": null
+    }
+  ],
+  "sessions": [
+    {
+      "role": "worker",
+      "attempt_id": "att-19bd14b3a83245bc",
+      "epoch": 1,
+      "exit": {
+        "exit": "completed"
+      },
+      "duration_ms": 27862,
+      "summary": "I added `lookup(section, key)` to `getters.go`, and `Get`, `GetInt`, `GetBool` and `GetDuration` now all call it. Only `lookup` reads `c.sections`. `go test ./...` passes on the final tree, and the interlock regression check passed too.\n\n`GetBool` words its missing-key error differently from the other three (\"key %q not set\" instead of \"no key %q\"). To keep every message identical, `lookup` returns a small `missingKeyError` type, and `GetBool` recognises it and rewrites the message.\n\nI added `TestGetterErrorMessages` to `getters_test.go`. It pins the missing-section and missing-key messages of all four getters, including the top-level cases. I recorded claims for all three criteria: regression and behaviour at `tested`, structure at `static`. The structure and behaviour criteria still need an independent check.",
+      "denials": 0,
+      "transcript": "/tmp/agent-ws/3ae7194a24/kvconf/.interlock/transcripts/att-19bd14b3a83245bc.jsonl",
+      "moves": [
+        {
+          "signal": "G3",
+          "from": "running",
+          "to": "awaiting_verification",
+          "reason": "result accepted from attempt att-19bd14b3a83245bc at epoch 1"
+        }
+      ],
+      "ended_because": "completed",
+      "end_detail": null,
+      "spent": {
+        "wall_ms": 27862,
+        "cost_usd": 0.11992480000000003,
+        "premium_requests": null,
+        "turns": 7,
+        "model": "claude-sonnet-5-5"
+      },
+      "cost_usd": 0.11992480000000003,
+      "premium_requests": null,
+      "host_session_id": "e6e51d5e-bf4d-4ce4-87c7-4d05d48b3a15",
+      "reattached": false,
+      "stopped_strays": [],
+      "export": null
+    },
+    {
+      "role": "verifier",
+      "attempt_id": "att-e5a68ca87b314c52",
+      "epoch": 1,
+      "exit": {
+        "exit": "completed"
+      },
+      "duration_ms": 14842,
+      "summary": "All three criteria hold on tree 7e0ad2f, and I recorded an assessment for each.\n\n- **structure**: pass, recorded `static`. `Get`, `GetInt`, `GetBool` and `GetDuration` all call `c.lookup`, and `lookup` is the only place in `getters.go` that reads `c.sections`. `go vet ./...` is clean.\n- **behaviour**: pass, recorded `tested`. I read the new `getters.go` against the base version and every message and return value is unchanged. `GetBool` rewrites the new `missingKeyError` back to its old \"key %q not set\" wording. `TestGetterErrorMessages` passes, and its expected strings match what the base code produced.\n- **regression**: pass, recorded `tested`. `interlock check run --criterion regression` ran `go test ./...` on this tree and it passed.\n\nThe change touches only `getters.go` and `getters_test.go`, so it is inside the task's scope.",
+      "denials": 0,
+      "transcript": "/tmp/agent-ws/3ae7194a24/kvconf/.interlock/transcripts/att-e5a68ca87b314c52.jsonl",
+      "moves": [
+        {
+          "signal": "G4",
+          "from": "awaiting_verification",
+          "to": "verified",
+          "reason": "every required criterion has current passing evidence"
+        },
+        {
+          "signal": "G7",
+          "from": "verified",
+          "to": "done",
+          "reason": "verified; the workflow needs no delivery"
+        }
+      ],
+      "ended_because": "completed",
+      "end_detail": null,
+      "spent": {
+        "wall_ms": 14842,
+        "cost_usd": 0.0816646,
+        "premium_requests": null,
+        "turns": 4,
+        "model": "claude-sonnet-5-5"
+      },
+      "cost_usd": 0.0816646,
+      "premium_requests": null,
+      "host_session_id": "4eec4f39-36c2-4409-81ee-96c3e68e4d23",
+      "reattached": false,
+      "stopped_strays": [],
+      "export": null
+    }
+  ],
+  "pin": null,
+  "spent": {
+    "wall_ms": 42704,
+    "cost_usd": 0.20158940000000003,
+    "premium_requests": null,
+    "turns": 11
+  },
+  "exports": []
+}

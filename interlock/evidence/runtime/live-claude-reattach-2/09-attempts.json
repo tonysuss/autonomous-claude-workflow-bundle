@@ -1,0 +1,172 @@
+[
+  {
+    "id": "att-d28b8d7fbcb54669",
+    "task_id": "fix-add",
+    "epoch": 1,
+    "role": "worker",
+    "host": {
+      "host": "claude-code",
+      "version": "2.1.289"
+    },
+    "agent": "interlock-worker",
+    "model": "haiku",
+    "worktree": "<scratch>/live-demo-2/.interlock/worktrees/fix-add-worker-1",
+    "effective_grant": {
+      "action_classes": [
+        "read",
+        "local_reversible"
+      ],
+      "tools": {
+        "allow": [
+          "read",
+          "edit",
+          "shell"
+        ],
+        "deny": [
+          "shell:git push",
+          "shell:git commit"
+        ]
+      },
+      "landing_authority": "none",
+      "grant_ids": []
+    },
+    "token_hash": "117fd15d7f3dd407b22918057e21aa717d4a71c93fbb8715b0445a0ba32ef221",
+    "status": "completed",
+    "started_at": "2026-10-06T01:34:12.249077938Z",
+    "ended_at": "2026-10-06T01:35:10.182319677Z",
+    "handoff": {
+      "host": "claude-code",
+      "pid": 1354,
+      "pgid": 1354,
+      "process_start": 799862,
+      "started_at": "2026-10-06T01:34:12.283250567Z",
+      "deadline": "2026-10-06T01:44:12.283250567Z",
+      "budget_deadline": false,
+      "transcript": "<scratch>/live-demo-2/.interlock/transcripts/att-d28b8d7fbcb54669.jsonl",
+      "host_session_id": "b4f4b5f7-17ee-4e50-a1fc-6a3d7aa3c015",
+      "supervisor_pid": 1140,
+      "supervisor_start": 799792,
+      "start_commit": "7edffdfeacb5fc1d44c93da54861a04646bc276c",
+      "env": [
+        "ANTHROPIC_BASE_URL",
+        "CLAUDE_CODE_USE_CCR_V2",
+        "HOME",
+        "HTTPS_PROXY",
+        "INTERLOCK_ATTEMPT",
+        "INTERLOCK_DB",
+        "INTERLOCK_HOST",
+        "INTERLOCK_MODE",
+        "INTERLOCK_SESSION",
+        "INTERLOCK_TOKEN",
+        "NODE_EXTRA_CA_CERTS",
+        "NO_PROXY",
+        "PATH",
+        "REQUESTS_CA_BUNDLE",
+        "SHELL",
+        "SSL_CERT_FILE",
+        "TERM",
+        "https_proxy",
+        "no_proxy"
+      ],
+      "effort": null,
+      "reattached_at": [
+        "2026-10-06T01:34:19.752346851Z"
+      ]
+    },
+    "end": {
+      "reason": "completed",
+      "detail": null,
+      "synthetic": false
+    },
+    "spent": {
+      "wall_ms": 34639,
+      "cost_usd": 0.07610210000000002,
+      "premium_requests": null,
+      "turns": 15
+    }
+  },
+  {
+    "id": "att-39aa318653194c0a",
+    "task_id": "fix-add",
+    "epoch": 1,
+    "role": "verifier",
+    "host": {
+      "host": "claude-code",
+      "version": "2.1.289"
+    },
+    "agent": "interlock-verifier",
+    "model": "haiku",
+    "worktree": "<scratch>/live-demo-2/.interlock/worktrees/fix-add-verifier-1",
+    "effective_grant": {
+      "action_classes": [
+        "read",
+        "local_reversible"
+      ],
+      "tools": {
+        "allow": [
+          "read",
+          "shell"
+        ],
+        "deny": [
+          "edit",
+          "shell:git push",
+          "shell:git commit"
+        ]
+      },
+      "landing_authority": "none",
+      "grant_ids": []
+    },
+    "token_hash": "bab83df616e27ab877be4803f748a606e540f58ff39813032ebb056fddf617b5",
+    "status": "completed",
+    "started_at": "2026-10-06T01:34:47.311672264Z",
+    "ended_at": "2026-10-06T01:35:10.179287670Z",
+    "handoff": {
+      "host": "claude-code",
+      "pid": 8403,
+      "pgid": 8403,
+      "process_start": 803368,
+      "started_at": "2026-10-06T01:34:47.338278128Z",
+      "deadline": "2026-10-06T01:44:47.338278128Z",
+      "budget_deadline": false,
+      "transcript": "<scratch>/live-demo-2/.interlock/transcripts/att-39aa318653194c0a.jsonl",
+      "host_session_id": "a2365237-03fa-45ad-84cf-2b55a006508f",
+      "supervisor_pid": 3327,
+      "supervisor_start": 800604,
+      "start_commit": "bb3f184fa424e72380a2e1eff7bc14451a0e17cd",
+      "env": [
+        "ANTHROPIC_BASE_URL",
+        "CLAUDE_CODE_USE_CCR_V2",
+        "HOME",
+        "HTTPS_PROXY",
+        "INTERLOCK_ATTEMPT",
+        "INTERLOCK_DB",
+        "INTERLOCK_HOST",
+        "INTERLOCK_MODE",
+        "INTERLOCK_SESSION",
+        "INTERLOCK_TOKEN",
+        "INTERLOCK_TREE",
+        "NODE_EXTRA_CA_CERTS",
+        "NO_PROXY",
+        "PATH",
+        "REQUESTS_CA_BUNDLE",
+        "SHELL",
+        "SSL_CERT_FILE",
+        "TERM",
+        "https_proxy",
+        "no_proxy"
+      ],
+      "effort": null
+    },
+    "end": {
+      "reason": "completed",
+      "detail": null,
+      "synthetic": false
+    },
+    "spent": {
+      "wall_ms": 22791,
+      "cost_usd": 0.050536199999999996,
+      "premium_requests": null,
+      "turns": 7
+    }
+  }
+]

@@ -1,0 +1,17 @@
+Environment variable expansion now works in `Parse` and `Load`, and `kvconf get` and `kvconf dump` take `--no-expand`. `go test ./...` passes and `checks/expand.sh` prints `ok`.
+
+The interrupted session had already written the parser, the `ParseOptions` API (`ParseWithOptions`, plus a `LoadWithOptions` I'm keeping alongside `Load`) and the CLI flag. It was correct, so I left it as it was.
+
+I added a test in `parser_test.go` covering:
+- `${NAME}`
+- `${NAME:-fallback}` with the variable unset and set but empty
+- `$$`
+- a stray `$` kept as is
+- `NoExpand`
+- the `kvconf: line 2: undefined variable "KV_UNSET_XYZ"` error
+
+I also added an "Environment variables" section to `README.md`.
+
+I did not add a CLI-level test for `--no-expand`; `cmd/kvconf/main_test.go` is unchanged.
+
+STATUS: DONE

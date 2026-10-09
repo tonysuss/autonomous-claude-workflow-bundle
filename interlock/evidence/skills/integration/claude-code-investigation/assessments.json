@@ -1,0 +1,21 @@
+[
+  {
+    "id": "asm-170af84c73c74851",
+    "task_id": "ttl-boundary",
+    "criterion_id": "answer",
+    "attempt_id": "att-0c30e0eb6913462d",
+    "strength": "observed",
+    "currency": {
+      "tree": "e2abab1d819807dd70f25b1fa552bd377f7eb000",
+      "check_version": "1",
+      "environment": "",
+      "policy_digest": "sha256:c21a7dd84bdde34be22dbc5f3179e723f959e58b3510fc3b0f3683890b5d247f"
+    },
+    "evidence_refs": [
+      "python3 fake-clock ttl=10; git show e6ed919 -- cache.py; sed -n 20p cache.py"
+    ],
+    "note": "No check defined. Confirmed cache.py:20 uses strict >; age 10 -> v, 10.001 -> MISS; e6ed919 (Ana, #12) changed >= to > with the coarse-clock rationale quoted.",
+    "recorded_at": "2026-10-06T02:29:23.068350261Z",
+    "bound_via": "subagent"
+  }
+]

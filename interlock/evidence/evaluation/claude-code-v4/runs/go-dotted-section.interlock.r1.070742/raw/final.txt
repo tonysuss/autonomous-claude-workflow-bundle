@@ -1,0 +1,5 @@
+`kvconf get app.conf db.eu.host` now returns `db1.example.org`. The name is split at the last dot, so `db.eu.host` is the key `host` in the section `db.eu`.
+
+The bug was in two places that each split `SECTION.KEY` at the first dot: `Config.Lookup` in `config.go` and `splitName` in `cmd/kvconf/main.go`. Both now split at the last dot, and a name with no dot is still a key in the unnamed section. I also added `TestLookupDottedSection` in `parser_test.go` and a note about dotted section names in `README.md`.
+
+interlock ran `checks/dotted.sh` (repro) and `go test ./...` (regression) on the final files, and both pass. I recorded claims for all three criteria. `spec` rests on `TestLookupDottedSection`, which only exercises `Lookup`, not the CLI. The CLI path is covered by the `checks/dotted.sh` run.

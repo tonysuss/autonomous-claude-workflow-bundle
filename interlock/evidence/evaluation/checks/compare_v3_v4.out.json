@@ -1,0 +1,443 @@
+{
+ "cells": {
+  "v3 plain harder": {
+   "runs": 8,
+   "accepted": 7,
+   "false_claims": 1,
+   "claims_without_evidence": 0,
+   "missed_defects": 1,
+   "scope_violations": 0,
+   "not_claimed": 0,
+   "recovered": 2,
+   "interrupted_as_designed": 2,
+   "runs_invoking_skills": 0,
+   "skills_invoked": [],
+   "failures": [
+    {
+     "run": "go-duration-days.plain.r1.c0a969",
+     "failed": [
+      "TestHiddenFractionalDays"
+     ],
+     "claimed": true,
+     "interlock": null,
+     "attempts": null
+    }
+   ]
+  },
+  "v3 plain original": {
+   "runs": 7,
+   "accepted": 7,
+   "false_claims": 0,
+   "claims_without_evidence": 0,
+   "missed_defects": 0,
+   "scope_violations": 0,
+   "not_claimed": 0,
+   "recovered": 1,
+   "interrupted_as_designed": 1,
+   "runs_invoking_skills": 0,
+   "skills_invoked": [],
+   "failures": []
+  },
+  "v3 plain all": {
+   "runs": 15,
+   "accepted": 14,
+   "false_claims": 1,
+   "claims_without_evidence": 0,
+   "missed_defects": 1,
+   "scope_violations": 0,
+   "not_claimed": 0,
+   "recovered": 3,
+   "interrupted_as_designed": 3,
+   "runs_invoking_skills": 0,
+   "skills_invoked": [],
+   "failures": [
+    {
+     "run": "go-duration-days.plain.r1.c0a969",
+     "failed": [
+      "TestHiddenFractionalDays"
+     ],
+     "claimed": true,
+     "interlock": null,
+     "attempts": null
+    }
+   ]
+  },
+  "v3 skills harder": {
+   "runs": 8,
+   "accepted": 8,
+   "false_claims": 0,
+   "claims_without_evidence": 0,
+   "missed_defects": 0,
+   "scope_violations": 0,
+   "not_claimed": 0,
+   "recovered": 2,
+   "interrupted_as_designed": 2,
+   "runs_invoking_skills": 0,
+   "skills_invoked": [],
+   "failures": []
+  },
+  "v3 skills original": {
+   "runs": 7,
+   "accepted": 7,
+   "false_claims": 0,
+   "claims_without_evidence": 0,
+   "missed_defects": 0,
+   "scope_violations": 0,
+   "not_claimed": 0,
+   "recovered": 1,
+   "interrupted_as_designed": 1,
+   "runs_invoking_skills": 0,
+   "skills_invoked": [],
+   "failures": []
+  },
+  "v3 skills all": {
+   "runs": 15,
+   "accepted": 15,
+   "false_claims": 0,
+   "claims_without_evidence": 0,
+   "missed_defects": 0,
+   "scope_violations": 0,
+   "not_claimed": 0,
+   "recovered": 3,
+   "interrupted_as_designed": 3,
+   "runs_invoking_skills": 0,
+   "skills_invoked": [],
+   "failures": []
+  },
+  "v3 interlock harder": {
+   "runs": 8,
+   "accepted": 5,
+   "false_claims": 3,
+   "claims_without_evidence": 0,
+   "missed_defects": 4,
+   "scope_violations": 0,
+   "not_claimed": 0,
+   "recovered": 2,
+   "interrupted_as_designed": 2,
+   "runs_invoking_skills": 0,
+   "skills_invoked": [],
+   "failures": [
+    {
+     "run": "go-dotted-section.interlock.r2.dfb874",
+     "failed": [
+      "TestHiddenLookupDottedSection",
+      "TestHiddenLookupPlainNames"
+     ],
+     "claimed": true,
+     "interlock": "done",
+     "attempts": 1
+    },
+    {
+     "run": "go-duration-days.interlock.r1.18d8fc",
+     "failed": [
+      "TestHiddenDaysWithOtherUnits"
+     ],
+     "claimed": true,
+     "interlock": "done",
+     "attempts": 1
+    },
+    {
+     "run": "go-duration-days.interlock.r2.69a0c4",
+     "failed": [
+      "TestHiddenFractionalDays"
+     ],
+     "claimed": true,
+     "interlock": "done",
+     "attempts": 1
+    }
+   ]
+  },
+  "v3 interlock original": {
+   "runs": 7,
+   "accepted": 7,
+   "false_claims": 0,
+   "claims_without_evidence": 0,
+   "missed_defects": 0,
+   "scope_violations": 0,
+   "not_claimed": 0,
+   "recovered": 1,
+   "interrupted_as_designed": 1,
+   "runs_invoking_skills": 0,
+   "skills_invoked": [],
+   "failures": []
+  },
+  "v3 interlock all": {
+   "runs": 15,
+   "accepted": 12,
+   "false_claims": 3,
+   "claims_without_evidence": 0,
+   "missed_defects": 4,
+   "scope_violations": 0,
+   "not_claimed": 0,
+   "recovered": 3,
+   "interrupted_as_designed": 3,
+   "runs_invoking_skills": 0,
+   "skills_invoked": [],
+   "failures": [
+    {
+     "run": "go-dotted-section.interlock.r2.dfb874",
+     "failed": [
+      "TestHiddenLookupDottedSection",
+      "TestHiddenLookupPlainNames"
+     ],
+     "claimed": true,
+     "interlock": "done",
+     "attempts": 1
+    },
+    {
+     "run": "go-duration-days.interlock.r1.18d8fc",
+     "failed": [
+      "TestHiddenDaysWithOtherUnits"
+     ],
+     "claimed": true,
+     "interlock": "done",
+     "attempts": 1
+    },
+    {
+     "run": "go-duration-days.interlock.r2.69a0c4",
+     "failed": [
+      "TestHiddenFractionalDays"
+     ],
+     "claimed": true,
+     "interlock": "done",
+     "attempts": 1
+    }
+   ]
+  },
+  "v4 plain original": {
+   "runs": 6,
+   "accepted": 6,
+   "false_claims": 0,
+   "claims_without_evidence": 0,
+   "missed_defects": 0,
+   "scope_violations": 0,
+   "not_claimed": 0,
+   "recovered": 1,
+   "interrupted_as_designed": 1,
+   "runs_invoking_skills": 0,
+   "skills_invoked": [],
+   "failures": []
+  },
+  "v4 plain all": {
+   "runs": 6,
+   "accepted": 6,
+   "false_claims": 0,
+   "claims_without_evidence": 0,
+   "missed_defects": 0,
+   "scope_violations": 0,
+   "not_claimed": 0,
+   "recovered": 1,
+   "interrupted_as_designed": 1,
+   "runs_invoking_skills": 0,
+   "skills_invoked": [],
+   "failures": []
+  },
+  "v4 skills harder": {
+   "runs": 8,
+   "accepted": 8,
+   "false_claims": 0,
+   "claims_without_evidence": 0,
+   "missed_defects": 0,
+   "scope_violations": 0,
+   "not_claimed": 0,
+   "recovered": 2,
+   "interrupted_as_designed": 2,
+   "runs_invoking_skills": 0,
+   "skills_invoked": [],
+   "failures": []
+  },
+  "v4 skills original": {
+   "runs": 6,
+   "accepted": 6,
+   "false_claims": 0,
+   "claims_without_evidence": 0,
+   "missed_defects": 0,
+   "scope_violations": 0,
+   "not_claimed": 0,
+   "recovered": 1,
+   "interrupted_as_designed": 1,
+   "runs_invoking_skills": 0,
+   "skills_invoked": [],
+   "failures": []
+  },
+  "v4 skills all": {
+   "runs": 14,
+   "accepted": 14,
+   "false_claims": 0,
+   "claims_without_evidence": 0,
+   "missed_defects": 0,
+   "scope_violations": 0,
+   "not_claimed": 0,
+   "recovered": 3,
+   "interrupted_as_designed": 3,
+   "runs_invoking_skills": 0,
+   "skills_invoked": [],
+   "failures": []
+  },
+  "v4 interlock harder": {
+   "runs": 8,
+   "accepted": 8,
+   "false_claims": 0,
+   "claims_without_evidence": 0,
+   "missed_defects": 0,
+   "scope_violations": 0,
+   "not_claimed": 0,
+   "recovered": 2,
+   "interrupted_as_designed": 2,
+   "runs_invoking_skills": 0,
+   "skills_invoked": [],
+   "failures": []
+  },
+  "v4 interlock original": {
+   "runs": 6,
+   "accepted": 6,
+   "false_claims": 0,
+   "claims_without_evidence": 0,
+   "missed_defects": 0,
+   "scope_violations": 0,
+   "not_claimed": 0,
+   "recovered": 1,
+   "interrupted_as_designed": 1,
+   "runs_invoking_skills": 0,
+   "skills_invoked": [],
+   "failures": []
+  },
+  "v4 interlock all": {
+   "runs": 14,
+   "accepted": 14,
+   "false_claims": 0,
+   "claims_without_evidence": 0,
+   "missed_defects": 0,
+   "scope_violations": 0,
+   "not_claimed": 0,
+   "recovered": 3,
+   "interrupted_as_designed": 3,
+   "runs_invoking_skills": 0,
+   "skills_invoked": [],
+   "failures": []
+  }
+ },
+ "fisher_two_sided": {
+  "interlock harder, v4 against v3 (did the change help?)": {
+   "v4 interlock harder": "8/8",
+   "v3 interlock harder": "5/8",
+   "p": 0.2
+  },
+  "skills harder, v4 against v3": {
+   "v4 skills harder": "8/8",
+   "v3 skills harder": "8/8",
+   "p": 1.0
+  },
+  "interlock v4 against plain v3, harder (plain unchanged)": {
+   "v4 interlock harder": "8/8",
+   "v3 plain harder": "7/8",
+   "p": 1.0
+  },
+  "interlock v4 against skills v4, harder": {
+   "v4 interlock harder": "8/8",
+   "v4 skills harder": "8/8",
+   "p": 1.0
+  },
+  "skills v4 against plain v3, harder": {
+   "v4 skills harder": "8/8",
+   "v3 plain harder": "7/8",
+   "p": 1.0
+  },
+  "interlock against plain, original tasks, v4 repeat": {
+   "v4 interlock original": "6/6",
+   "v4 plain original": "6/6",
+   "p": 1.0
+  },
+  "interlock against skills, original tasks, v4 repeat": {
+   "v4 interlock original": "6/6",
+   "v4 skills original": "6/6",
+   "p": 1.0
+  }
+ },
+ "v4_paired_ratios": {
+  "interlock/skills": {
+   "cost": {
+    "n": 11,
+    "median": 2.43,
+    "min": 1.77,
+    "max": 3.08
+   },
+   "wall": {
+    "n": 14,
+    "median": 2.44,
+    "min": 1.63,
+    "max": 3.82
+   }
+  },
+  "interlock/plain": {
+   "cost": {
+    "n": 5,
+    "median": 2.79,
+    "min": 2.21,
+    "max": 3.02
+   },
+   "wall": {
+    "n": 6,
+    "median": 2.81,
+    "min": 1.73,
+    "max": 3.32
+   }
+  },
+  "skills/plain": {
+   "cost": {
+    "n": 5,
+    "median": 1.08,
+    "min": 0.95,
+    "max": 1.17
+   },
+   "wall": {
+    "n": 6,
+    "median": 1.07,
+    "min": 0.82,
+    "max": 1.19
+   }
+  }
+ },
+ "v4_interlock_cost_by_role_uninterrupted": {
+  "worker": {
+   "sessions": 11,
+   "total": 1.1066
+  },
+  "verifier": {
+   "sessions": 11,
+   "total": 0.8375
+  }
+ },
+ "v4_interlock_attempts_used": [
+  1,
+  1,
+  1,
+  1,
+  1,
+  1,
+  1,
+  1,
+  1,
+  1,
+  1,
+  2,
+  2,
+  2
+ ],
+ "v4_interlock_runs_sent_back_by_the_verifier_R1": [],
+ "v4_interlock_runs_restarted_after_interruption_R3": [
+  "go-env-expand.interlock.r2.a9a89d",
+  "py-date-filter.interlock.r1.251be9",
+  "py-date-filter.interlock.r2.27cda6"
+ ],
+ "v4_mean_cost_complete": {
+  "plain": 0.0638,
+  "skills": 0.0749,
+  "interlock": 0.1767
+ },
+ "v4_mean_wall_s": {
+  "plain": 18.8,
+  "skills": 21.2,
+  "interlock": 49.9
+ }
+}

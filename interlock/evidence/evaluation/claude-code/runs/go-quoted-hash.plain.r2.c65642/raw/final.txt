@@ -1,0 +1,13 @@
+`kvconf get` now returns `Issue #42: retry` for your example, because a `#` inside double quotes is treated as part of the value. I rewrote `parseValue` in `parser.go` to do this.
+
+`go test ./...` passes and `checks/quoted-hash.sh` prints `ok: Issue #42: retry`. I didn't add a new Go test for the quoted `#` case.
+
+I also ran the other three rules through `kvconf get` on a scratch file:
+- `port = 8080 # http` gives `8080`.
+- `title = "x" # note` gives `x`.
+- `path = "C:\\temp"` gives `C:\temp`.
+- `a\"b` inside quotes gives `a"b`.
+
+Text after a closing quote that isn't a comment, such as `"x" junk`, now fails with `unexpected text after quoted value`. Before, it failed with `unterminated quoted value`. A backslash before any character other than `"` or `\` stays as a literal backslash.
+
+STATUS: DONE

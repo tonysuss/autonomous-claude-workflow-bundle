@@ -1,0 +1,19 @@
+{
+  "id": "m13-planned-landing-left-dangling",
+  "finding": "1: a landing planned before an R2 stays planned after the next G5",
+  "undo": [
+    [
+      "crates/interlock-forge/src/deliver.rs",
+      "            for old in stale {",
+      "            for old in stale.into_iter().take(0) {"
+    ]
+  ],
+  "results": [
+    {
+      "test": "-p interlock-forge --test regressions -- a_tree_recorded_while_integrating_is_r2_never_a_merge",
+      "exit": 101,
+      "failed": true,
+      "tail": "\nrunning 1 test\ntest a_tree_recorded_while_integrating_is_r2_never_a_merge ... FAILED\n\nfailures:\n\n---- a_tree_recorded_while_integrating_is_r2_never_a_merge stdout ----\n\nthread 'a_tree_recorded_while_integrating_is_r2_never_a_merge' (25986) panicked at crates/interlock-forge/tests/regressions.rs:39:5:\n[(Merge, Planned), (OpenPr, Confirmed), (Merge, Confirmed), (OpenPr, Confirmed)]\nstack backtrace:\n   0: __rustc::rust_begin_unwind\n   1: core::panicking::panic_fmt\n   2: regressions::a_tree_recorded_while_integrating_is_r2_never_a_merge\n   3: regressions::a_tree_recorded_while_integrating_is_r2_never_a_merge::{closure#0}\n   4: <regressions::a_tree_recorded_while_integrating_is_r2_never_a_merge::{closure#0} as core::ops::function::FnOnce<()>>::call_once\nnote: Some details are omitted, run with `RUST_BACKTRACE=full` for a verbose backtrace.\n\n\nfailures:\n    a_tree_recorded_while_integrating_is_r2_never_a_merge\n\ntest result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 13 filtered out; finished in 1.91s\n\nerror: test failed, to rerun pass `-p interlock-forge --test regressions`"
+    }
+  ]
+}

@@ -1,0 +1,5 @@
+I ran `checks/settle-repro.sh` against an extracted copy of each of the 10 commits, using `git archive`. The script passes at `a16f8ab` and every earlier commit, and fails at `91a6a15` and every later one. `91a6a15` is "ledger: tidy settle loop", and it changes only `tally/ledger.py`. I didn't open the diff to pinpoint the exact line.
+
+I changed no files in the worktree. `interlock check run --criterion answer` reported that the criterion has no check to run, so I recorded an `observed` claim from the per-commit runs instead.
+
+ANSWER: 91a6a159d5c7e295504c4280c17ca9f883bdcaa9

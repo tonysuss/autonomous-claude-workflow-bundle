@@ -1,0 +1,19 @@
+{
+  "id": "m04-retargeted-base",
+  "finding": "4: readiness ignores the pull request's base branch",
+  "undo": [
+    [
+      "crates/interlock-forge/src/lib.rs",
+      "    if pr.base_branch != base_branch {",
+      "    if false {"
+    ]
+  ],
+  "results": [
+    {
+      "test": "-p interlock-forge --test regressions -- a_pull_request_retargeted_to_another_branch_is_not_merged",
+      "exit": 101,
+      "failed": true,
+      "tail": "    ],\n    reconciled: [],\n    steps: [\n        \"the base main moved from 3104b183c9b9a49996d2aa2c81c902dce1d4d7fc to e786db98b6e51e9469798fd920c0d22c1c00fc68; the evidence covers tree 0b5146d69a7f3435916ca594d9f5fe68057ea59a, but 202f56774106dae36a4eac18a2fb03d53df3e140 is what would land\",\n    ],\n}\n  left: AwaitingVerification\n right: Blocked\nstack backtrace:\n   0: __rustc::rust_begin_unwind\n   1: core::panicking::panic_fmt\n   2: core::panicking::assert_failed_inner\n   3: core::panicking::assert_failed::<interlock_schema::records::State, interlock_schema::records::State>\n   4: regressions::a_pull_request_retargeted_to_another_branch_is_not_merged\n   5: regressions::a_pull_request_retargeted_to_another_branch_is_not_merged::{closure#0}\n   6: <regressions::a_pull_request_retargeted_to_another_branch_is_not_merged::{closure#0} as core::ops::function::FnOnce<()>>::call_once\nnote: Some details are omitted, run with `RUST_BACKTRACE=full` for a verbose backtrace.\n\n\nfailures:\n    a_pull_request_retargeted_to_another_branch_is_not_merged\n\ntest result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 13 filtered out; finished in 0.98s\n\nerror: test failed, to rerun pass `-p interlock-forge --test regressions`"
+    }
+  ]
+}

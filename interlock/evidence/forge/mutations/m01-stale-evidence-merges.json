@@ -1,0 +1,45 @@
+{
+  "id": "m01-stale-evidence-merges",
+  "finding": "1 (blocker): stale evidence does not stop a merge while integrating",
+  "undo": [
+    [
+      "crates/interlock-store/src/operations.rs",
+      "if !report.all_pass {\n                let why = \"the evidence no longer covers the task's current tree; nothing was sent",
+      "if false {\n                let why = \"the evidence no longer covers the task's current tree; nothing was sent"
+    ],
+    [
+      "crates/interlock-store/src/operations.rs",
+      "pin.tree.as_deref().filter(",
+      "None::<&str>.filter("
+    ],
+    [
+      "crates/interlock-forge/src/deliver.rs",
+      "        // Evidence first: a tree recorded while integrating, or anything else that made it stale, is R2.\n        let moves = self.store.advance(&task.id, Utc::now())?;\n        if !moves.is_empty() {",
+      "        let moves = self.store.advance(&task.id, Utc::now())?;\n        if false && !moves.is_empty() {"
+    ],
+    [
+      "crates/interlock-forge/src/deliver.rs",
+      "                let refused = Verdict::Land { report: MergeReport::Refused { reason }, merged_at: None };\n                self.settle(&op, &refused, json!({ \"called\": false }))?;\n                return Ok(Flow::Next);\n",
+      "                let _ = reason;\n                self.settle(&op, &Verdict::Failed { reason: \"replaced\".into() }, json!({ \"called\": false }))?;\n                let intent = OperationIntent { expected_head_sha: Some(head.clone()), base: self.cfg.base.clone(), pull_request: None };\n                self.store.plan_operation(&task.id, self.landing_kind(authority), intent, Utc::now())?\n"
+    ],
+    [
+      "crates/interlock-supervisor/src/delivery.rs",
+      "    if !store.advance(task_id, Utc::now())?.is_empty() {",
+      "    if task.state == State::Verified && !store.advance(task_id, Utc::now())?.is_empty() {"
+    ]
+  ],
+  "results": [
+    {
+      "test": "-p interlock-forge --test regressions -- a_tree_recorded_while_integrating_is_r2_never_a_merge",
+      "exit": 101,
+      "failed": true,
+      "tail": "test a_tree_recorded_while_integrating_is_r2_never_a_merge ... FAILED\n\nfailures:\n\n---- a_tree_recorded_while_integrating_is_r2_never_a_merge stdout ----\n\nthread 'a_tree_recorded_while_integrating_is_r2_never_a_merge' (20121) panicked at crates/interlock-forge/tests/common/mod.rs:250:103:\ncalled `Result::unwrap()` on an `Err` value: Store(Refused(Refusal { signal: None, code: WrongState, message: \"task fix-add is awaiting_verification, not integrating\", missing: [] }))\nstack backtrace:\n   0: __rustc::rust_begin_unwind\n   1: core::panicking::panic_fmt\n   2: core::result::unwrap_failed\n   3: <regressions::common::Fixture>::integrate\n   4: regressions::a_tree_recorded_while_integrating_is_r2_never_a_merge\n   5: regressions::a_tree_recorded_while_integrating_is_r2_never_a_merge::{closure#0}\n   6: <regressions::a_tree_recorded_while_integrating_is_r2_never_a_merge::{closure#0} as core::ops::function::FnOnce<()>>::call_once\nnote: Some details are omitted, run with `RUST_BACKTRACE=full` for a verbose backtrace.\n\n\nfailures:\n    a_tree_recorded_while_integrating_is_r2_never_a_merge\n\ntest result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 13 filtered out; finished in 0.67s\n\nerror: test failed, to rerun pass `-p interlock-forge --test regressions`"
+    },
+    {
+      "test": "-p interlock-cli --test forge_cli -- r6_a_tree_recorded_while_integrating_is_r2_under_interlock_run",
+      "exit": 101,
+      "failed": true,
+      "tail": "failures:\n\n---- r6_a_tree_recorded_while_integrating_is_r2_under_interlock_run stdout ----\n\nthread 'r6_a_tree_recorded_while_integrating_is_r2_under_interlock_run' (20310) panicked at crates/interlock-cli/tests/forge_cli.rs:432:5:\nassertion `left == right` failed: \"{\\n  \\\"error\\\": \\\"refused\\\",\\n  \\\"refusal\\\": {\\n    \\\"code\\\": \\\"wrong_state\\\",\\n    \\\"message\\\": \\\"task fix-add is awaiting_verification, not integrating\\\",\\n    \\\"signal\\\": null\\n  }\\n}\\n\"\n  left: Some(2)\n right: Some(5)\nstack backtrace:\n   0: __rustc::rust_begin_unwind\n   1: core::panicking::panic_fmt\n   2: core::panicking::assert_failed_inner\n   3: core::panicking::assert_failed::<core::option::Option<i32>, core::option::Option<i32>>\n   4: forge_cli::r6_a_tree_recorded_while_integrating_is_r2_under_interlock_run\n   5: forge_cli::r6_a_tree_recorded_while_integrating_is_r2_under_interlock_run::{closure#0}\n   6: <forge_cli::r6_a_tree_recorded_while_integrating_is_r2_under_interlock_run::{closure#0} as core::ops::function::FnOnce<()>>::call_once\nnote: Some details are omitted, run with `RUST_BACKTRACE=full` for a verbose backtrace.\n\n\nfailures:\n    r6_a_tree_recorded_while_integrating_is_r2_under_interlock_run\n\ntest result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 8 filtered out; finished in 1.51s\n\nerror: test failed, to rerun pass `-p interlock-cli --test forge_cli`"
+    }
+  ]
+}

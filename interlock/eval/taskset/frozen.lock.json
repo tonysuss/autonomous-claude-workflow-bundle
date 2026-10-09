@@ -1,0 +1,50 @@
+{
+ "version": 2,
+ "judgelib_sha256": "97dfb93a6aee6a9280fcbe5ae1a368368b23fc81ac5b8b404870f0a83d3ec6cd",
+ "tasks": {
+  "go-dotted-section": {
+   "base_commit": "e8d4d5cb6e3e8475b7a303e95ab63dd3fbd57219",
+   "task_dir_sha256": "8c90673a2f4e80227c4fe41e9ad8cecf2ac5a3c0b9c4438eada1bbf395ecfb49"
+  },
+  "go-duration-days": {
+   "base_commit": "3e6d67d9640d38b817342e51c6fc7daf96c3d31c",
+   "task_dir_sha256": "30d9a8af56618a65c567a96d98f50f5065f8c8541c4def2f456d22ab2250f809"
+  },
+  "go-env-expand": {
+   "base_commit": "5de281b734d79d8cc6b3021086d2235aa7fa7090",
+   "task_dir_sha256": "78c0562c24b712f4c013f3b49f8343d3657535ae1917b14e1259863ae747c8a8"
+  },
+  "go-lookup-refactor": {
+   "base_commit": "5ce47f1e462831e3b89facb176be0829d0461fde",
+   "task_dir_sha256": "4533c91c3826f6ad536a3e24effa5d32ebfc642149f92667357349a037acfc75"
+  },
+  "go-quoted-hash": {
+   "base_commit": "3a45596929955f561b4791aaea6eaceb5e1e60f9",
+   "task_dir_sha256": "ed5235d0f4d4084de21867b99af0f683486649d3ba0258dcb543cd900c10b81f"
+  },
+  "py-bisect-settle": {
+   "base_commit": "7e2bd5330c09b7b41ba3a3a24635453a47c4af48",
+   "task_dir_sha256": "bd3890032b81a2461301dbb4628861d167cc2e93ae5bd9e6632a3da9cae5047f"
+  },
+  "py-csv-format": {
+   "base_commit": "c934fc209d4ecd5395e423c165cb502527d39eac",
+   "task_dir_sha256": "42ecc740ecadc1110134d0afe65a554391d9a650798e4af6ff75980fe5235971"
+  },
+  "py-date-filter": {
+   "base_commit": "89d6da274a486532b5d8579ffd9b04e3c7e2e421",
+   "task_dir_sha256": "5335cfa672f97d87d3187675558806167c5f522b7e8fe806585cf8930654ca9a"
+  },
+  "py-parse-amount": {
+   "base_commit": "e331edb28231d0ce12d583d6b69f32d0b48195fe",
+   "task_dir_sha256": "ffd83404c456cea6e2714bbe83130f7fa7e3aff0bfb43538453f358048dd7092"
+  },
+  "py-split-remainder": {
+   "base_commit": "b1a14fd111d2780c83421179a6608ad485eb90ff",
+   "task_dir_sha256": "fc9e43bcb94ea52d8436f497504e3f0fb6a724da64190324e656296eae08c986"
+  },
+  "py-thousands": {
+   "base_commit": "290aa6f9fb381eaafefcc3964807623afe36d36a",
+   "task_dir_sha256": "43685cdddfa5ffb571ef89ad8372126bbb51be2f0a3a06ae0214a5d360dd9f3a"
+  }
+ }
+}

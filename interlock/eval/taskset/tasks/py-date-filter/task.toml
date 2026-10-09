@@ -1,0 +1,42 @@
+id = "py-date-filter"
+repository = "."
+workflow = "feature"
+environment = "linux-python3"
+intent = '''
+Add `--since DATE` and `--until DATE` options to `python3 -m tally balances` and `python3 -m tally settle`, so that part of a trip can be looked at on its own. DATE is written `YYYY-MM-DD`.
+
+- Only entries dated on or after `--since` and on or before `--until` count. Either option may be given alone.
+- A DATE that is not a valid `YYYY-MM-DD` date is rejected by the argument parser, which exits with status 2.
+- When `--since` or `--until` is given, every entry's date must be a valid `YYYY-MM-DD` date. Otherwise the command fails with status 1 and an error that names the file and the line, like `tally: trip.csv:3: invalid date '2026-13-01'`.
+- Without these options, nothing changes.
+
+`checks/date-filter.sh` checks `balances --since 2026-06-02` for `examples/trip.csv`. The tests run with `python3 -m unittest discover -s tests -q`.
+'''
+
+[budget]
+max_attempts = 3
+
+[scope]
+paths = ["tally/**", "tests/**", "README.md"]
+
+[[criterion]]
+id = "since"
+statement = "`balances --since 2026-06-02` counts only the trip's entries from that date on"
+check = "sh checks/date-filter.sh"
+min_strength = "observed"
+producer = "independent"
+baseline = "fails"
+
+[[criterion]]
+id = "spec"
+statement = "Every rule in the task holds for balances and settle: inclusive --since and --until, either alone, exit status 2 for an invalid DATE, the file-and-line error for an invalid entry date when filtering, and no change without the options"
+min_strength = "observed"
+producer = "independent"
+
+[[criterion]]
+id = "regression"
+statement = "The existing unit tests pass"
+check = "python3 -m unittest discover -s tests -q"
+min_strength = "tested"
+producer = "self"
+baseline = "passes"

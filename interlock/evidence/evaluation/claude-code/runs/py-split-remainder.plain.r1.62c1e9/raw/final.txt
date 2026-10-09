@@ -1,0 +1,5 @@
+I rewrote `split_evenly` in `tally/money.py`. It now gives the first `total mod n` participants one extra cent each, so `split_evenly(100, 3)` returns `[34, 33, 33]`. A negative total mirrors the positive case (`-100` gives `[-34, -33, -33]`), and `n <= 0` raises `ValueError`.
+
+`checks/split-repro.sh` now passes, and the 19 existing tests pass. I didn't add new tests for the negative-total or `n <= 0` cases.
+
+STATUS: DONE

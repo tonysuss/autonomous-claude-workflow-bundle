@@ -1,0 +1,100 @@
+{
+  "task_id": "fix-add",
+  "host": "claude-code",
+  "final_state": "done",
+  "stopped_because": "done",
+  "reconciled": [],
+  "reattached": [
+    "att-8017943935334f7a"
+  ],
+  "interrupted": false,
+  "baseline": [],
+  "sessions": [
+    {
+      "role": "worker",
+      "attempt_id": "att-8017943935334f7a",
+      "epoch": 1,
+      "exit": {
+        "exit": "completed"
+      },
+      "duration_ms": 29311,
+      "summary": "Done. I fixed the bug by changing the operator in `calc.py` from `-` to `+`. The `add()` function now correctly returns the sum: `add(2, 3)` returns 5. Both the \"fixed\" and \"verified\" checks passed and claims have been recorded with observed strength.",
+      "denials": 0,
+      "transcript": "<scratch>/live-demo-3/.interlock/transcripts/att-8017943935334f7a.jsonl",
+      "moves": [
+        {
+          "signal": "G3",
+          "from": "running",
+          "to": "awaiting_verification",
+          "reason": "result accepted from attempt att-8017943935334f7a at epoch 1"
+        }
+      ],
+      "ended_because": "completed",
+      "end_detail": null,
+      "spent": {
+        "wall_ms": 29311,
+        "cost_usd": 0.0715515,
+        "premium_requests": null,
+        "turns": 13
+      },
+      "cost_usd": 0.0715515,
+      "premium_requests": null,
+      "host_session_id": "d366d9f6-7c57-493f-beb9-918544d635a6",
+      "reattached": true,
+      "stopped_strays": [],
+      "export": null
+    },
+    {
+      "role": "verifier",
+      "attempt_id": "att-9f25674733fa41b8",
+      "epoch": 1,
+      "exit": {
+        "exit": "completed"
+      },
+      "duration_ms": 35888,
+      "summary": "## Verification Complete\n\nI've successfully verified the bug fix for the `add()` function. Here's my assessment:\n\n### Criterion Results\n\n**fixed**: ✓ PASS\n- Strength: tested\n- Evidence: `interlock check run --criterion fixed` \n- Finding: The check.sh script executed successfully (exit code 0). The function now correctly returns `add(2, 3) = 5`.\n\n**verified**: ✓ PASS  \n- Strength: observed\n- Evidence: `interlock check run --criterion verified`\n- Finding: Independent verification confirms the fix is working. The Python assertion in check.sh passes, proving `calc.add(2, 3)` returns 5 as expected.\n\n### Code Review\nThe fix is correct: the `add()` function in calc.py now uses `a + b` instead of the buggy `a - b`, which properly returns the sum of the two arguments. Both assessment records have been submitted to interlock.",
+      "denials": 0,
+      "transcript": "<scratch>/live-demo-3/.interlock/transcripts/att-9f25674733fa41b8.jsonl",
+      "moves": [
+        {
+          "signal": "G4",
+          "from": "awaiting_verification",
+          "to": "verified",
+          "reason": "every required criterion has current passing evidence"
+        },
+        {
+          "signal": "G7",
+          "from": "verified",
+          "to": "done",
+          "reason": "verified; the workflow needs no delivery"
+        }
+      ],
+      "ended_because": "completed",
+      "end_detail": null,
+      "spent": {
+        "wall_ms": 35888,
+        "cost_usd": 0.0609074,
+        "premium_requests": null,
+        "turns": 9
+      },
+      "cost_usd": 0.0609074,
+      "premium_requests": null,
+      "host_session_id": "d21641ba-81c1-4904-bed0-622e95274abb",
+      "reattached": false,
+      "stopped_strays": [],
+      "export": null
+    }
+  ],
+  "pin": {
+    "status": "match",
+    "pinned": "2.1.289",
+    "installed": "2.1.289"
+  },
+  "spent": {
+    "wall_ms": 65199,
+    "cost_usd": 0.1324589,
+    "premium_requests": null,
+    "turns": 22
+  },
+  "exports": []
+}

@@ -1,0 +1,9 @@
+{
+  "baseline": [],
+  "final_state": "awaiting_verification",
+  "host": "copilot",
+  "reconciled": [],
+  "sessions": [],
+  "stopped_because": "used all 0 sessions this run allows",
+  "task_id": "fix-add"
+}

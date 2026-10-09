@@ -1,0 +1,72 @@
+{
+ "task_id": "py-parse-amount",
+ "role": "verifier",
+ "goal": "`parse_amount` in `tally/money.py` misreads some amounts. A ledger row with the amount `12.5` is recorded as 12.05 instead of 12.50.\n\nExpected behaviour of `parse_amount(text)`, which returns cents:\n\n- One decimal digit means tenths: `parse_amount(\"12.5\") == 1250`.\n- The sign applies to the whole amount, fraction included: `parse_amount(\"-0.50\") == -50` and `parse_amount(\"-3.25\") == -325`.\n- More than two decimal places is an error: `parse_amount(\"1.234\")` raises `ValueError`.\n- Everything that works today keeps working: thousands separators (`\"1,234.56\"` is 123456), whole numbers (`\"7\"` is 700), surrounding spaces, and `ValueError` for text that is not an amount.\n\n`checks/parse-repro.sh` reproduces the problem. The tests run with `python3 -m unittest discover -s tests -q`.\n",
+ "workflow": "bug-fix v1",
+ "state": "done",
+ "scope": [
+  "tally/money.py",
+  "tests/**"
+ ],
+ "protected": [
+  "checks/parse-repro.sh"
+ ],
+ "base_commit": "b38a841619c174c4f4cb031875ff808cadbff88e",
+ "current_tree": "842d958eca71ba671c68143034ce37b335259eb9",
+ "criteria": [
+  {
+   "id": "repro",
+   "statement": "parse_amount('12.5') returns 1250",
+   "check": "sh checks/parse-repro.sh",
+   "baseline": "it must fail on the input snapshot, reproducing the problem; interlock saw it fail there (run run-1220c67717f847aa)",
+   "needs": "observed from independent",
+   "status": "passes (Observed)"
+  },
+  {
+   "id": "spec",
+   "statement": "parse_amount meets every rule in the task: tenths, the sign covering the fraction, ValueError beyond two decimal places, and today's behaviour kept",
+   "check": null,
+   "baseline": null,
+   "needs": "tested from independent",
+   "status": "passes (Tested)"
+  },
+  {
+   "id": "regression",
+   "statement": "The existing unit tests pass",
+   "check": "python3 -m unittest discover -s tests -q",
+   "baseline": "it must pass on the input snapshot, as a regression guard; interlock saw it pass there (run run-a0296461d5b04fdf)",
+   "needs": "tested from self",
+   "status": "passes (Tested)"
+  }
+ ],
+ "previous_result": {
+  "attempt_id": "att-9374436cd95e46f9",
+  "summary": "I fixed `parse_amount` in `tally/money.py`. One decimal digit now means tenths, so `\"12.5\"` gives 1250. The sign covers the whole amount, so `\"-0.50\"` gives -50. More than two decimal places, or any non-digit text, raises `ValueError`.\n\nI added three tests to `tests/test_money.py` for tenths, the sign cases and `\"1.234\"`. Both interlock checks passed on my files: `sh checks/parse-repro.sh` prints \"ok: 12.5 is 1250 cents\", and the full unit suite passes (22 tests). I recorded claims for `repro` (observed), `regression` (tested) and `spec` (tested). The independent verifier still has to confirm `repro` and `spec`.\n\nThe parser also accepts a leading `+` now, which I didn't verify against the old behaviour. Existing tests cover thousands separators, whole numbers, surrounding spaces and non-amount text, and they still pass.",
+  "changed_paths": [
+   "tally/money.py",
+   "tests/test_money.py"
+  ],
+  "open_questions": []
+ },
+ "failures_to_fix": [],
+ "grant": {
+  "action_classes": [
+   "read",
+   "local_reversible"
+  ],
+  "tools": {
+   "allow": [
+    "read",
+    "shell"
+   ],
+   "deny": [
+    "edit",
+    "shell:git push",
+    "shell:git commit"
+   ]
+  },
+  "landing_authority": "none",
+  "grant_ids": []
+ },
+ "next_moves": []
+}

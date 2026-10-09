@@ -1,0 +1,53 @@
+{
+ "anon_id": "fc18baa23620",
+ "task": "go-lookup-refactor",
+ "cases": [
+  {
+   "id": "existing_tests",
+   "pass": true,
+   "detail": "10 passed\n"
+  },
+  {
+   "id": "TestHiddenMissingSectionMessages",
+   "pass": true,
+   "detail": ""
+  },
+  {
+   "id": "TestHiddenMissingKeyMessages",
+   "pass": true,
+   "detail": ""
+  },
+  {
+   "id": "TestHiddenGetBoolMissingKeyMessage",
+   "pass": true,
+   "detail": ""
+  },
+  {
+   "id": "TestHiddenBadValueMessages",
+   "pass": true,
+   "detail": ""
+  },
+  {
+   "id": "TestHiddenValues",
+   "pass": true,
+   "detail": ""
+  },
+  {
+   "id": "lookup_helper_signature",
+   "pass": true,
+   "detail": "found: (string, string) (string, error)"
+  },
+  {
+   "id": "getters_call_lookup",
+   "pass": true,
+   "detail": "not calling lookup: "
+  },
+  {
+   "id": "getters_do_not_read_sections",
+   "pass": true,
+   "detail": "reading c.sections: "
+  }
+ ],
+ "pass": true,
+ "condition_words": []
+}

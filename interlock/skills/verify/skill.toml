@@ -1,0 +1,5 @@
+name = "verify"
+description = "Hand an interlock task that awaits verification to the independent verifier agent, then let interlock decide: verified, sent back for rework, or still waiting. Use after a result is submitted, and never verify your own work."
+invocation = "model"
+requires = ["interlock-cli"]
+pack = "core"

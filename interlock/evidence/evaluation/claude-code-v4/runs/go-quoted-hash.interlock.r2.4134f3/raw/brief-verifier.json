@@ -1,0 +1,81 @@
+{
+ "base_commit": "3a45596929955f561b4791aaea6eaceb5e1e60f9",
+ "criteria": [
+  {
+   "baseline": "it must fail on the input snapshot, reproducing the problem; interlock saw it fail there (run run-abeed8a6bfad444e)",
+   "check": "sh checks/quoted-hash.sh",
+   "id": "repro",
+   "needs": "observed from independent",
+   "statement": "`kvconf get` prints `Issue #42: retry` for the reported file",
+   "status": "passes (Observed)"
+  },
+  {
+   "baseline": null,
+   "check": null,
+   "id": "spec",
+   "needs": "tested from independent",
+   "statement": "Every quoting rule in the task holds: a # inside quotes is kept, an unquoted value ends at #, a comment may follow the closing quote, and \\\" and \\\\ are escapes inside quotes",
+   "status": "passes (Tested)"
+  },
+  {
+   "baseline": "it must pass on the input snapshot, as a regression guard; interlock saw it pass there (run run-323fbba2e84a4f7b)",
+   "check": "go test ./...",
+   "id": "regression",
+   "needs": "tested from self",
+   "statement": "The existing Go tests pass",
+   "status": "passes (Tested)"
+  }
+ ],
+ "current_tree": "a347c1bbaae6a6c22d8c47f14723116c9b39dc8d",
+ "failures_to_fix": [],
+ "goal": "`kvconf get` fails on a value that has a `#` inside double quotes. With this file:\n\n```\n[app]\ntitle = \"Issue #42: retry\"\n```\n\n`go run ./cmd/kvconf get app.conf app.title` prints `kvconf: line 2: unterminated quoted value` instead of `Issue #42: retry`.\n\nA `#` inside a double-quoted value is part of the value. The other quoting rules in the README must keep working:\n\n- an unquoted value still ends at the first `#`: `port = 8080 # http` gives `8080`;\n- after the closing quote, `# ...` is a comment: `title = \"x\" # note` gives `x`;\n- inside quotes, `\\\"` is a double quote and `\\\\` is a single backslash: `path = \"C:\\\\temp\"` gives `C:\\temp`.\n\n`checks/quoted-hash.sh` reproduces the problem. The tests run with `go test ./...`.\n",
+ "grant": {
+  "action_classes": [
+   "read",
+   "local_reversible"
+  ],
+  "grant_ids": [],
+  "landing_authority": "none",
+  "tools": {
+   "allow": [
+    "read",
+    "shell"
+   ],
+   "deny": [
+    "edit",
+    "shell:git push",
+    "shell:git commit"
+   ]
+  }
+ },
+ "next_moves": [],
+ "previous_result": {
+  "attempt_id": "att-9733c5095e1e4ab3",
+  "changed_paths": [
+   "parser.go",
+   "parser_test.go"
+  ],
+  "open_questions": [],
+  "output_tree": "a347c1bbaae6a6c22d8c47f14723116c9b39dc8d",
+  "summary": "`kvconf get app.conf app.title` now prints `Issue #42: retry`; I changed `parseValue` in `parser.go`, which was cutting the line at the first `#` before it looked at quotes.\n\n- **Cause:** `parseValue` stripped the comment first, so it cut `\"Issue #42: retry\"` at the `#`. That left an unterminated quote and the error.\n- **Fix:** a value that starts with `\"` is now read up to its closing quote. A `#` inside is kept, `\\\"` and `\\\\` are unescaped, and a `# ...` comment after the closing quote is allowed. Unquoted values still end at the first `#`.\n- **Behaviour change:** text after a closing quote that isn't a comment, such as `\"a\" b`, is now an error (\"unexpected text after closing quote\"). I added that on my own. Before, that kind of value was either mangled or reported as unterminated.\n- **Checks:** I added `TestQuotedValues` to `parser_test.go`, covering a `#` in quotes, an unquoted `#`, a comment after the quote, and the escapes. `go test ./...` passes, and interlock ran both the repro and regression checks on the patched tree and they passed. I recorded claims for all three criteria. The spec claim is mine and only says tested; the independent verifier still has to assess it."
+ },
+ "protected": [
+  "checks/quoted-hash.sh"
+ ],
+ "role": "verifier",
+ "scope": [
+  "parser.go",
+  "*_test.go",
+  "testdata/**"
+ ],
+ "state": "done",
+ "task_id": "go-quoted-hash",
+ "upstream": [],
+ "verifier_bindings": [
+  {
+   "attempt": "att-22a675c474bc4f27 (verifier, completed)",
+   "bound": "launched by interlock"
+  }
+ ],
+ "workflow": "bug-fix v1"
+}

@@ -1,0 +1,11 @@
+`kvconf get app.conf db.eu.host` now prints `db1.example.org`. `go test ./...` passes, and `checks/dotted.sh` prints `ok`.
+
+The same split-on-first-dot logic appeared in two places, and both had the bug. Both now split on the last dot, so `db.eu.host` is key `host` in section `db.eu`.
+
+- **`config.go`:** `Config.Lookup` now splits on the last dot.
+- **`cmd/kvconf/main.go`:** I removed the CLI's own `splitName` helper. `get` now calls `cfg.Lookup`, so there is only one copy of the logic.
+- **`cmd/kvconf/main_test.go`:** I added `TestGetDottedSection`, which reads `db.eu.host` from `checks/dotted.conf`.
+
+I didn't touch `README.md`; its description of `Lookup` is still accurate.
+
+STATUS: DONE

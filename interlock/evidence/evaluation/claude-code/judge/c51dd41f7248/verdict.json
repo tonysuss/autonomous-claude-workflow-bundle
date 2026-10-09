@@ -1,0 +1,38 @@
+{
+ "anon_id": "c51dd41f7248",
+ "task": "py-parse-amount",
+ "cases": [
+  {
+   "id": "existing_tests",
+   "pass": true,
+   "detail": "19 passed"
+  },
+  {
+   "id": "test_csv_rows_use_the_fixed_parser",
+   "pass": true,
+   "detail": ""
+  },
+  {
+   "id": "test_existing_behaviour_kept",
+   "pass": true,
+   "detail": ""
+  },
+  {
+   "id": "test_more_than_two_places_is_an_error",
+   "pass": true,
+   "detail": ""
+  },
+  {
+   "id": "test_one_decimal_digit_is_tenths",
+   "pass": true,
+   "detail": ""
+  },
+  {
+   "id": "test_sign_covers_the_fraction",
+   "pass": true,
+   "detail": ""
+  }
+ ],
+ "pass": true,
+ "condition_words": []
+}

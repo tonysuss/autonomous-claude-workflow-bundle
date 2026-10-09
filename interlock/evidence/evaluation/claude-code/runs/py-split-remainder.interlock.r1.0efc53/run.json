@@ -1,0 +1,155 @@
+{
+ "run_id": "py-split-remainder.interlock.r1.0efc53",
+ "label": "pilot",
+ "task": "py-split-remainder",
+ "kind": "bug-fix",
+ "language": "python",
+ "condition": "interlock",
+ "repeat": 1,
+ "host": "claude-code",
+ "host_version": "2.1.289",
+ "model": "claude-sonnet-5-5",
+ "effort": "medium",
+ "fake_model": false,
+ "started_at": "2026-10-06T00:07:29+00:00",
+ "workdir": "/tmp/claude-0/-home-user-autonomous-claude-workflow-bundle/<redacted>/scratchpad/work/ws/0a5ac28338/tally",
+ "base_commit": "3c69e6e826c8acd8e019c2082464a0d170d90b90",
+ "sessions": [
+  {
+   "complete": true,
+   "final_text": "I fixed `split_evenly` in `tally/money.py` so the shares always add up to the total. It now gives the extra cents to the earlier shares, so `split_evenly(100, 3)` returns `[34, 33, 33]`. Negative totals mirror that (`-100` gives `[-34, -33, -33]`), and `n <= 0` raises `ValueError`.\n\nI added tests for these cases in `tests/test_money.py`. Both `sh checks/split-repro.sh` and the unit tests (23, all passing) were run through `interlock check run`. I recorded claims for `repro` (observed), `regression` (tested) and `spec` (tested). `repro` and `spec` still need an independent verifier.",
+   "is_error": false,
+   "cost_usd": 0.2080436,
+   "tokens": {
+    "input": 1900,
+    "output": 1960,
+    "cache_read": 172868,
+    "cache_write": 38007
+   },
+   "turns": 9,
+   "models": [
+    "claude-haiku-4-5-20251001",
+    "claude-sonnet-5-5"
+   ],
+   "model_requested": "claude-sonnet-5-5",
+   "denials": 0,
+   "events": 43,
+   "subtype": "success",
+   "role": "worker",
+   "attempt": "att-56c9c99b43e54f42",
+   "attempt_status": "submitted",
+   "transcript": "raw/transcripts/att-56c9c99b43e54f42.jsonl"
+  },
+  {
+   "complete": true,
+   "final_text": "- **repro**: passes (observed). interlock ran `sh checks/split-repro.sh` on this tree and it printed \"ok: 1.00 split three ways keeps every cent\".\n- **spec**: passes (tested). My own script covered totals -60 to 60 with n from 1 to 11. Shares always summed to the total and differed by at most one cent, and the extra cents went to the earlier shares. It also checked `split_evenly(100, 3) == [34, 33, 33]` and `split_evenly(-100, 3) == [-34, -33, -33]`, and that n of 0 and -1 raise `ValueError`.\n- **regression**: passes (tested). interlock ran the unit tests on this tree and all 23 passed.",
+   "is_error": false,
+   "cost_usd": 0.17366220000000002,
+   "tokens": {
+    "input": 2162,
+    "output": 860,
+    "cache_read": 100691,
+    "cache_write": 35706
+   },
+   "turns": 4,
+   "models": [
+    "claude-haiku-4-5-20251001",
+    "claude-sonnet-5-5"
+   ],
+   "model_requested": "claude-sonnet-5-5",
+   "denials": 0,
+   "events": 24,
+   "subtype": "success",
+   "role": "verifier",
+   "attempt": "att-6c5489c6acc8476a",
+   "attempt_status": "completed",
+   "transcript": "raw/transcripts/att-6c5489c6acc8476a.jsonl"
+  }
+ ],
+ "notes": [],
+ "interlock": {
+  "final_state": "done",
+  "stopped_because": "done",
+  "blocked_reason": null,
+  "attempts_used": 1,
+  "signals": [
+   "G1",
+   "G2",
+   "G3",
+   "G4",
+   "G7"
+  ],
+  "invocations": [
+   {
+    "exit_code": 0,
+    "killed": null,
+    "killed_pids": 0,
+    "wall_s": 28.7
+   }
+  ],
+  "baseline": [
+   {
+    "criterion_id": "repro",
+    "run_id": "run-b98747a8df934d5d",
+    "exit_code": 1,
+    "vacuous": null,
+    "problem": null
+   },
+   {
+    "criterion_id": "regression",
+    "run_id": "run-5aebab6dcb9b473b",
+    "exit_code": 0,
+    "vacuous": null,
+    "problem": null
+   }
+  ]
+ },
+ "claim": {
+  "claimed_done": true,
+  "source": "interlock-state",
+  "detail": "done"
+ },
+ "wall_s": 29.0,
+ "output": {
+  "tree": "889a0c97844a82c35b1330b05ab6524ca0564a5a",
+  "delivered": true,
+  "changed_paths": [
+   "tally/money.py",
+   "tests/test_money.py"
+  ],
+  "scope_violations": []
+ },
+ "judge": {
+  "anon_id": "7bd369502649",
+  "hidden_pass": true,
+  "cases": 6,
+  "failed": [],
+  "condition_words_in_judged_files": []
+ },
+ "metrics": {
+  "accepted": true,
+  "hidden_pass": true,
+  "claimed_done": true,
+  "unsupported_claim": false,
+  "missed_defects": 0,
+  "scope_violation": false,
+  "correct_but_not_claimed": false,
+  "recovery": null,
+  "human_interventions": 0,
+  "operator_needed": false,
+  "restarts": 0,
+  "sessions": 2,
+  "wall_s": 29.0,
+  "cost_usd": 0.3817,
+  "cost_complete": true,
+  "tokens": {
+   "input": 4062,
+   "output": 2820,
+   "cache_read": 273559,
+   "cache_write": 73713
+  },
+  "tokens_complete": true,
+  "hidden_material_seen": false
+ },
+ "budget_charge_usd": 0.3817
+}

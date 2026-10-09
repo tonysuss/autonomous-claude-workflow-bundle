@@ -1,0 +1,29 @@
+{
+  "final_state": "done",
+  "head": "b76ef6e302f4a52a6ceee68aa80094da6ff1c920",
+  "moves": [
+    {
+      "from": "verified",
+      "reason": "landing authorized (Coordinator)",
+      "signal": "G5",
+      "to": "integrating"
+    },
+    {
+      "from": "integrating",
+      "reason": "merged at b76ef6e302f4a52a6ceee68aa80094da6ff1c920",
+      "signal": "G6",
+      "to": "done"
+    }
+  ],
+  "pull_request": 1,
+  "reconciled": [],
+  "steps": [
+    "G5: operation op-6b5c893d3f71420c will land only b76ef6e302f4a52a6ceee68aa80094da6ff1c920",
+    "pushing b76ef6e302f4a52a6ceee68aa80094da6ff1c920 to interlock/fix-add (operation op-bc0ac4e7408648f6)",
+    "opening a pull request from interlock/fix-add into main",
+    "pull request #1 holds b76ef6e302f4a52a6ceee68aa80094da6ff1c920",
+    "merging #1 pinned to b76ef6e302f4a52a6ceee68aa80094da6ff1c920 (operation op-6b5c893d3f71420c started)"
+  ],
+  "stopped_because": "done",
+  "task_id": "fix-add"
+}

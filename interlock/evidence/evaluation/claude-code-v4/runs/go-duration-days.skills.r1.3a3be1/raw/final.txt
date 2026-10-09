@@ -1,0 +1,7 @@
+`GetDuration` now accepts the `d` unit, so `30d` returns 720h. `go test ./...` passes, `checks/days.sh` prints `ok: 30d is 720h0m0s`, and `gofmt` is clean.
+
+- **Existing forms:** Plain seconds and Go duration strings take the same code path as before. Invalid values still fail with the same `is not a duration` message.
+- **Days syntax:** A leading days component is parsed before the rest, so `1d12h` (36h), `1.5d` and `-1d` also work. A days value too large for a duration is rejected as invalid.
+- **Where:** I added a small `parseDuration` helper in `getters.go` and updated the doc comment. I also added `retention = 30d` and `mixed = 1d12h` cases to `getters_test.go` and a mention in `README.md`.
+
+STATUS: DONE

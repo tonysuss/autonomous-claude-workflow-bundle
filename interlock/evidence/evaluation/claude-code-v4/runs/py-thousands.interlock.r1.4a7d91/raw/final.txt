@@ -1,0 +1,11 @@
+`balances` and `settle` now print amounts with thousands separators, so `-121810.78` shows as `-121,810.78`.
+
+`format_cents` in `tally/money.py` is shared with the CSV export, which has to stay ungrouped. I added an opt-in `grouped` parameter, off by default. The two renderers in `tally/report.py` turn it on. I added a unit test for the grouped formatting in `tests/test_money.py`.
+
+I had interlock run both checks on the final files, and both passed:
+- **Balances check:** `checks/thousands.sh` passed.
+- **Unit tests:** all 20 passed, including the new one.
+
+I also ran `settle` and `export` on `examples/big.csv` by hand. `settle` printed `121,810.78`, and the export CSV still had plain `246913.56`.
+
+I recorded claims for `balances`, `regression` and `spec`. The `balances` and `spec` criteria still need the independent verifier before they count as done.

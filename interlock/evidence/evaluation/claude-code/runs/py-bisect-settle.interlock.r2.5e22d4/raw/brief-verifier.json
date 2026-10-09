@@ -1,0 +1,48 @@
+{
+ "task_id": "py-bisect-settle",
+ "role": "verifier",
+ "goal": "Since a recent change, `python3 -m tally settle` sometimes prints a transfer of 0.00. For `examples/trip.csv` it now prints `Dan -> Cal  0.00` between the two real transfers; it did not do that before. `checks/settle-repro.sh` reproduces it: the script fails on the current code.\n\nFind the commit that introduced this regression. This is an investigation: do not fix the bug and leave every file as it is. In your final message, say briefly how you confirmed the answer, and give the full SHA of that commit on a line of its own as `ANSWER: <sha>`.\n",
+ "workflow": "investigation v1",
+ "state": "done",
+ "scope": [],
+ "protected": [],
+ "base_commit": "fa8265ef7f533725d5021aa48437933a03d16638",
+ "current_tree": "2c12dff91e6b1c9c6b618733d7ecbe74a42aebad",
+ "criteria": [
+  {
+   "id": "answer",
+   "statement": "The worker's ANSWER line names the first commit at which `sh checks/settle-repro.sh` (run from a copy outside the tree) fails, and the reproduction passes at that commit's parent",
+   "check": null,
+   "baseline": null,
+   "needs": "observed from independent",
+   "status": "passes (Observed)"
+  }
+ ],
+ "previous_result": {
+  "attempt_id": "att-d43a713256a34e04",
+  "summary": "I ran `checks/settle-repro.sh` against a clean export of each of the 10 commits, from a copy outside the tree. The script fails at `6fb44a0` (\"ledger: tidy settle loop\") and at every newer commit, and passes at its parent `2efc4f9` and every older one. I changed no files.\n\nI recorded an `observed` claim for the `answer` criterion. `interlock check run --criterion answer` reported that the criterion has no check to run, so interlock has not run its own check on this.\n\nANSWER: 6fb44a053405cf209422a5ba505fa0bb929b18d4",
+  "changed_paths": [],
+  "open_questions": []
+ },
+ "failures_to_fix": [],
+ "grant": {
+  "action_classes": [
+   "read",
+   "local_reversible"
+  ],
+  "tools": {
+   "allow": [
+    "read",
+    "shell"
+   ],
+   "deny": [
+    "edit",
+    "shell:git push",
+    "shell:git commit"
+   ]
+  },
+  "landing_authority": "none",
+  "grant_ids": []
+ },
+ "next_moves": []
+}

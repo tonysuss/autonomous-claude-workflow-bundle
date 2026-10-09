@@ -1,0 +1,5 @@
+I added `lookup(section, key)` to `getters.go`, and `Get`, `GetInt`, `GetBool` and `GetDuration` now all call it. Only `lookup` reads `c.sections`. `go test ./...` passes (run through `interlock check run`), and `go vet` and `gofmt` are clean.
+
+`GetBool` words its missing-key error differently from the others ("key %q not set"). To keep that message exactly, `lookup` returns a small unexported `missingKeyError` for a missing key. `GetBool` detects it and writes its own message. The other getters pass the error through unchanged.
+
+I recorded claims for all three criteria. `regression` is `tested`. `structure` and `behaviour` are only `static`: for `behaviour` I read the diff and the existing tests pass, but I added no new test for the error wording. Those two still need the independent verifier.

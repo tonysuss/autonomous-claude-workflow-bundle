@@ -1,0 +1,72 @@
+{
+  "attempts": [
+    {
+      "epoch": 1,
+      "host": "test",
+      "id": "att-c62b0f0e3239461f",
+      "role": "worker",
+      "status": "submitted"
+    },
+    {
+      "epoch": 1,
+      "host": "test",
+      "id": "att-44ecfed1b9524cc9",
+      "role": "verifier",
+      "status": "completed"
+    }
+  ],
+  "evidence": {
+    "all_pass": true,
+    "any_fail": false,
+    "criteria": [
+      {
+        "criterion_id": "fixed",
+        "current_assessments": 0,
+        "current_claims": 1,
+        "current_runs": 0,
+        "evidence_id": "clm-f67eb29d719a42b7",
+        "source": "claim",
+        "stale": 0,
+        "strength": "tested",
+        "verdict": "pass"
+      },
+      {
+        "criterion_id": "verified",
+        "current_assessments": 1,
+        "current_claims": 0,
+        "current_runs": 0,
+        "evidence_id": "asm-649ff28e442e4b6e",
+        "source": "assessment",
+        "stale": 0,
+        "strength": "observed",
+        "verdict": "pass"
+      }
+    ]
+  },
+  "next_moves": [
+    {
+      "needs": [
+        "no landing authority is granted for this task"
+      ],
+      "ready": false,
+      "signal": "unblock",
+      "to": "verified"
+    }
+  ],
+  "task": {
+    "attempts_used": 1,
+    "blocked_reason": "no landing authority is granted for this task",
+    "current_attempt": "att-c62b0f0e3239461f",
+    "current_tree": "7ac394c3a02f149443dab9d788856cd284dc2677",
+    "id": "fix-add",
+    "integration_required": true,
+    "intent": "add() returns the difference instead of the sum",
+    "lease_epoch": 1,
+    "max_attempts": 3,
+    "state": "blocked",
+    "workflow": {
+      "name": "bug-fix",
+      "version": 1
+    }
+  }
+}

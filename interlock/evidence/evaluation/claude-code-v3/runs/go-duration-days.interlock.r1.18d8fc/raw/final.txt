@@ -1,0 +1,6 @@
+`GetDuration` now accepts a standalone `d` unit, so `30d` reads as `720h0m0s`. It also takes fractions like `1.5d`. The `repro` check (`sh checks/days.sh`) and `go test ./...` both pass when run through `interlock check run`.
+
+- **Change:** `getters.go` has a new `parseDuration` helper. It handles values of the form `<number>d` and passes everything else to `time.ParseDuration` unchanged. The existing second-count path (`90`) is untouched.
+- **Rejected inputs:** `1d12h` is still an error, because combining `d` with other units isn't supported. A value too large to fit in a duration, such as `9999999999d`, is also an error.
+- **Tests and docs:** I added cases for these in `getters_test.go` and one sentence to `README.md`.
+- **Claims:** I recorded claims for `repro` (observed), `regression` (tested) and `spec` (tested). `repro` and `spec` still need the independent verifier.

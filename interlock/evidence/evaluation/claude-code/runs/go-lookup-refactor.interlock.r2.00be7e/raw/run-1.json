@@ -1,0 +1,64 @@
+{
+  "task_id": "go-lookup-refactor",
+  "host": "claude-code",
+  "final_state": "done",
+  "stopped_because": "done",
+  "reconciled": [],
+  "baseline": [
+    {
+      "criterion_id": "regression",
+      "run_id": "run-ca164aa8a3ce4575",
+      "exit_code": 0,
+      "vacuous": null,
+      "problem": null
+    }
+  ],
+  "sessions": [
+    {
+      "role": "worker",
+      "attempt_id": "att-d99004d2059a406b",
+      "epoch": 1,
+      "exit": {
+        "exit": "completed"
+      },
+      "duration_ms": 29053,
+      "summary": "I added `lookup(section, key)` to `getters.go`, and `Get`, `GetInt`, `GetBool` and `GetDuration` now all call it. Only `lookup` reads `c.sections`. `go test ./...` passes (run through `interlock check run`), and `go vet` and `gofmt` are clean.\n\n`GetBool` words its missing-key error differently from the others (\"key %q not set\"). To keep that message exactly, `lookup` returns a small unexported `missingKeyError` for a missing key. `GetBool` detects it and writes its own message. The other getters pass the error through unchanged.\n\nI recorded claims for all three criteria. `regression` is `tested`. `structure` and `behaviour` are only `static`: for `behaviour` I read the diff and the existing tests pass, but I added no new test for the error wording. Those two still need the independent verifier.",
+      "denials": 0,
+      "transcript": "/tmp/claude-0/-home-user-autonomous-claude-workflow-bundle/<redacted>/scratchpad/work/ws/d313a3cc86/kvconf/.interlock/transcripts/att-d99004d2059a406b.jsonl",
+      "moves": [
+        {
+          "signal": "G3",
+          "from": "running",
+          "to": "awaiting_verification",
+          "reason": "result accepted from attempt att-d99004d2059a406b at epoch 1"
+        }
+      ]
+    },
+    {
+      "role": "verifier",
+      "attempt_id": "att-1c91766094144b1d",
+      "epoch": 1,
+      "exit": {
+        "exit": "completed"
+      },
+      "duration_ms": 20043,
+      "summary": "- **structure**: passes (static). `Get`, `GetInt`, `GetBool` and `GetDuration` all call `lookup(section, key)`. The only `c.sections` read left in `getters.go` is inside `lookup`.\n- **behaviour**: passes (tested). I ran a differential test on the base commit and on this tree. It covered 3 sections and 8 keys across all four getters, with valid values, bad values, a missing section and a missing key. The outputs were identical, including `GetBool`'s \"key not set\" wording. Only `getters.go` changed.\n- **regression**: passes (tested). `go test ./...` passes on tree a6910c9.",
+      "denials": 0,
+      "transcript": "/tmp/claude-0/-home-user-autonomous-claude-workflow-bundle/<redacted>/scratchpad/work/ws/d313a3cc86/kvconf/.interlock/transcripts/att-1c91766094144b1d.jsonl",
+      "moves": [
+        {
+          "signal": "G4",
+          "from": "awaiting_verification",
+          "to": "verified",
+          "reason": "every required criterion has current passing evidence"
+        },
+        {
+          "signal": "G7",
+          "from": "verified",
+          "to": "done",
+          "reason": "verified; the workflow needs no delivery"
+        }
+      ]
+    }
+  ]
+}

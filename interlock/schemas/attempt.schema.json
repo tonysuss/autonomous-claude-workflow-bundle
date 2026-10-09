@@ -1,0 +1,127 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.interlock.dev/v1/attempt.schema.json",
+  "title": "Attempt",
+  "description": "One run of an agent against a task. The role comes from here, never from the caller.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["id", "task_id", "epoch", "role", "host", "effective_grant", "token_hash", "status", "started_at"],
+  "properties": {
+    "id": { "$ref": "common.schema.json#/$defs/id" },
+    "task_id": { "$ref": "common.schema.json#/$defs/id" },
+    "epoch": { "type": "integer", "minimum": 1 },
+    "role": { "$ref": "common.schema.json#/$defs/role" },
+    "host": { "$ref": "common.schema.json#/$defs/host_ref" },
+    "agent": { "type": ["string", "null"] },
+    "model": { "type": ["string", "null"] },
+    "worktree": { "type": ["string", "null"] },
+    "effective_grant": { "$ref": "common.schema.json#/$defs/effective_grant" },
+    "token_hash": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
+    "status": { "enum": ["running", "submitted", "superseded", "cancelled", "failed", "completed"] },
+    "started_at": { "$ref": "common.schema.json#/$defs/timestamp" },
+    "ended_at": {
+      "oneOf": [{ "$ref": "common.schema.json#/$defs/timestamp" }, { "type": "null" }]
+    },
+    "binding": { "$ref": "common.schema.json#/$defs/binding" },
+    "handoff": {
+      "description": "How to find the attempt's headless session again. Written in its own transaction before the session starts.",
+      "oneOf": [{ "$ref": "#/$defs/handoff" }, { "type": "null" }]
+    },
+    "end": {
+      "description": "Why the attempt's session ended.",
+      "oneOf": [{ "$ref": "#/$defs/end" }, { "type": "null" }]
+    },
+    "spent": {
+      "description": "What the attempt's session used.",
+      "oneOf": [{ "$ref": "#/$defs/spent" }, { "type": "null" }]
+    }
+  },
+  "$defs": {
+    "handoff": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["host", "pid", "pgid", "started_at", "deadline", "transcript", "supervisor_pid"],
+      "properties": {
+        "host": { "type": "string", "minLength": 1 },
+        "pid": { "type": "integer", "minimum": 1 },
+        "pgid": { "type": "integer", "minimum": 1 },
+        "process_start": {
+          "description": "The kernel's start time for the process, so a later process that reuses the pid is not mistaken for it.",
+          "type": ["integer", "null"],
+          "minimum": 0
+        },
+        "started_at": { "$ref": "common.schema.json#/$defs/timestamp" },
+        "deadline": {
+          "description": "When the session is stopped: its timeout, or the task's wall-clock budget, whichever comes first.",
+          "$ref": "common.schema.json#/$defs/timestamp"
+        },
+        "budget_deadline": {
+          "description": "The deadline comes from the task's wall-clock budget rather than the session timeout.",
+          "type": "boolean"
+        },
+        "transcript": { "type": "string", "minLength": 1 },
+        "host_session_id": { "type": ["string", "null"] },
+        "supervisor_pid": { "type": "integer", "minimum": 1 },
+        "supervisor_start": {
+          "description": "The kernel's start time for the supervisor, so a restarted one can tell whether the supervisor that owns the session is still alive.",
+          "type": ["integer", "null"],
+          "minimum": 0
+        },
+        "start_commit": {
+          "description": "The commit the attempt's worktree was checked out at. Unfinished work is exported relative to it.",
+          "oneOf": [{ "$ref": "common.schema.json#/$defs/object_id" }, { "type": "null" }]
+        },
+        "env": {
+          "description": "Names of the environment variables the session was given. Never their values.",
+          "type": "array",
+          "items": { "type": "string", "minLength": 1 }
+        },
+        "effort": { "type": ["string", "null"] },
+        "reattached_at": {
+          "description": "Each time a restarted supervisor re-attached to the session.",
+          "type": "array",
+          "items": { "$ref": "common.schema.json#/$defs/timestamp" }
+        }
+      }
+    },
+    "end": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["reason", "synthetic"],
+      "properties": {
+        "reason": {
+          "enum": [
+            "completed",
+            "rejected",
+            "timeout",
+            "host_error",
+            "auth_failure",
+            "crash",
+            "cancelled",
+            "budget_exhausted"
+          ]
+        },
+        "detail": { "type": ["string", "null"] },
+        "synthetic": {
+          "description": "Written by interlock because the session could not report its own end.",
+          "type": "boolean"
+        }
+      }
+    },
+    "spent": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["wall_ms"],
+      "properties": {
+        "wall_ms": { "type": "integer", "minimum": 0 },
+        "cost_usd": { "type": ["number", "null"], "minimum": 0 },
+        "premium_requests": { "type": ["number", "null"], "minimum": 0 },
+        "turns": { "type": ["integer", "null"], "minimum": 0 },
+        "model": {
+          "description": "The model the host reported using, where it reports one.",
+          "type": ["string", "null"]
+        }
+      }
+    }
+  }
+}

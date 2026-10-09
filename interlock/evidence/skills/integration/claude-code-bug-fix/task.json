@@ -1,0 +1,58 @@
+{
+  "id": "duration-sum",
+  "repository": ".",
+  "workflow": {
+    "name": "bug-fix",
+    "version": 1
+  },
+  "intent": "parse_duration(\"1h30m\") in durations.py returns 1800 instead of 5400; multi-unit durations must sum all components.",
+  "scope": {
+    "paths": [
+      "durations.py",
+      "tests/**"
+    ],
+    "description": null
+  },
+  "dependencies": [],
+  "criteria": [
+    {
+      "id": "repro",
+      "statement": "parse_duration(\"1h30m\") returns 5400, and other multi-unit inputs sum correctly",
+      "check": "python3 -c 'from durations import parse_duration as p; assert p(\"1h30m\")==5400 and p(\"2m10s\")==130 and p(\"45s\")==45'",
+      "check_version": "1",
+      "min_strength": "observed",
+      "producer": "independent",
+      "baseline": "fails"
+    },
+    {
+      "id": "regression",
+      "statement": "The existing tests pass",
+      "check": "python3 -m unittest discover -s tests -t .",
+      "check_version": "1",
+      "min_strength": "tested",
+      "producer": "self",
+      "baseline": "passes"
+    }
+  ],
+  "input_snapshot": {
+    "repository": ".",
+    "base_commit": "4595155b28cfea5576e6e4dfefed466e7208a921",
+    "untracked_hash": null,
+    "protected_paths": []
+  },
+  "environment": "",
+  "policy_digest": "sha256:7f0cfbdd2133e718b00269d4692205c8b63f045f7b438a92741cff095a689290",
+  "budget": {
+    "max_attempts": 3
+  },
+  "integration_required": false,
+  "state": "done",
+  "resume_point": null,
+  "blocked_reason": null,
+  "current_tree": "4688fba1015d33dedf241719d5caee3cfb7ffa3c",
+  "lease_epoch": 1,
+  "current_attempt": "att-885afad123d54fe1",
+  "attempts_used": 1,
+  "created_at": "2026-10-06T02:27:56.860046601Z",
+  "updated_at": "2026-10-06T02:28:28.926487766Z"
+}

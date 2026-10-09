@@ -1,0 +1,10 @@
+# Harness metadata. Hidden: never copied into an agent's working copy.
+id = "go-dotted-section"
+kind = "bug-fix"
+language = "go"
+repo = "kvconf"
+scope = ["config.go", "cmd/kvconf/*.go", "*_test.go", "README.md"]
+judge = "hidden/judge.py"
+# What the prompt leaves for the engineer to find: Config.Lookup, documented
+# as taking the command line's names, splits them the same wrong way.
+harder = "second call site"

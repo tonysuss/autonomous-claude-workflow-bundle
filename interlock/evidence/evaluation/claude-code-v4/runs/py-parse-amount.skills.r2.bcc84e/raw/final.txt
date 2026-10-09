@@ -1,0 +1,12 @@
+I fixed `parse_amount` in `tally/money.py`, and `"12.5"` now parses to 1250 cents. The repro script passes, and so do all 21 tests.
+
+- **Fraction:** one decimal digit now means tenths, so `"12.5"` is 1250 and `"0.5"` is 50.
+- **Sign:** a leading `+` or `-` applies to the whole amount, so `"-0.50"` is -50 and `"-3.25"` is -325.
+- **Too many decimals:** `"1.234"` raises `ValueError`.
+- **Unchanged:** thousands separators, whole numbers, surrounding spaces and `ValueError` for non-amounts still behave as before.
+
+The function now also rejects some malformed text that the old code let through or misread, such as `"1.-5"` and `"1.2.3"`. Neither is a valid amount.
+
+I added tests for tenths, signed amounts and the new rejections in `tests/test_money.py`. I changed no other files.
+
+STATUS: DONE

@@ -1,0 +1,15 @@
+[
+  {
+    "id": "res-e43b1cf0f3784304",
+    "task_id": "ttl-boundary",
+    "attempt_id": "att-efbaf6bd83e543b0",
+    "epoch": 1,
+    "output_tree": "e2abab1d819807dd70f25b1fa552bd377f7eb000",
+    "changed_paths": [],
+    "summary": "Yes: TTLCache.get returns the value at exactly ttl seconds. Decided by 'self.clock() - stored > self.ttl' at cache.py:20 (strict >). Changed from '>=' in e6ed919 (Ana, #12): 'On coarse clocks (time.monotonic ticks in 15 ms steps) entries stored with ttl=1 expired on the first read after a one-tick advance. Serve an entry until it is strictly older than ttl, so ttl is the minimum lifetime.' Observed with a fake clock, ttl=10: age 10 -> v, age 10.001 -> MISS.",
+    "open_questions": [],
+    "status": "accepted",
+    "superseded_reason": null,
+    "received_at": "2026-10-06T02:29:08.328025720Z"
+  }
+]

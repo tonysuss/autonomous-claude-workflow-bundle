@@ -1,0 +1,90 @@
+{
+ "attempts": [
+  {
+   "binding": {
+    "agent_type": null,
+    "host_agent": null,
+    "host_session": null,
+    "interactive": false,
+    "via": "interlock_launched"
+   },
+   "bound": "launched by interlock",
+   "epoch": 1,
+   "host": "claude-code",
+   "id": "att-254efad3271c44da",
+   "role": "worker",
+   "status": "completed"
+  },
+  {
+   "binding": {
+    "agent_type": null,
+    "host_agent": null,
+    "host_session": null,
+    "interactive": false,
+    "via": "interlock_launched"
+   },
+   "bound": "launched by interlock",
+   "epoch": 1,
+   "host": "claude-code",
+   "id": "att-703c0fac67c84012",
+   "role": "verifier",
+   "status": "completed"
+  }
+ ],
+ "evidence": {
+  "all_pass": true,
+  "any_fail": false,
+  "criteria": [
+   {
+    "criterion_id": "repro",
+    "current_assessments": 1,
+    "current_claims": 1,
+    "current_runs": 2,
+    "evidence_id": "asm-dae5298c600b448a",
+    "source": "assessment",
+    "stale": 0,
+    "strength": "observed",
+    "verdict": "pass"
+   },
+   {
+    "criterion_id": "spec",
+    "current_assessments": 1,
+    "current_claims": 1,
+    "current_runs": 0,
+    "evidence_id": "asm-e1adadd799634796",
+    "source": "assessment",
+    "stale": 0,
+    "strength": "tested",
+    "verdict": "pass"
+   },
+   {
+    "criterion_id": "regression",
+    "current_assessments": 1,
+    "current_claims": 1,
+    "current_runs": 2,
+    "evidence_id": "clm-bbd308477d9c49a7",
+    "source": "claim",
+    "stale": 0,
+    "strength": "observed",
+    "verdict": "pass"
+   }
+  ]
+ },
+ "next_moves": [],
+ "task": {
+  "attempts_used": 1,
+  "blocked_reason": null,
+  "current_attempt": "att-254efad3271c44da",
+  "current_tree": "b4076fc23cbd660ded51b2039f9574525a521f57",
+  "id": "go-dotted-section",
+  "integration_required": false,
+  "intent": "`kvconf get` cannot read a key in a section whose name contains a dot. With this file:\n\n```\n[db.eu]\nhost = db1.example.org\n```\n\n`go run ./cmd/kvconf get app.conf db.eu.host` prints `kvconf: no section \"db\"` instead of `db1.example.org`.\n\nSection names may contain dots; keys never do. So in a name of the form `SECTION.KEY`, the key is the part after the last dot: `db.eu.host` is the key `host` in the section `db.eu`. A name without a dot is a key in the unnamed section.\n\n`checks/dotted.sh` reproduces the problem. The tests run with `go test ./...`.\n",
+  "lease_epoch": 1,
+  "max_attempts": 3,
+  "state": "done",
+  "workflow": {
+   "name": "bug-fix",
+   "version": 1
+  }
+ }
+}

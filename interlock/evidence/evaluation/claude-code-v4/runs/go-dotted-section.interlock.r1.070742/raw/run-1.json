@@ -1,0 +1,111 @@
+{
+  "task_id": "go-dotted-section",
+  "host": "claude-code",
+  "final_state": "done",
+  "stopped_because": "done",
+  "reconciled": [],
+  "reattached": [],
+  "interrupted": false,
+  "baseline": [
+    {
+      "criterion_id": "repro",
+      "run_id": "run-29088b9a5f054028",
+      "exit_code": 1,
+      "vacuous": null,
+      "problem": null
+    },
+    {
+      "criterion_id": "regression",
+      "run_id": "run-ad760849d5544f81",
+      "exit_code": 0,
+      "vacuous": null,
+      "problem": null
+    }
+  ],
+  "sessions": [
+    {
+      "role": "worker",
+      "attempt_id": "att-1bf8b45d45364688",
+      "epoch": 1,
+      "exit": {
+        "exit": "completed"
+      },
+      "duration_ms": 17633,
+      "summary": "`kvconf get app.conf db.eu.host` now returns `db1.example.org`. The name is split at the last dot, so `db.eu.host` is the key `host` in the section `db.eu`.\n\nThe bug was in two places that each split `SECTION.KEY` at the first dot: `Config.Lookup` in `config.go` and `splitName` in `cmd/kvconf/main.go`. Both now split at the last dot, and a name with no dot is still a key in the unnamed section. I also added `TestLookupDottedSection` in `parser_test.go` and a note about dotted section names in `README.md`.\n\ninterlock ran `checks/dotted.sh` (repro) and `go test ./...` (regression) on the final files, and both pass. I recorded claims for all three criteria. `spec` rests on `TestLookupDottedSection`, which only exercises `Lookup`, not the CLI. The CLI path is covered by the `checks/dotted.sh` run.",
+      "denials": 0,
+      "transcript": "/tmp/agent-ws/6911d148ca/kvconf/.interlock/transcripts/att-1bf8b45d45364688.jsonl",
+      "moves": [
+        {
+          "signal": "G3",
+          "from": "running",
+          "to": "awaiting_verification",
+          "reason": "result accepted from attempt att-1bf8b45d45364688 at epoch 1"
+        }
+      ],
+      "ended_because": "completed",
+      "end_detail": null,
+      "spent": {
+        "wall_ms": 17633,
+        "cost_usd": 0.096308,
+        "premium_requests": null,
+        "turns": 6,
+        "model": "claude-sonnet-5-5"
+      },
+      "cost_usd": 0.096308,
+      "premium_requests": null,
+      "host_session_id": "d14b6275-5f84-4b54-945d-012006c0654c",
+      "reattached": false,
+      "stopped_strays": [],
+      "export": null
+    },
+    {
+      "role": "verifier",
+      "attempt_id": "att-8f83cc14f392473b",
+      "epoch": 1,
+      "exit": {
+        "exit": "completed"
+      },
+      "duration_ms": 13439,
+      "summary": "The fix works: `kvconf get` now reads `db.eu.host` as the key `host` in section `db.eu`. I changed nothing in the tree.\n\n- **repro:** `observed`. interlock ran `checks/dotted.sh` on this tree and it printed `ok: db1.example.org`.\n- **spec:** `tested`. Both places that split `SECTION.KEY` (`Lookup` in `config.go` and `splitName` in `cmd/kvconf/main.go`) now split at the last dot, and I found no other splitting sites. `TestLookupDottedSection` passes. I also ran the CLI by hand on a scratch config in `/tmp`: `get top` returns `1` from the unnamed section and `get db.eu.host` returns `h`.\n- **regression:** `tested`. interlock ran `go test ./...` on this tree and both packages pass.",
+      "denials": 0,
+      "transcript": "/tmp/agent-ws/6911d148ca/kvconf/.interlock/transcripts/att-8f83cc14f392473b.jsonl",
+      "moves": [
+        {
+          "signal": "G4",
+          "from": "awaiting_verification",
+          "to": "verified",
+          "reason": "every required criterion has current passing evidence"
+        },
+        {
+          "signal": "G7",
+          "from": "verified",
+          "to": "done",
+          "reason": "verified; the workflow needs no delivery"
+        }
+      ],
+      "ended_because": "completed",
+      "end_detail": null,
+      "spent": {
+        "wall_ms": 13439,
+        "cost_usd": 0.073132,
+        "premium_requests": null,
+        "turns": 4,
+        "model": "claude-sonnet-5-5"
+      },
+      "cost_usd": 0.073132,
+      "premium_requests": null,
+      "host_session_id": "8e62be01-c812-42c5-a207-4aa34228c89c",
+      "reattached": false,
+      "stopped_strays": [],
+      "export": null
+    }
+  ],
+  "pin": null,
+  "spent": {
+    "wall_ms": 31072,
+    "cost_usd": 0.16944,
+    "premium_requests": null,
+    "turns": 10
+  },
+  "exports": []
+}

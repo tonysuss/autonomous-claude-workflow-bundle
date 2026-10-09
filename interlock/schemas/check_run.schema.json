@@ -1,0 +1,57 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.interlock.dev/v1/check_run.schema.json",
+  "title": "Check run",
+  "description": "interlock's own execution of a criterion's check on one tree. Append-only. A run passes only when the command exited 0, did not time out, and did not run nothing.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "id",
+    "task_id",
+    "criterion_id",
+    "producer",
+    "target",
+    "tree",
+    "check_version",
+    "environment",
+    "command",
+    "timed_out",
+    "duration_ms",
+    "output_tail",
+    "recorded_at"
+  ],
+  "properties": {
+    "id": { "$ref": "common.schema.json#/$defs/id" },
+    "task_id": { "$ref": "common.schema.json#/$defs/id" },
+    "criterion_id": { "$ref": "common.schema.json#/$defs/id" },
+    "attempt_id": {
+      "description": "The attempt that asked for the run; null for runs the operator or supervisor made.",
+      "oneOf": [{ "$ref": "common.schema.json#/$defs/id" }, { "type": "null" }]
+    },
+    "producer": {
+      "description": "Who asked for the run, taken from the attempt's role.",
+      "enum": ["worker", "verifier", "operator"]
+    },
+    "target": {
+      "description": "output: the tree under verification. base: the task's input snapshot.",
+      "enum": ["output", "base"]
+    },
+    "tree": { "$ref": "common.schema.json#/$defs/object_id" },
+    "check_version": { "type": "string", "minLength": 1 },
+    "environment": { "type": "string" },
+    "command": { "type": "string", "minLength": 1 },
+    "exit_code": { "type": ["integer", "null"] },
+    "timed_out": { "type": "boolean" },
+    "vacuous": {
+      "description": "Set when the output shows the check ran nothing, naming the detector that matched.",
+      "type": ["string", "null"]
+    },
+    "duration_ms": { "type": "integer", "minimum": 0 },
+    "output_ref": {
+      "description": "Content-addressed artifact holding the full output.",
+      "type": ["string", "null"]
+    },
+    "output_tail": { "type": "string" },
+    "recorded_at": { "$ref": "common.schema.json#/$defs/timestamp" }
+  }
+}

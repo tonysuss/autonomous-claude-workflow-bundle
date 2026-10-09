@@ -1,0 +1,21 @@
+[package]
+name = "interlock-core"
+description = "Pure policy core for interlock: lifecycle, guards, evidence decisions, grants. No IO."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+
+[dependencies]
+chrono.workspace = true
+hex.workspace = true
+interlock-schema.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+sha2.workspace = true
+
+[dev-dependencies]
+proptest.workspace = true
+
+[lints]
+workspace = true

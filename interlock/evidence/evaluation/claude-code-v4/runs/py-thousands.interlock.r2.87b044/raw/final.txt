@@ -1,0 +1,5 @@
+`balances` and `settle` now print amounts with thousands separators, so `settle` on `examples/big.csv` shows `121,810.78` instead of `121810.78`.
+
+`format_cents` in `tally/money.py` gained an opt-in `grouped` flag, and the two renderers in `tally/report.py` pass it. I did it that way because `export` also uses `format_cents`, and its CSV output stays ungrouped.
+
+`checks/thousands.sh` passes, and the 19 unit tests pass. I also ran `settle` and `export` by hand to confirm the output. I recorded claims for all three criteria. I didn't add a unit test for the new flag or change the README.

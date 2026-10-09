@@ -1,0 +1,90 @@
+{
+ "attempts": [
+  {
+   "binding": {
+    "agent_type": null,
+    "host_agent": null,
+    "host_session": null,
+    "interactive": false,
+    "via": "interlock_launched"
+   },
+   "bound": "launched by interlock",
+   "epoch": 1,
+   "host": "claude-code",
+   "id": "att-57c11f0ffb7d44e5",
+   "role": "worker",
+   "status": "completed"
+  },
+  {
+   "binding": {
+    "agent_type": null,
+    "host_agent": null,
+    "host_session": null,
+    "interactive": false,
+    "via": "interlock_launched"
+   },
+   "bound": "launched by interlock",
+   "epoch": 1,
+   "host": "claude-code",
+   "id": "att-e74785ac6df04219",
+   "role": "verifier",
+   "status": "completed"
+  }
+ ],
+ "evidence": {
+  "all_pass": true,
+  "any_fail": false,
+  "criteria": [
+   {
+    "criterion_id": "balances",
+    "current_assessments": 1,
+    "current_claims": 1,
+    "current_runs": 2,
+    "evidence_id": "asm-711d72aa64964d7d",
+    "source": "assessment",
+    "stale": 0,
+    "strength": "observed",
+    "verdict": "pass"
+   },
+   {
+    "criterion_id": "spec",
+    "current_assessments": 1,
+    "current_claims": 1,
+    "current_runs": 0,
+    "evidence_id": "asm-12d44ccc1a2446b1",
+    "source": "assessment",
+    "stale": 0,
+    "strength": "observed",
+    "verdict": "pass"
+   },
+   {
+    "criterion_id": "regression",
+    "current_assessments": 1,
+    "current_claims": 1,
+    "current_runs": 2,
+    "evidence_id": "asm-2618b938560f4bc9",
+    "source": "assessment",
+    "stale": 0,
+    "strength": "tested",
+    "verdict": "pass"
+   }
+  ]
+ },
+ "next_moves": [],
+ "task": {
+  "attempts_used": 1,
+  "blocked_reason": null,
+  "current_attempt": "att-57c11f0ffb7d44e5",
+  "current_tree": "649b547a8ab0c6f7e15ce0635ef239362c0d92ac",
+  "id": "py-thousands",
+  "integration_required": false,
+  "intent": "Large amounts are hard to read in the output of `python3 -m tally balances` and `python3 -m tally settle`: a balance prints as `-121810.78`. Print the amounts in both commands with thousands separators, `-121,810.78`. Nothing else about the program's behaviour should change.\n\n`checks/thousands.sh` checks `balances` for `examples/big.csv`. The tests run with `python3 -m unittest discover -s tests -q`.\n",
+  "lease_epoch": 1,
+  "max_attempts": 3,
+  "state": "done",
+  "workflow": {
+   "name": "feature",
+   "version": 1
+  }
+ }
+}

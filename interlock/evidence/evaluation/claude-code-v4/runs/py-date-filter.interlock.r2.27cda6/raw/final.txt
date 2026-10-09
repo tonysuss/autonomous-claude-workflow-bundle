@@ -1,0 +1,5 @@
+`balances` and `settle` now take `--since DATE` and `--until DATE`, and the unit tests and the date-filter check both pass.
+
+- **What changed:** `tally/csvio.py` now drops entries outside the range as it reads the file. It also checks that each entry date is a real `YYYY-MM-DD` date, but only when a filter is given. A bad entry date fails with status 1 and an error like `tally: trip.csv:3: invalid date '2026-13-01'`. In `tally/cli.py`, the two options reject an invalid DATE at argument parsing, which exits with status 2. `export` is unchanged. I also added four tests to `tests/test_cli.py` and a short README note.
+- **How I checked:** `python3 -m unittest discover -s tests -q` passes, 23 tests. `interlock check run` passed for `since` and `regression`, and I recorded claims for both. I also ran `balances --since 2026-06-02 --until 2026-06-02` on `examples/trip.csv` by hand.
+- **Spec criterion:** I could only record `spec` as `tested`, and interlock warned that it needs `observed` or stronger. The independent verifier has to cover that one.

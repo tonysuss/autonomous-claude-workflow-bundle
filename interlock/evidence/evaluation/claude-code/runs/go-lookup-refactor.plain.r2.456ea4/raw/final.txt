@@ -1,0 +1,7 @@
+I added `lookup` to `getters.go`, and all four getters now call it. `lookup` is the only place that reads `c.sections`. `go test ./...` passes, and `go vet` and `gofmt` are clean.
+
+`GetBool` words its missing-key error differently from the other three: `key "x" not set` instead of `no key "x"`. To keep every message identical, `lookup` returns a small unexported error type for a missing key. `GetBool` detects that type and re-emits its own wording. The other getters pass the error through unchanged.
+
+I didn't write a test that compares error messages before and after. The existing tests pass, and I only checked the wording by reading the code.
+
+STATUS: DONE

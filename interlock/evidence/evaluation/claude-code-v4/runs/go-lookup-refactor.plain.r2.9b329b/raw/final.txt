@@ -1,0 +1,7 @@
+The four getters in `getters.go` now go through a new unexported `lookup(section, key)`. Only `lookup` reads `c.sections` any more. `go vet` and `go test ./...` pass.
+
+`GetBool` words its missing-key error differently from the other three: `key "x" not set` rather than `no key "x"`. To keep every message exactly as it was, `lookup` returns a small unexported `missingKeyError` type for a missing key. `GetBool` detects it with `errors.As` and returns its own wording. The other getters pass the error through unchanged.
+
+I only edited `getters.go`.
+
+STATUS: DONE

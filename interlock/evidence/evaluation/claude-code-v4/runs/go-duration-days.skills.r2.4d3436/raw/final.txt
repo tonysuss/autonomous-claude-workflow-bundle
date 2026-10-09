@@ -1,0 +1,8 @@
+`GetDuration` now accepts the `d` unit as 24-hour days, so `retention = 30d` returns 720h. `go test ./...` passes and `checks/days.sh` reports `ok: 30d is 720h0m0s`.
+
+- **Existing values:** the days syntax is only tried after the existing integer-seconds and Go-duration parsing has failed. Anything accepted before is parsed exactly as before. The change is in `getters.go`.
+- **Syntax:** a leading days component, optionally fractional or signed, followed by an optional Go-duration remainder. For example `30d`, `1d12h`, `-2d` and `0.5d` all work.
+- **Rejected:** a remainder that carries its own sign (`1d-2h`), and a day count that would overflow the duration range. Both give the usual "is not a duration" error.
+- **Tests and docs:** `getters_test.go` covers `30d`, `1d12h`, `-2d`, `1d-2h` and an overflowing day count. I added one line to `README.md` describing the accepted formats.
+
+STATUS: DONE

@@ -1,0 +1,71 @@
+{
+ "task_id": "py-split-remainder",
+ "role": "verifier",
+ "goal": "Splitting an expense loses cents. `split_evenly(100, 3)` in `tally/money.py` returns `[33, 33, 33]`, which adds up to 99, so the balances for a ledger with such an expense no longer sum to zero.\n\nExpected behaviour of `split_evenly(total, n)`:\n\n- The shares always add up to `total`, and no two shares differ by more than one cent.\n- The earlier shares (participants are in the order given) take the extra cents: `split_evenly(100, 3) == [34, 33, 33]`.\n- A negative total (a refund) mirrors the positive case: `split_evenly(-100, 3) == [-34, -33, -33]`.\n- `n` must be positive; otherwise `split_evenly` raises `ValueError`.\n\n`checks/split-repro.sh` reproduces the problem. The tests run with `python3 -m unittest discover -s tests -q`.\n",
+ "workflow": "bug-fix v1",
+ "state": "done",
+ "scope": [
+  "tally/money.py",
+  "tests/**"
+ ],
+ "protected": [
+  "checks/split-repro.sh"
+ ],
+ "base_commit": "b1a14fd111d2780c83421179a6608ad485eb90ff",
+ "current_tree": "fdc373cfcbe4134bf30370667125f68ec20f75d2",
+ "criteria": [
+  {
+   "id": "repro",
+   "statement": "Splitting 1.00 three ways gives [34, 33, 33] and the ledger's balances sum to zero",
+   "check": "sh checks/split-repro.sh",
+   "baseline": "it must fail on the input snapshot, reproducing the problem; interlock saw it fail there (run run-9c2650333f9f4029)",
+   "needs": "observed from independent",
+   "status": "passes (Observed)"
+  },
+  {
+   "id": "spec",
+   "statement": "split_evenly meets every rule in the task: shares sum to the total and differ by at most one cent, earlier shares take the extra cents, negative totals mirror positive ones, and n <= 0 raises ValueError",
+   "check": null,
+   "baseline": null,
+   "needs": "tested from independent",
+   "status": "passes (Tested)"
+  },
+  {
+   "id": "regression",
+   "statement": "The existing unit tests pass",
+   "check": "python3 -m unittest discover -s tests -q",
+   "baseline": "it must pass on the input snapshot, as a regression guard; interlock saw it pass there (run run-681b3095c4704162)",
+   "needs": "tested from self",
+   "status": "passes (Tested)"
+  }
+ ],
+ "previous_result": {
+  "attempt_id": "att-fd8dde02264b4a34",
+  "summary": "Applied the scripted change.\n",
+  "changed_paths": [
+   "tally/money.py"
+  ],
+  "open_questions": []
+ },
+ "failures_to_fix": [],
+ "grant": {
+  "action_classes": [
+   "read",
+   "local_reversible"
+  ],
+  "tools": {
+   "allow": [
+    "read",
+    "shell"
+   ],
+   "deny": [
+    "edit",
+    "shell:git push",
+    "shell:git commit"
+   ]
+  },
+  "landing_authority": "none",
+  "grant_ids": []
+ },
+ "next_moves": []
+}

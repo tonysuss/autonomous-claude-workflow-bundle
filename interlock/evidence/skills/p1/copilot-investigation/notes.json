@@ -1,0 +1,9 @@
+[
+  {
+    "at": "2026-10-06T01:57:00.649461029+00:00",
+    "body": "export() tries a batch retries + 1 times: three by default (exporter.py:1 sets retries=2; exporter.py:3 loops over range(retries + 1)). The demo prints tries: 3.\n",
+    "kind": "answer",
+    "seq": 1,
+    "task_id": "export-tries"
+  }
+]

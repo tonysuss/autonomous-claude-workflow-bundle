@@ -1,0 +1,38 @@
+[
+  {
+    "id": "clm-60614560db094165",
+    "task_id": "duration-sum",
+    "criterion_id": "repro",
+    "attempt_id": "att-885afad123d54fe1",
+    "strength": "observed",
+    "currency": {
+      "tree": "4688fba1015d33dedf241719d5caee3cfb7ffa3c",
+      "check_version": "1",
+      "environment": "",
+      "policy_digest": "sha256:7f0cfbdd2133e718b00269d4692205c8b63f045f7b438a92741cff095a689290"
+    },
+    "evidence_refs": [
+      "repro check"
+    ],
+    "note": "parse_duration('1h30m')==5400, 2m10s==130, 45s==45; check exits 0 (failed on base)",
+    "recorded_at": "2026-10-06T02:28:10.569716769Z"
+  },
+  {
+    "id": "clm-a7b60a4ed47c48d4",
+    "task_id": "duration-sum",
+    "criterion_id": "regression",
+    "attempt_id": "att-885afad123d54fe1",
+    "strength": "tested",
+    "currency": {
+      "tree": "4688fba1015d33dedf241719d5caee3cfb7ffa3c",
+      "check_version": "1",
+      "environment": "",
+      "policy_digest": "sha256:7f0cfbdd2133e718b00269d4692205c8b63f045f7b438a92741cff095a689290"
+    },
+    "evidence_refs": [
+      "python3 -m unittest discover -s tests -t ."
+    ],
+    "note": "4 tests pass incl. new multi-unit test",
+    "recorded_at": "2026-10-06T02:28:10.670401316Z"
+  }
+]

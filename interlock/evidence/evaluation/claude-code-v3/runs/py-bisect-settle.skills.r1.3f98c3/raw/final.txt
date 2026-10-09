@@ -1,0 +1,11 @@
+The regression was introduced by `91a6a15`, "ledger: tidy settle loop".
+
+I ran `checks/settle-repro.sh` against each of the nine commits, using temporary detached worktrees. The script passes at `a16f8ab` and every commit before it, and fails at `91a6a15` and every commit after it, so `91a6a15` is the first bad commit. The temporary worktrees were removed afterwards and `git status` is clean.
+
+The diff of `91a6a15` explains the 0.00 transfer:
+- It removed the `if amount > 0` guard, so zero-amount transfers are now appended.
+- It changed the second `if creditors[j][0] == 0` to `elif`. When a debtor and a creditor both reach zero in the same step, only the debtor index advances. The next iteration then pairs the old creditor, now at zero, with the next debtor, and records a 0.00 transfer.
+
+ANSWER: 91a6a159d5c7e295504c4280c17ca9f883bdcaa9
+
+STATUS: DONE

@@ -1,0 +1,49 @@
+[
+  {
+    "id": "att-1eec0a79aaa645d1",
+    "task_id": "fix-add",
+    "epoch": 1,
+    "role": "worker",
+    "host": {
+      "host": "claude-code",
+      "version": "2.1.289"
+    },
+    "agent": "interlock-worker",
+    "model": "haiku",
+    "worktree": "<scratch>/live-demo/.interlock/worktrees/fix-add-worker-1",
+    "effective_grant": {
+      "action_classes": [
+        "read",
+        "local_reversible"
+      ],
+      "tools": {
+        "allow": [
+          "read",
+          "edit",
+          "shell"
+        ],
+        "deny": [
+          "shell:git push"
+        ]
+      },
+      "landing_authority": "none",
+      "grant_ids": []
+    },
+    "token_hash": "881609b668d9608072b43920ba3ecc0d8b87a57e82b3674df19832bb654bdd42",
+    "status": "running",
+    "started_at": "2026-10-06T00:08:31.914519215Z",
+    "ended_at": null,
+    "handoff": {
+      "host": "claude-code",
+      "pid": 7001,
+      "pgid": 7001,
+      "process_start": 285828,
+      "started_at": "2026-10-06T00:08:31.938895553Z",
+      "deadline": "2026-10-06T00:18:31.938895553Z",
+      "budget_deadline": false,
+      "transcript": "<scratch>/live-demo/.interlock/transcripts/att-1eec0a79aaa645d1.jsonl",
+      "host_session_id": "3a0d88ab-2c1e-4104-a4a1-cf23c0fe2647",
+      "supervisor_pid": 6931
+    }
+  }
+]

@@ -1,0 +1,48 @@
+{
+ "anon_id": "feafca17b007",
+ "task": "py-date-filter",
+ "cases": [
+  {
+   "id": "existing_tests",
+   "pass": true,
+   "detail": "19 passed"
+  },
+  {
+   "id": "test_both_bounds_are_inclusive",
+   "pass": true,
+   "detail": ""
+  },
+  {
+   "id": "test_invalid_entry_date_names_file_and_line",
+   "pass": true,
+   "detail": ""
+  },
+  {
+   "id": "test_invalid_option_date_exits_2",
+   "pass": true,
+   "detail": ""
+  },
+  {
+   "id": "test_settle_is_filtered",
+   "pass": true,
+   "detail": ""
+  },
+  {
+   "id": "test_since",
+   "pass": true,
+   "detail": ""
+  },
+  {
+   "id": "test_until",
+   "pass": true,
+   "detail": ""
+  },
+  {
+   "id": "test_without_options_nothing_changes",
+   "pass": true,
+   "detail": ""
+  }
+ ],
+ "pass": true,
+ "condition_words": []
+}

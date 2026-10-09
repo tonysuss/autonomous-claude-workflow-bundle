@@ -1,0 +1,84 @@
+{
+ "base_commit": "5de281b734d79d8cc6b3021086d2235aa7fa7090",
+ "criteria": [
+  {
+   "baseline": "it must fail on the input snapshot, reproducing the problem; interlock saw it fail there (run run-8e58143a1e1e4428)",
+   "check": "sh checks/expand.sh",
+   "id": "expand",
+   "needs": "observed from independent",
+   "statement": "`kvconf get` expands ${DATA_ROOT} in checks/expand.conf",
+   "status": "passes (Observed)"
+  },
+  {
+   "baseline": null,
+   "check": null,
+   "id": "spec",
+   "needs": "tested from independent",
+   "statement": "Every rule in the task holds: ${NAME}, ${NAME:-fallback} for unset or empty, $$ and other $ kept, the undefined-variable error with its line number, ParseOptions/ParseWithOptions, and --no-expand on get and dump",
+   "status": "passes (Tested)"
+  },
+  {
+   "baseline": "it must pass on the input snapshot, as a regression guard; interlock saw it pass there (run run-8fd5b74c922a4f89)",
+   "check": "go test ./...",
+   "id": "regression",
+   "needs": "tested from self",
+   "statement": "The existing Go tests pass",
+   "status": "passes (Tested)"
+  }
+ ],
+ "current_tree": "3a8e3dc7c34e49194ae4bd60a4fbf367351bb912",
+ "failures_to_fix": [],
+ "goal": "Configuration values should be able to use environment variables.\n\n- In unquoted and double-quoted values, `${NAME}` is replaced by the value of the environment variable `NAME`, and `${NAME:-fallback}` by its value, or by `fallback` when `NAME` is unset or empty.\n- `$$` stands for a literal `$`. A `$` followed by anything other than `{` or `$` is kept as it is.\n- Referring to an unset variable without a fallback is an error: parsing fails with `kvconf: line N: undefined variable \"NAME\"`, where N is the line number.\n- `Parse` and `Load` expand values. Add this API so callers can keep values literally:\n\n  ```go\n  type ParseOptions struct{ NoExpand bool }\n\n  func ParseWithOptions(r io.Reader, opts ParseOptions) (*Config, error)\n  ```\n\n  `Parse(r)` behaves like `ParseWithOptions(r, ParseOptions{})`.\n- `kvconf get` and `kvconf dump` accept a `--no-expand` flag, given before the file name, that keeps values literally: `kvconf get --no-expand app.conf paths.data`.\n\n`checks/expand.sh` checks the basic case. The tests run with `go test ./...`.\n",
+ "grant": {
+  "action_classes": [
+   "read",
+   "local_reversible"
+  ],
+  "grant_ids": [],
+  "landing_authority": "none",
+  "tools": {
+   "allow": [
+    "read",
+    "shell"
+   ],
+   "deny": [
+    "edit",
+    "shell:git push",
+    "shell:git commit"
+   ]
+  }
+ },
+ "next_moves": [],
+ "previous_result": {
+  "attempt_id": "att-bc106525300945d5",
+  "changed_paths": [
+   "README.md",
+   "cmd/kvconf/main.go",
+   "config.go",
+   "parser.go",
+   "parser_test.go"
+  ],
+  "open_questions": [],
+  "output_tree": "3a8e3dc7c34e49194ae4bd60a4fbf367351bb912",
+  "summary": "`Parse` and `Load` now expand `${NAME}`, `${NAME:-fallback}` and `$$` in unquoted and double-quoted values. An unset variable with no fallback fails with `kvconf: line N: undefined variable \"NAME\"`. `go test ./...` passes, including a new `TestExpand`, and `sh checks/expand.sh` passes when run through interlock.\n\n- **API:** I added `ParseOptions{NoExpand}` and `ParseWithOptions`. I also added `LoadWithOptions`, which you didn't ask for. The CLI needs it to pass the option to `Load`.\n- **CLI:** `kvconf get` and `kvconf dump` accept `--no-expand` before the file name. I only checked it by hand on `get` (it printed `${DATA_ROOT}/data`), not on `dump`, and no test covers it.\n- **Unterminated `${`:** this wasn't in the spec. I made it a parse error (`unterminated ${ in value`) rather than keeping it literally.\n- **Files changed:** `parser.go`, `config.go`, `cmd/kvconf/main.go`, `parser_test.go` and `README.md`.\n- **Claims recorded:** I recorded claims for `expand` (observed), `regression` (tested) and `spec` (tested). `expand` and `spec` still need the independent verifier."
+ },
+ "protected": [
+  "checks/expand.sh"
+ ],
+ "role": "verifier",
+ "scope": [
+  "*.go",
+  "cmd/kvconf/*.go",
+  "README.md",
+  "testdata/**"
+ ],
+ "state": "done",
+ "task_id": "go-env-expand",
+ "verifier_bindings": [
+  {
+   "attempt": "att-eb05aee5e2f94bae (verifier, completed)",
+   "bound": "launched by interlock"
+  }
+ ],
+ "workflow": "feature v1"
+}

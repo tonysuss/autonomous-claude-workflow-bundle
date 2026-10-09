@@ -1,0 +1,90 @@
+{
+ "attempts": [
+  {
+   "binding": {
+    "agent_type": null,
+    "host_agent": null,
+    "host_session": null,
+    "interactive": false,
+    "via": "interlock_launched"
+   },
+   "bound": "launched by interlock",
+   "epoch": 1,
+   "host": "claude-code",
+   "id": "att-ac261b70de044d31",
+   "role": "worker",
+   "status": "completed"
+  },
+  {
+   "binding": {
+    "agent_type": null,
+    "host_agent": null,
+    "host_session": null,
+    "interactive": false,
+    "via": "interlock_launched"
+   },
+   "bound": "launched by interlock",
+   "epoch": 1,
+   "host": "claude-code",
+   "id": "att-70e583a09e094ea7",
+   "role": "verifier",
+   "status": "completed"
+  }
+ ],
+ "evidence": {
+  "all_pass": true,
+  "any_fail": false,
+  "criteria": [
+   {
+    "criterion_id": "balances-csv",
+    "current_assessments": 1,
+    "current_claims": 1,
+    "current_runs": 2,
+    "evidence_id": "asm-7dd6dbc5122b4735",
+    "source": "assessment",
+    "stale": 0,
+    "strength": "observed",
+    "verdict": "pass"
+   },
+   {
+    "criterion_id": "spec",
+    "current_assessments": 1,
+    "current_claims": 1,
+    "current_runs": 0,
+    "evidence_id": "asm-5d9c3c27725c497d",
+    "source": "assessment",
+    "stale": 0,
+    "strength": "observed",
+    "verdict": "pass"
+   },
+   {
+    "criterion_id": "regression",
+    "current_assessments": 1,
+    "current_claims": 1,
+    "current_runs": 2,
+    "evidence_id": "asm-5ecccf5f32454256",
+    "source": "assessment",
+    "stale": 0,
+    "strength": "tested",
+    "verdict": "pass"
+   }
+  ]
+ },
+ "next_moves": [],
+ "task": {
+  "attempts_used": 1,
+  "blocked_reason": null,
+  "current_attempt": "att-ac261b70de044d31",
+  "current_tree": "1194ca8da21d52795abbadaf54e92bdfed073edb",
+  "id": "py-csv-format",
+  "integration_required": false,
+  "intent": "Add a `--format` option to `python3 -m tally balances` and `python3 -m tally settle`. It takes `text` (the default: today's output, unchanged) or `csv`.\n\n- `balances --format csv` prints the header `person,balance`, then one row per person in the same order as the text output, with the balance written the way the text output writes it (`36.00`, `-40.00`).\n- `settle --format csv` prints the header `from,to,amount`, then one row per transfer in the same order as the text output.\n- Fields are quoted the way Python's `csv` module quotes them by default (a name that contains a comma is wrapped in double quotes), and every line ends with `\\n`.\n- When there is nothing to list, the CSV output is the header line alone.\n- An unknown format is rejected by the argument parser, which exits with status 2.\n\n`checks/csv-format.sh` checks the `balances` case for `examples/trip.csv`. The tests run with `python3 -m unittest discover -s tests -q`.\n",
+  "lease_epoch": 1,
+  "max_attempts": 3,
+  "state": "done",
+  "workflow": {
+   "name": "feature",
+   "version": 1
+  }
+ }
+}

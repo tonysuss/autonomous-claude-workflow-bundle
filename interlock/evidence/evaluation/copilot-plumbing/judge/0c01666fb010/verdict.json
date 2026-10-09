@@ -1,0 +1,38 @@
+{
+ "anon_id": "0c01666fb010",
+ "task": "py-thousands",
+ "cases": [
+  {
+   "id": "existing_tests",
+   "pass": true,
+   "detail": "19 passed"
+  },
+  {
+   "id": "test_balances_separators",
+   "pass": true,
+   "detail": ""
+  },
+  {
+   "id": "test_export_unchanged",
+   "pass": true,
+   "detail": ""
+  },
+  {
+   "id": "test_millions",
+   "pass": true,
+   "detail": ""
+  },
+  {
+   "id": "test_settle_separators",
+   "pass": true,
+   "detail": ""
+  },
+  {
+   "id": "test_small_amounts_unchanged",
+   "pass": true,
+   "detail": ""
+  }
+ ],
+ "pass": true,
+ "condition_words": []
+}

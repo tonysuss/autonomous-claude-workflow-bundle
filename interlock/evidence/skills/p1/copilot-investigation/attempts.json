@@ -1,0 +1,132 @@
+[
+  {
+    "agent": null,
+    "binding": {
+      "agent_type": null,
+      "host_agent": null,
+      "host_session": "be5ad9b5-ff40-42a9-b1f6-139a2514d4e3",
+      "interactive": true,
+      "via": "session"
+    },
+    "effective_grant": {
+      "action_classes": [
+        "read",
+        "local_reversible"
+      ],
+      "grant_ids": [],
+      "landing_authority": "none",
+      "tools": {
+        "allow": [
+          "read",
+          "shell",
+          "web"
+        ],
+        "deny": [
+          "edit",
+          "shell:git push",
+          "shell:git commit"
+        ]
+      }
+    },
+    "ended_at": "2026-10-06T01:57:06.385040019Z",
+    "epoch": 1,
+    "host": {
+      "host": "copilot",
+      "version": "1.0.91"
+    },
+    "id": "att-7fd69edfaf9741a2",
+    "model": null,
+    "role": "worker",
+    "started_at": "2026-10-06T01:56:59.484038292Z",
+    "status": "completed",
+    "task_id": "export-tries",
+    "token_hash": "5b9ed78f19d1b7db9e85c1414fc3c1ec30ac25a3eb3756225fe5472b4382d902",
+    "worktree": "/tmp/.tmpDJbkcd/.interlock/worktrees/export-tries-worker-1"
+  },
+  {
+    "agent": null,
+    "binding": {
+      "agent_type": null,
+      "host_agent": null,
+      "host_session": "de5c237a-f01a-4667-9eb8-10667f207b36",
+      "interactive": true,
+      "via": "unbound"
+    },
+    "effective_grant": {
+      "action_classes": [
+        "read",
+        "local_reversible"
+      ],
+      "grant_ids": [],
+      "landing_authority": "none",
+      "tools": {
+        "allow": [
+          "read",
+          "shell"
+        ],
+        "deny": [
+          "edit",
+          "shell:git push",
+          "shell:git commit"
+        ]
+      }
+    },
+    "ended_at": "2026-10-06T01:57:01.799918115Z",
+    "epoch": 1,
+    "host": {
+      "host": "copilot",
+      "version": "1.0.91"
+    },
+    "id": "att-97c88f95d49a46b7",
+    "model": null,
+    "role": "verifier",
+    "started_at": "2026-10-06T01:57:01.335336274Z",
+    "status": "completed",
+    "task_id": "export-tries",
+    "token_hash": "94ea06d538728b30718c7543fd0d63764e1b84c5671af5b2d60464e002ec74ec",
+    "worktree": "/tmp/.tmpDJbkcd/.interlock/worktrees/export-tries-verifier-1"
+  },
+  {
+    "agent": "interlock-verifier",
+    "binding": {
+      "agent_type": null,
+      "host_agent": null,
+      "host_session": null,
+      "interactive": false,
+      "via": "interlock_launched"
+    },
+    "effective_grant": {
+      "action_classes": [
+        "read",
+        "local_reversible"
+      ],
+      "grant_ids": [],
+      "landing_authority": "none",
+      "tools": {
+        "allow": [
+          "read",
+          "shell"
+        ],
+        "deny": [
+          "edit",
+          "shell:git push",
+          "shell:git commit"
+        ]
+      }
+    },
+    "ended_at": "2026-10-06T01:57:06.325061646Z",
+    "epoch": 1,
+    "host": {
+      "host": "copilot",
+      "version": "1.0.91"
+    },
+    "id": "att-7c3a69690c2d4921",
+    "model": null,
+    "role": "verifier",
+    "started_at": "2026-10-06T01:57:03.785026818Z",
+    "status": "completed",
+    "task_id": "export-tries",
+    "token_hash": "35ad44800b1579c10106d2e87c9dfc275ed73b6cf759c8eb74025eb1cef76cf9",
+    "worktree": "/tmp/.tmpDJbkcd/.interlock/worktrees/export-tries-verifier-2"
+  }
+]

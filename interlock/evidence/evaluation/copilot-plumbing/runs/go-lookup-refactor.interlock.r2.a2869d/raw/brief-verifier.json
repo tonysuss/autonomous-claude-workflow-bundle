@@ -1,0 +1,69 @@
+{
+ "task_id": "go-lookup-refactor",
+ "role": "verifier",
+ "goal": "`getters.go` repeats the same section-and-key lookup in `Get`, `GetInt`, `GetBool` and `GetDuration`. Move it into one unexported method,\n\n```go\nfunc (c *Config) lookup(section, key string) (string, error)\n```\n\nand make all four getters use it, so that none of them reads `c.sections` directly any more.\n\nThis is a pure refactor. The exported API, every returned value and every error message must stay exactly as they are now. The tests run with `go test ./...`.\n",
+ "workflow": "refactor v1",
+ "state": "done",
+ "scope": [
+  "getters.go",
+  "*_test.go"
+ ],
+ "protected": [],
+ "base_commit": "5ce47f1e462831e3b89facb176be0829d0461fde",
+ "current_tree": "f8b19e9ee23d48468687601ba169542f721c3a3e",
+ "criteria": [
+  {
+   "id": "structure",
+   "statement": "Get, GetInt, GetBool and GetDuration all call one unexported method lookup(section, key string) (string, error), and none of them reads c.sections directly",
+   "check": null,
+   "baseline": null,
+   "needs": "static from independent",
+   "status": "passes (Static)"
+  },
+  {
+   "id": "behaviour",
+   "statement": "The exported API, every returned value and every error message of the four getters are exactly as before the refactor",
+   "check": null,
+   "baseline": null,
+   "needs": "tested from independent",
+   "status": "passes (Tested)"
+  },
+  {
+   "id": "regression",
+   "statement": "The existing Go tests pass",
+   "check": "go test ./...",
+   "baseline": "it must pass on the input snapshot, as a regression guard; interlock saw it pass there (run run-2b5d3269a7524878)",
+   "needs": "tested from self",
+   "status": "passes (Tested)"
+  }
+ ],
+ "previous_result": {
+  "attempt_id": "att-54bb28b9483545a3",
+  "summary": "Applied the scripted change.\n",
+  "changed_paths": [
+   "getters.go"
+  ],
+  "open_questions": []
+ },
+ "failures_to_fix": [],
+ "grant": {
+  "action_classes": [
+   "read",
+   "local_reversible"
+  ],
+  "tools": {
+   "allow": [
+    "read",
+    "shell"
+   ],
+   "deny": [
+    "edit",
+    "shell:git push",
+    "shell:git commit"
+   ]
+  },
+  "landing_authority": "none",
+  "grant_ids": []
+ },
+ "next_moves": []
+}

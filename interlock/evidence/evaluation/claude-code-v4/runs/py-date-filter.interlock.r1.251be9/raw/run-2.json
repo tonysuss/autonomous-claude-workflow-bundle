@@ -1,0 +1,124 @@
+{
+  "task_id": "py-date-filter",
+  "host": "claude-code",
+  "final_state": "done",
+  "stopped_because": "done",
+  "reconciled": [
+    "att-67ba08e82a244785"
+  ],
+  "reattached": [],
+  "interrupted": false,
+  "baseline": [
+    {
+      "criterion_id": "since",
+      "run_id": "run-d61a4797457c4f6b",
+      "exit_code": 1,
+      "vacuous": null,
+      "problem": null
+    },
+    {
+      "criterion_id": "regression",
+      "run_id": "run-f99013f7632743be",
+      "exit_code": 0,
+      "vacuous": null,
+      "problem": null
+    }
+  ],
+  "sessions": [
+    {
+      "role": "worker",
+      "attempt_id": "att-5fff6e2c3e5641dc",
+      "epoch": 2,
+      "exit": {
+        "exit": "completed"
+      },
+      "duration_ms": 32479,
+      "summary": "`balances` and `settle` now take `--since DATE` and `--until DATE`, and I've recorded my claims in interlock. The independent verifier hasn't checked it yet, and the `since` and `spec` criteria need that.\n\n- **Cause:** nothing filtered entries by date. Entries also didn't remember their source line, which the error message needs.\n- **Change:** `tally/cli.py` adds the two options to `balances` and `settle` (not `export`). `tally/csvio.py` adds strict `YYYY-MM-DD` parsing and the inclusive filter. `tally/ledger.py` gives `Entry` an optional `line` field that doesn't affect equality. I also updated `README.md` and added tests in `tests/test_cli.py`.\n- **Checks:** `interlock check run` passed for `since` and `regression` (the unit tests run 22, all passing).\n- **Manual runs:**\n  - A bad option date like `2026-6-2` exits 2.\n  - An invalid entry date gives `file:line: invalid date '…'` with status 1, but only when a filter is given.\n  - `settle --until 2026-06-01` works.\n\nI didn't edit `checks/date-filter.sh`.",
+      "denials": 0,
+      "transcript": "/tmp/agent-ws/1555ad9053/tally/.interlock/transcripts/att-5fff6e2c3e5641dc.jsonl",
+      "moves": [
+        {
+          "signal": "G3",
+          "from": "running",
+          "to": "awaiting_verification",
+          "reason": "result accepted from attempt att-5fff6e2c3e5641dc at epoch 2"
+        }
+      ],
+      "ended_because": "completed",
+      "end_detail": null,
+      "spent": {
+        "wall_ms": 32479,
+        "cost_usd": 0.12214060000000002,
+        "premium_requests": null,
+        "turns": 6,
+        "model": "claude-sonnet-5-5"
+      },
+      "cost_usd": 0.12214060000000002,
+      "premium_requests": null,
+      "host_session_id": "daf35f47-57e4-4450-bbdc-88be3b067c1b",
+      "reattached": false,
+      "stopped_strays": [],
+      "export": null
+    },
+    {
+      "role": "verifier",
+      "attempt_id": "att-242215a7ff9649bc",
+      "epoch": 2,
+      "exit": {
+        "exit": "completed"
+      },
+      "duration_ms": 17734,
+      "summary": "All three criteria pass on tree 67ada62.\n\n- **since:** passes (observed). `interlock check run --criterion since` passed on this tree and printed `ok: balances --since 2026-06-02`.\n- **spec:** passes (observed). I ran `balances` and `settle` with each of these cases:\n  - `--since` and `--until` are inclusive, work alone, and work together.\n  - An invalid option date (`2026-02-30`, `x`) exits 2.\n  - A bad entry date with a filter gives `tally: /tmp/bad.csv:3: invalid date '2026-13-01'` and exits 1.\n  - The same file without a filter runs normally.\n  - Output without the options is unchanged.\n  - `checks/` is untouched.\n- **regression:** passes (tested). `python3 -m unittest discover -s tests -q` ran 22 tests, all OK.",
+      "denials": 0,
+      "transcript": "/tmp/agent-ws/1555ad9053/tally/.interlock/transcripts/att-242215a7ff9649bc.jsonl",
+      "moves": [
+        {
+          "signal": "G4",
+          "from": "awaiting_verification",
+          "to": "verified",
+          "reason": "every required criterion has current passing evidence"
+        },
+        {
+          "signal": "G7",
+          "from": "verified",
+          "to": "done",
+          "reason": "verified; the workflow needs no delivery"
+        }
+      ],
+      "ended_because": "completed",
+      "end_detail": null,
+      "spent": {
+        "wall_ms": 17734,
+        "cost_usd": 0.0868054,
+        "premium_requests": null,
+        "turns": 4,
+        "model": "claude-sonnet-5-5"
+      },
+      "cost_usd": 0.0868054,
+      "premium_requests": null,
+      "host_session_id": "9f24c2a3-5a1c-430a-aaf0-0179e4b6de21",
+      "reattached": false,
+      "stopped_strays": [],
+      "export": null
+    }
+  ],
+  "pin": null,
+  "spent": {
+    "wall_ms": 78235,
+    "cost_usd": 0.20894600000000002,
+    "premium_requests": null,
+    "turns": 10
+  },
+  "exports": [
+    {
+      "task_id": "py-date-filter",
+      "commit": "1fa440742246d46f1d2c2c5d79abb8a395325297",
+      "tree": "dd83b3f6400575c9bb562de13c1e405ce938ad9d",
+      "base": "89d6da274a486532b5d8579ffd9b04e3c7e2e421",
+      "reference": "refs/heads/interlock/wip/py-date-filter",
+      "source": "/tmp/agent-ws/1555ad9053/tally/.interlock/worktrees/py-date-filter-worker-1",
+      "attempt_id": "att-67ba08e82a244785",
+      "note": "/tmp/agent-ws/1555ad9053/tally/.interlock/exports/py-date-filter.md"
+    }
+  ]
+}

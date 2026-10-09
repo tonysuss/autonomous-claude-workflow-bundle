@@ -1,0 +1,12 @@
+{
+ "--effort flag": {
+  "result": "effort=low",
+  "cost_usd": 0.028718999999999998
+ },
+ "CLAUDE_CODE_EFFORT_LEVEL": {
+  "result": "effort=low",
+  "cost_usd": 0.0287022
+ },
+ "pinned": "low",
+ "both_pinned": true
+}

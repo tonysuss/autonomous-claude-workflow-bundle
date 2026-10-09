@@ -1,0 +1,11 @@
+# Harness metadata. Hidden: never copied into an agent's working copy.
+id = "go-duration-days"
+kind = "feature"
+language = "go"
+repo = "kvconf"
+scope = ["getters.go", "*_test.go", "README.md"]
+judge = "hidden/judge.py"
+# What the prompt leaves for the engineer to find: GetDuration takes Go
+# duration syntax, so a new unit should compose (1d12h) and take fractions
+# (1.5d) like the others, and bad values keep their message.
+harder = "edge case implied by existing code"

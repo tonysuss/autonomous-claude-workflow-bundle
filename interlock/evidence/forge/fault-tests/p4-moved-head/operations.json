@@ -1,0 +1,72 @@
+[
+  {
+    "created_at": "2026-10-06T01:11:58.295901901Z",
+    "id": "op-cc2187e174d440b5",
+    "intent": {
+      "base": "main",
+      "expected_head_sha": "d9fbb4eb3affbb47614d22503ccd6840cedbd853",
+      "pull_request": 1
+    },
+    "kind": "merge",
+    "outcome": {
+      "seen": {
+        "call": "/tmp/.tmp1FznWS/gh/gh pr merge 1 --merge --match-head-commit d9fbb4eb3affbb47614d22503ccd6840cedbd853 exited 1: GraphQL: Head branch was modified. Review and try the merge again. (mergePullRequest)",
+        "observation": {
+          "detail": {
+            "auto_merge": false,
+            "base_branch": "main",
+            "head": "253304206352d8ffbf0257f4077b3de916bfae40",
+            "landed": null,
+            "merged_at": null,
+            "number": 1,
+            "state": "open"
+          },
+          "seen": "pr"
+        }
+      },
+      "verdict": {
+        "merged_at": null,
+        "report": {
+          "outcome": "refused",
+          "reason": "the head of pull request #1 moved to 253304206352 before the merge was confirmed; it was pinned to d9fbb4eb3aff"
+        },
+        "verdict": "land"
+      }
+    },
+    "state": "failed",
+    "task_id": "fix-add",
+    "updated_at": "2026-10-06T01:11:59.076604913Z"
+  },
+  {
+    "created_at": "2026-10-06T01:11:58.441343780Z",
+    "id": "op-f987e323a19b458a",
+    "intent": {
+      "base": "main",
+      "expected_head_sha": "d9fbb4eb3affbb47614d22503ccd6840cedbd853"
+    },
+    "kind": "open_pr",
+    "outcome": {
+      "seen": {
+        "errors": [],
+        "observation": {
+          "detail": {
+            "auto_merge": false,
+            "base_branch": "main",
+            "head": "d9fbb4eb3affbb47614d22503ccd6840cedbd853",
+            "landed": null,
+            "merged_at": null,
+            "number": 1,
+            "state": "open"
+          },
+          "seen": "pr"
+        }
+      },
+      "verdict": {
+        "verdict": "confirmed"
+      }
+    },
+    "state": "confirmed",
+    "task_id": "fix-add",
+    "updated_at": "2026-10-06T01:11:58.714308953Z"
+  }
+]

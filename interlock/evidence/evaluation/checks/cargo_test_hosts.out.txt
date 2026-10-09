@@ -1,0 +1,542 @@
+$ git rev-parse HEAD
+fe4597ddb02320d3cd7668694596553323272d70
+$ CARGO_PROFILE_DEV_DEBUG=0 CARGO_INCREMENTAL=0 INTERLOCK_REQUIRE_HOSTS=1 INTERLOCK_COPILOT_BIN=<copilot 1.0.91> cargo test --workspace
+    Finished `test` profile [unoptimized] target(s) in 0.18s
+     Running unittests src/lib.rs (target/debug/deps/interlock_adapter-6d8b6baeef307412)
+
+running 37 tests
+test claude_code::tests::a_session_stopped_at_its_cost_cap_says_so ... ok
+test claude_code::tests::detects_capabilities_from_help ... ok
+test claude_code::tests::plans_a_session_with_the_prompt_on_stdin ... ok
+test copilot::tests::detects_capabilities_from_help ... ok
+test copilot::tests::missing_flags_are_not_claimed ... ok
+test claude_code::tests::summarizes_the_result_event ... ok
+test copilot::tests::plans_a_session ... ok
+test env::tests::claude_code_sessions_get_the_allowlist_and_nothing_that_binds_them_to_a_parent ... ok
+test env::tests::copilot_sessions_get_their_provider_settings_and_github_tokens_only ... ok
+test copilot::tests::summarizes_jsonl_output ... ok
+test hooks::tests::deny_carries_the_reason_for_both_hosts ... ok
+test hooks::tests::maps_tools_to_host_neutral_actions ... ok
+test hooks::tests::parses_claude_format_payloads_from_either_host ... ok
+test hooks::tests::parses_copilot_native_payloads ... ok
+test env::tests::pass_patterns_are_exact_names_or_prefixes ... ok
+test session::tests::a_cleared_environment_holds_only_what_the_plan_gives ... ok
+test session::tests::a_host_killed_by_a_signal_crashed ... ok
+test session::tests::a_host_that_exits_97_is_not_mistaken_for_an_unreleased_gate ... ok
+test session::tests::a_missing_host_binary_is_a_host_error ... ok
+test probe::tests::a_hung_probe_is_killed ... ok
+test session::tests::a_non_zero_exit_is_a_failure ... ok
+test session::tests::a_process_that_leaves_the_group_is_found_by_its_marker ... ok
+test session::tests::a_reused_pid_is_not_mistaken_for_the_session ... ok
+test session::tests::an_abandoned_gate_never_starts_the_host ... ok
+test session::tests::a_reattached_host_that_dies_without_its_report_crashed ... ok
+test probe::tests::a_query_that_hangs_once_is_tried_again ... ok
+test session::tests::completes_and_keeps_the_transcript ... ok
+test session::tests::plugin_hooks_point_at_the_binary ... ok
+test session::tests::feeds_the_prompt_on_stdin ... ok
+test session::tests::stopping_a_session_stops_its_whole_group ... ok
+test session::tests::sign_in_failures_and_host_cost_caps_are_told_apart ... ok
+test session::tests::the_gate_holds_the_host_until_released ... ok
+test tests::both_hosts_are_registered_and_copilot_comes_first ... ok
+test tests::one_policy_translates_to_each_host ... ok
+test session::tests::times_out_and_cancels ... ok
+test session::tests::attach_follows_a_session_another_supervisor_started ... ok
+test probe::tests::a_background_process_holding_the_pipes_cannot_hold_the_probe ... ok
+
+test result: ok. 37 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 4.03s
+
+     Running unittests src/main.rs (target/debug/deps/interlock-8414343466b979d7)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/cli.rs (target/debug/deps/cli-fbb7dd5a4b845e4a)
+
+running 10 tests
+test assessments_weaker_than_the_criterion_needs_come_back_with_a_warning ... ok
+test a_crash_mid_apply_loses_nothing_and_the_replay_applies_once ... ok
+test check_run_records_what_interlock_saw_and_baselines_catch_empty_checks ... ok
+test grants_reject_the_irreversible_class ... ok
+test one_grant_translates_to_both_hosts ... ok
+test a_bug_fix_runs_from_create_to_done ... ok
+test schema_validate_checks_files ... ok
+test policy_check_pauses_irreversible_actions_and_respects_grants ... ok
+test refusals_exit_2_with_a_json_reason ... ok
+test the_brief_is_built_from_records ... ok
+
+test result: ok. 10 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 2.08s
+
+     Running tests/deliver_copilot.rs (target/debug/deps/deliver_copilot-fb0b57b294b62005)
+
+running 3 tests
+test without_landing_authority_interlock_run_blocks_at_verified_with_the_reason ... ok
+test walkthrough_step_7_a_verified_bug_fix_lands_through_g5_and_g6_on_copilot ... ok
+test a_run_killed_right_after_the_merge_call_is_finished_by_the_next_run ... ok
+
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 22.69s
+
+     Running tests/deliver_live.rs (target/debug/deps/deliver_live-18740270862a511f)
+
+running 1 test
+test the_export_retry_walkthrough_is_delivered_on_claude_code ... ignored, live: makes real model calls on Claude Code
+
+test result: ok. 0 passed; 0 failed; 1 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/forge_cli.rs (target/debug/deps/forge_cli-4ee940658aa9727b)
+
+running 9 tests
+test integrate_run_delivers_and_exits_zero ... ok
+test a_moved_head_r2_needs_no_verifier_session ... ok
+test invariant_7_a_restarted_run_reconciles_before_anything_else ... ok
+test invariant_7_a_crash_right_after_the_merge_call_is_reconciled_to_done ... ok
+test p4_without_landing_authority_the_task_blocks_at_verified ... ok
+test p4_a_changed_base_invalidates_the_evidence ... ok
+test p4_a_moved_head_refuses_the_merge ... ok
+test r3_forge_commands_are_the_operators_inside_an_attempt ... ok
+test r6_a_tree_recorded_while_integrating_is_r2_under_interlock_run ... ok
+
+test result: ok. 9 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 5.64s
+
+     Running tests/guided_cli.rs (target/debug/deps/guided_cli-210b4caa95687921)
+
+running 15 tests
+test a_task_id_cannot_climb_out_of_the_store ... ok
+test an_investigation_changes_nothing_at_all ... ok
+test an_empty_scope_allows_no_change ... ok
+test cancel_closes_the_attempts_and_removes_their_worktrees ... ok
+test a_guided_attempt_governs_only_the_session_that_opened_it_until_submitted ... ok
+test result_submit_reads_the_change_from_the_tree_and_fails_closed ... ok
+test notes_and_tree_auto_follow_the_attempt_not_the_directory ... ok
+test setup_never_writes_through_a_symlink_or_outside_the_repository ... ok
+test setup_installs_prefixed_skills_and_never_overwrites_what_is_not_its_own ... ok
+test skills_validate_checks_skills_and_agent_files ... ok
+test setup_refuses_to_save_a_host_report_without_capabilities ... ok
+test guided_hooks_keep_every_caller_out_of_interlocks_state ... ok
+test the_store_is_found_from_a_worktree_and_never_made_inside_one ... ok
+test stop_guard_messages_are_complete_and_ask_each_role_for_its_own_record ... ok
+test the_worker_cannot_verify_its_own_work_and_only_a_bound_verifier_counts ... ok
+
+test result: ok. 15 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 5.48s
+
+     Running tests/guided_copilot.rs (target/debug/deps/guided_copilot-eed6235e08be0f3d)
+
+running 2 tests
+test an_investigation_runs_end_to_end_in_guidance_mode ... ok
+test a_bug_fix_runs_end_to_end_in_guidance_mode ... ok
+
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 21.55s
+
+     Running tests/run_copilot.rs (target/debug/deps/run_copilot-a10ab29fa3792316)
+
+running 6 tests
+test a_reproduction_that_already_passes_blocks_the_task ... ok
+test a_regression_check_that_tests_nothing_blocks_the_task_before_any_worker ... ok
+test a_failed_verification_sends_the_work_back_and_the_rework_is_verified ... ok
+test a_bug_fix_runs_to_done_on_copilot ... ok
+test a_worker_that_rewrites_the_check_is_rejected_and_the_next_must_really_fix_it ... ok
+test the_stop_guard_holds_the_worker_and_hooks_deny_what_it_was_not_granted ... ok
+
+test result: ok. 6 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 36.52s
+
+     Running tests/run_fake_host.rs (target/debug/deps/run_fake_host-3c5a2d7189a7e458)
+
+running 17 tests
+test a_dead_sessions_children_are_stopped_at_restart ... ok
+test a_bad_config_does_not_stand_in_the_way_of_recovery ... ok
+test a_restart_for_one_task_ends_sessions_left_by_another ... ok
+test a_signal_during_a_baseline_check_stops_it_and_the_first_signal_is_reported ... ok
+test a_skills_plugin_is_loaded_into_every_session_and_a_non_plugin_is_refused ... ok
+test an_effort_the_host_cannot_take_is_refused_before_anything_starts ... ok
+test budgets_must_be_finite_amounts ... ok
+test max_sessions_zero_runs_the_baseline_only ... ok
+test a_signal_while_the_host_is_inspected_opens_no_attempt ... ok
+test pausing_safely_keeps_work_the_worker_committed ... ok
+test processes_that_leave_the_session_are_stopped_when_it_ends ... ok
+test sessions_get_an_allowlisted_environment_and_the_effort_asked_for ... ok
+test sighup_stops_a_run_like_sigterm ... ok
+test task_cancel_stops_a_session_whose_supervisor_is_gone ... ok
+test a_reattached_session_leaves_no_strays ... ok
+test only_one_supervisor_gets_the_lock_however_many_race ... ok
+test an_escaped_worker_process_cannot_forge_the_verifiers_evidence ... ok
+
+test result: ok. 17 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 11.17s
+
+     Running tests/run_robustness.rs (target/debug/deps/run_robustness-86fb859f50422f88)
+
+running 10 tests
+test a_host_version_that_differs_from_its_pin_blocks_the_run ... ok
+test a_session_that_died_with_its_supervisor_is_reconciled_and_retried ... ok
+test a_session_timeout_retries_until_the_attempts_are_spent ... ok
+test a_spent_cost_budget_fails_the_task ... ok
+test a_spent_wall_clock_budget_fails_the_task ... ok
+test a_supervisor_killed_mid_session_reattaches_and_carries_on ... ok
+test a_verifier_session_is_reattached_too ... ok
+test sigint_cancels_the_session_and_the_exported_work_resumes ... ok
+test sigterm_stops_a_run_the_same_way ... ok
+test task_cancel_from_another_terminal_stops_the_running_session ... ok
+
+test result: ok. 10 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 99.76s
+
+     Running tests/skills_load.rs (target/debug/deps/skills_load-2a780bc4902730c9)
+
+running 4 tests
+test every_generated_skill_loads_on_copilot ... ok
+test every_generated_skill_and_the_verifier_load_on_claude_code ... ok
+test every_model_invoked_skill_reaches_copilots_model_through_the_skill_tool ... ok
+test a_person_can_type_the_design_skill_in_copilots_interactive_session ... ok
+
+test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 7.63s
+
+     Running unittests src/lib.rs (target/debug/deps/interlock_core-28bb3a946fd31ec5)
+
+running 20 tests
+test classify::tests::agents_cannot_run_operator_commands ... ok
+test classify::tests::chained_commands_take_the_highest_class ... ok
+test classify::tests::classes ... ok
+test classify::tests::forge_commands_belong_to_the_operator ... ok
+test classify::tests::force_push_is_irreversible_wherever_the_flag_sits ... ok
+test classify::tests::merges_through_the_api_are_landing ... ok
+test classify::tests::options_before_the_subcommand_do_not_hide_it ... ok
+test classify::tests::pointing_interlock_at_another_gh_or_store_is_the_operators_call ... ok
+test classify::tests::pushing_anywhere_but_an_interlock_branch_is_landing ... ok
+test classify::tests::wrappers_and_substitutions_do_not_hide_the_command ... ok
+test grants::tests::grants_expire_and_are_scoped ... ok
+test grants::tests::effective_grant_is_an_intersection ... ok
+test grants::tests::host_deny_and_grant_deny_both_apply ... ok
+test grants::tests::irreversible_is_never_grantable ... ok
+test scope::tests::globs ... ok
+test scope::tests::placement ... ok
+test tools::tests::deny_wins ... ok
+test tools::tests::families_and_prefixes ... ok
+test vacuity::tests::empty_runs_are_recognized ... ok
+test vacuity::tests::real_runs_are_not ... ok
+
+test result: ok. 20 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/budget.rs (target/debug/deps/budget-bd52f2c1587942a9)
+
+running 3 tests
+test a_budget_is_exhausted_by_any_limit_it_sets ... ok
+test resuming_from_an_export_needs_a_ready_task ... ok
+test spending_sums_over_attempts_in_each_hosts_unit ... ok
+
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/checks.rs (target/debug/deps/checks-58884cd33c0124c9)
+
+running 11 tests
+test a_run_that_checked_nothing_never_counts ... ok
+test a_reproduction_must_fail_on_the_input_snapshot ... ok
+test a_checked_criterion_needs_interlock_to_have_seen_the_check_pass ... ok
+test a_regression_guard_must_pass_and_test_something_on_the_input_snapshot ... ok
+test a_verifier_run_that_fails_fails_the_criterion_but_a_worker_run_does_not ... ok
+test an_empty_scope_allows_no_change_and_double_star_allows_any ... ok
+test an_investigation_rejects_any_change_whatever_its_scope ... ok
+test an_unbound_verifier_cannot_pass_a_criterion_without_a_check ... ok
+test the_run_must_come_from_an_allowed_producer_and_this_tree ... ok
+test results_that_leave_the_scope_or_touch_the_checks_are_rejected ... ok
+test vacuous_runs_change_nothing ... ok
+
+test result: ok. 11 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.03s
+
+     Running tests/delivery.rs (target/debug/deps/delivery-d219e9d1d8470e9f)
+
+running 16 tests
+test a_merge_into_another_branch_never_lands_the_task ... ok
+test a_moved_base_makes_the_evidence_stale_and_r2_follows ... ok
+test a_merge_that_landed_on_a_base_nobody_verified_blocks_instead_of_g6 ... ok
+test a_merge_of_the_expected_head_onto_the_verified_base_is_g6_and_any_other_head_is_not ... ok
+test a_reported_merge_git_cannot_see_is_unknown ... ok
+test a_planned_landing_changes_only_when_someone_merged_or_moved_the_head ... ok
+test branch_names_escape_what_git_refuses_and_stay_distinct ... ok
+test an_open_pull_request_tells_a_moved_head_from_a_merge_that_never_happened ... ok
+test every_call_needs_landing_authority_at_the_time_of_the_call ... ok
+test disarming_is_confirmed_only_when_auto_merge_is_off ... ok
+test no_answer_is_unknown_never_a_guess ... ok
+test only_a_block_on_an_unknown_outcome_lifts_when_the_forge_answers ... ok
+test opening_a_pull_request_is_confirmed_only_at_the_expected_head ... ok
+test with_operator_authority_interlock_opens_the_pull_request_but_never_merges ... ok
+test branch_names_are_injective_and_valid ... ok
+test only_the_pinned_head_ever_lands ... ok
+
+test result: ok. 16 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.10s
+
+     Running tests/evidence_props.rs (target/debug/deps/evidence_props-a8b6b02367249bc7)
+
+running 6 tests
+test no_output_tree_means_not_yet ... ok
+test claims_never_pass_independent_criteria ... ok
+test a_new_policy_digest_invalidates_everything ... ok
+test order_does_not_matter ... ok
+test current_independent_failure_always_wins ... ok
+test stale_evidence_never_counts ... ok
+
+test result: ok. 6 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.23s
+
+     Running tests/lifecycle.rs (target/debug/deps/lifecycle-3314b27f688a7901)
+
+running 11 tests
+test creation_rejects_tasks_that_could_never_be_verified ... ok
+test bug_fix_happy_path_reaches_done_through_g7 ... ok
+test a_missing_independent_verifier_blocks_and_keeps_the_work ... ok
+test changing_a_criterion_changes_the_policy_digest ... ok
+test g1_waits_for_dependencies ... ok
+test failed_check_sends_work_back_through_r1_then_fails_when_budget_is_spent ... ok
+test g2_blocks_when_a_required_capability_has_no_fallback ... ok
+test terminal_tasks_refuse_every_move ... ok
+test g5_without_landing_authority_blocks_at_verified ... ok
+test g2_uses_declared_fallbacks_for_optional_capabilities ... ok
+test verifiers_cannot_claim_and_workers_cannot_assess ... ok
+
+test result: ok. 11 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running unittests src/lib.rs (target/debug/deps/interlock_forge-c6c320120d0cfa52)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/deliver.rs (target/debug/deps/deliver-fbe89596173c5b0a)
+
+running 16 tests
+test a_merge_refused_by_policy_blocks_with_what_the_forge_said ... ok
+test a_merge_call_that_dies_unanswered_is_settled_from_what_the_forge_shows ... ok
+test a_head_that_moves_during_the_merge_is_refused_and_r2_sends_the_task_back ... ok
+test a_changed_base_invalidates_the_evidence_and_the_rebased_tree_lands_after_reverification ... ok
+test a_merge_the_forge_accepted_but_has_not_done_stays_in_flight_until_reconciled ... ok
+test a_verified_task_lands_only_at_its_verified_head ... ok
+test an_unknown_outcome_blocks_the_task_until_reconcile_can_tell ... ok
+test failing_checks_block_the_task_with_the_reason ... ok
+test auto_merge_is_armed_at_the_verified_head_and_confirmed_when_the_forge_merges ... ok
+test every_forge_call_finds_its_operation_already_started ... ok
+test pending_checks_hold_the_merge_until_they_pass ... ok
+test revoking_landing_authority_stops_the_merge_before_the_call ... ok
+test without_landing_authority_the_task_blocks_at_verified_and_the_forge_is_untouched ... ok
+test refs_are_kept_from_g5_until_the_task_is_done ... ok
+test with_auto_merge_configured_a_ready_pull_request_merges_directly ... ok
+test the_verified_head_is_the_same_commit_in_another_clone_a_second_later_and_never_signed ... ok
+
+test result: ok. 16 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 3.97s
+
+     Running tests/readiness.rs (target/debug/deps/readiness-1689ded4ca1d7ae2)
+
+running 5 tests
+test a_pull_request_retargeted_to_another_branch_is_not_ready_even_on_the_same_commit ... ok
+test reads_checks_runs_and_commit_statuses ... ok
+test checks_and_mergeability_decide_wait_or_refuse ... ok
+test reads_when_a_pull_request_was_merged ... ok
+test ready_only_at_the_verified_head_on_the_verified_base_with_checks_green ... ok
+
+test result: ok. 5 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/regressions.rs (target/debug/deps/regressions-e17367b8779f2e8c)
+
+running 14 tests
+test a_grant_revoked_while_auto_merge_is_armed_disarms_it ... ok
+test a_merge_made_after_the_grant_ended_is_not_g6 ... ok
+test a_lagging_head_after_interlocks_own_push_is_read_again_not_blocked ... ok
+test a_pull_request_retargeted_to_another_branch_is_not_merged ... ok
+test a_reported_merge_git_cannot_see_on_the_base_branch_never_lands ... ok
+test an_operator_merge_at_another_head_is_not_g6 ... ok
+test a_tree_recorded_while_integrating_is_r2_never_a_merge ... ok
+test an_armed_auto_merge_that_lands_on_a_moved_base_blocks_instead_of_g6 ... ok
+test an_operator_merge_onto_a_moved_base_is_not_g6 ... ok
+test an_unanswered_merge_call_stays_open_until_reconcile_sees_the_merge ... ok
+test no_checks_at_all_is_not_ready_until_ci_has_had_time ... ok
+test the_base_is_read_with_git_right_before_the_merge ... ok
+test with_operator_authority_interlock_opens_the_pull_request_and_the_operator_merges ... ok
+test a_hung_gh_times_out_and_a_lingering_child_does_not_hold_interlock ... ok
+
+test result: ok. 14 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 7.17s
+
+     Running unittests src/lib.rs (target/debug/deps/interlock_schema-5ba1a4878a9ee918)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/conformance.rs (target/debug/deps/conformance-531ae04730c06da6)
+
+running 7 tests
+test budgets_may_limit_time_and_cost ... ok
+test evidence_must_carry_a_full_currency_key ... ok
+test every_record_kind_round_trips_through_its_schema ... ok
+test check_runs_conform_and_pass_only_when_they_checked_something ... ok
+test no_grant_can_cover_the_irreversible_class ... ok
+test unknown_fields_and_states_are_rejected ... ok
+test session_handoff_end_and_spending_conform ... ok
+
+test result: ok. 7 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.08s
+
+     Running unittests src/lib.rs (target/debug/deps/interlock_skillgen-0d66f60c69c1ef30)
+
+running 8 tests
+test frontmatter::tests::reads_the_forms_other_skill_files_use ... ok
+test frontmatter::tests::rejects_what_it_cannot_read ... ok
+test frontmatter::tests::what_is_written_reads_back_the_same ... ok
+test validate::tests::a_good_skill_passes ... ok
+test validate::tests::missing_references_and_templates_are_caught ... ok
+test validate::tests::names_descriptions_and_fields_are_enforced ... ok
+test safe_write::tests::never_writes_through_symlinks_or_outside_the_root ... ok
+test safe_write::tests::writes_new_files_and_its_own_but_not_the_users ... ok
+
+test result: ok. 8 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.01s
+
+     Running tests/generate.rs (target/debug/deps/generate-a3ca4ea9f5842ae1)
+
+running 9 tests
+test a_minimal_catalog_loads ... ok
+test canonical_sources_are_checked ... ok
+test names_are_lowercase_hyphenated_and_match_their_folder ... ok
+test claude_code_gets_a_namespaced_plugin ... ok
+test copilot_gets_prefixed_github_skills_routed_references_and_no_custom_agent ... ok
+test every_target_validates ... ok
+test the_v1_set_and_its_intents ... ok
+test the_built_in_catalog_is_the_source_tree ... ok
+test plain_agent_skills_keep_the_intent_in_metadata_and_validate_on_disk ... ok
+
+test result: ok. 9 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.06s
+
+     Running unittests src/lib.rs (target/debug/deps/interlock_store-5ff9e933ad8107fa)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/invariants.rs (target/debug/deps/invariants-7c622d420e068fd2)
+
+running 15 tests
+test cancel_leaves_no_attempt_running ... ok
+test a_failing_check_run_by_the_verifier_sends_the_work_back ... ok
+test check_runs_take_their_producer_from_the_attempt_and_spot_empty_runs ... ok
+test check_output_is_kept_as_a_content_addressed_artifact ... ok
+test every_transition_is_logged_in_order ... ok
+test invariant_1_no_current_evidence_no_pass ... ok
+test invariant_2_records_cannot_be_rewritten_in_place ... ok
+test invariant_2_tokens_and_grants ... ok
+test invariant_2_worker_cannot_override_a_verifier_failure ... ok
+test invariant_4_a_late_worker_cannot_advance_the_task ... ok
+test invariant_5_a_duplicate_event_is_a_no_op ... ok
+test invariant_5_a_failure_mid_apply_leaves_nothing_then_replay_applies_once ... ok
+test results_outside_the_scope_are_rejected_and_the_attempt_may_try_again ... ok
+test invariant_3_a_rebase_after_verification_sends_the_task_back ... ok
+test reopening_a_file_store_keeps_everything ... ok
+
+test result: ok. 15 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.22s
+
+     Running tests/operations.rs (target/debug/deps/operations-0d12e91f1177d646)
+
+running 13 tests
+test a_merge_made_after_landing_authority_ended_is_recorded_but_not_g6 ... ok
+test a_merge_made_before_the_grant_ended_still_lands ... ok
+test a_merge_never_lands_a_task_whose_evidence_went_stale ... ok
+test a_head_built_from_another_tree_is_r2_even_with_current_evidence ... ok
+test a_moved_base_records_the_new_input_and_sends_the_task_back ... ok
+test a_revoked_grant_fails_the_operation_before_its_call_and_blocks_the_task ... ok
+test an_operator_block_is_not_lifted_by_the_forge ... ok
+test operator_authority_never_lets_interlock_start_a_merge ... ok
+test only_integrating_tasks_plan_operations_and_one_runs_at_a_time ... ok
+test settled_operations_are_final ... ok
+test a_started_operation_survives_a_crash_for_reconcile_to_find ... ok
+test stale_evidence_refuses_the_call_and_applies_r2_in_the_same_transaction ... ok
+test unknown_outcomes_block_until_every_one_is_known ... ok
+
+test result: ok. 13 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.22s
+
+     Running tests/sessions.rs (target/debug/deps/sessions-2fa8e125c9908f60)
+
+running 8 tests
+test a_finished_task_leaves_no_attempt_open ... ok
+test an_attempt_gets_one_session_and_its_handoff_is_written_first ... ok
+test every_session_without_an_end_is_listed_whatever_its_status_or_task ... ok
+test resuming_sets_where_the_next_worker_starts ... ok
+test session_ends_are_classified_and_recorded_once ... ok
+test reconcile_attempt_ends_a_running_attempt_with_a_synthetic_report ... ok
+test reconcile_after_a_crash_finds_what_the_dead_controller_left ... ok
+test spending_is_summed_and_a_spent_budget_fails_the_task ... ok
+
+test result: ok. 8 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.20s
+
+     Running unittests src/lib.rs (target/debug/deps/interlock_supervisor-c77ed13ffb26051d)
+
+running 33 tests
+test config::tests::pins_are_read_from_the_config_and_compared_exactly ... ok
+test checks::tests::check_files_named_by_commands_are_protected ... ok
+test git::tests::attempt_worktrees_and_commits ... ok
+test checks::tests::a_check_that_hangs_times_out ... ok
+test checks::tests::base_and_output_runs_record_what_happened ... ok
+test guided::tests::a_verifier_counts_as_independent_only_as_interlocks_named_subagent ... ok
+test git::tests::output_trees_include_new_files_and_leave_the_index_alone ... ok
+test guided::tests::a_submitted_attempt_governs_nothing ... ok
+test guided::tests::a_verifiers_credentials_work_only_for_its_own_caller ... ok
+test guided::tests::an_attempt_governs_only_its_own_session_until_ended ... ok
+test guided::tests::intents_name_the_caller_once_and_expire ... ok
+test guided::tests::changes_are_read_from_a_real_tree_or_not_at_all ... ok
+test guided::tests::task_ids_cannot_climb_out_of_the_worktrees_folder ... ok
+test git::tests::a_same_size_edit_in_the_second_of_checkout_is_seen_later ... ok
+test guided::tests::an_unclaimed_worker_goes_to_the_first_caller_but_a_verifier_never_does ... ok
+test guided::tests::the_session_that_did_the_work_cannot_open_a_verifier ... ok
+test hook::tests::a_missing_store_fails_closed ... ok
+test hook::tests::edits_stay_inside_the_worktree_and_the_scope ... ok
+test hook::tests::everything_under_the_store_directory_but_worktrees_is_off_limits ... ok
+test hook::tests::a_verifier_is_held_when_its_assessment_is_weaker_than_the_criterion_needs ... ok
+test hook::tests::interactive_sessions_ask_instead_of_deny ... ok
+test hook::tests::outside_an_attempt_the_hooks_do_nothing ... ok
+test hook::tests::the_stop_guard_also_wants_interlock_to_have_run_each_check ... ok
+test hook::tests::the_store_and_operator_commands_are_off_limits ... ok
+test hook::tests::the_stop_guard_wants_a_claim_for_the_final_tree ... ok
+test hook::tests::interlocks_own_directory_tokens_and_other_environments_are_off_limits ... ok
+test lock::tests::a_stale_pid_in_the_file_does_not_hold_the_lock ... ok
+test sessions::tests::a_session_whose_supervisor_still_runs_is_left_to_it ... ok
+test lock::tests::the_lock_is_exclusive_and_released_on_drop ... ok
+test state_paths::tests::commands_that_would_change_the_state_are_found ... ok
+test state_paths::tests::reading_the_state_and_working_in_the_own_worktree_are_fine ... ok
+test state_paths::tests::state_is_everything_under_interlock_but_the_own_worktree ... ok
+test hook::tests::workers_may_not_commit ... ok
+
+test result: ok. 33 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 2.84s
+
+   Doc-tests interlock_adapter
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+   Doc-tests interlock_core
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+   Doc-tests interlock_forge
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+   Doc-tests interlock_schema
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+   Doc-tests interlock_skillgen
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+   Doc-tests interlock_store
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+   Doc-tests interlock_supervisor
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+exit 0

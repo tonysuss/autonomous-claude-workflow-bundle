@@ -1,0 +1,6 @@
+`balances` and `settle` now take `--format text|csv`, with `text` as the default and its output unchanged. The unit tests pass and `checks/csv-format.sh` prints ok. I ran `settle --format csv` on `examples/trip.csv` and the output is byte-correct, with `\n` line endings. `--format x` is rejected by the parser with exit status 2.
+
+- **Output:** The CSV rendering is in `tally/report.py` and the option is wired up in `tally/cli.py`. It uses Python's default `csv` quoting but writes `\n` line endings, because the module's default is `\r\n`. An empty ledger gives just the header line.
+- **Tests and docs:** I added three tests to `tests/test_cli.py`, covering comma quoting, header-only output and the `settle` rows. They call the render functions directly, not the command line. I also added a short note about the option to `README.md`.
+
+STATUS: DONE

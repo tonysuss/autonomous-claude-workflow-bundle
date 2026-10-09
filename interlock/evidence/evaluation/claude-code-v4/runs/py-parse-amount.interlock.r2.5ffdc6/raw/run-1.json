@@ -1,0 +1,111 @@
+{
+  "task_id": "py-parse-amount",
+  "host": "claude-code",
+  "final_state": "done",
+  "stopped_because": "done",
+  "reconciled": [],
+  "reattached": [],
+  "interrupted": false,
+  "baseline": [
+    {
+      "criterion_id": "repro",
+      "run_id": "run-2fbae6bd8dea48ef",
+      "exit_code": 1,
+      "vacuous": null,
+      "problem": null
+    },
+    {
+      "criterion_id": "regression",
+      "run_id": "run-fe8ed9417d904728",
+      "exit_code": 0,
+      "vacuous": null,
+      "problem": null
+    }
+  ],
+  "sessions": [
+    {
+      "role": "worker",
+      "attempt_id": "att-cc578263bbfc478e",
+      "epoch": 1,
+      "exit": {
+        "exit": "completed"
+      },
+      "duration_ms": 21455,
+      "summary": "I rewrote `parse_amount` in `tally/money.py`, and `12.5` now parses to 1250 cents. The old code took the digits after the decimal point as a plain number of cents, so `12.5` became 12.05. It also applied the sign only to the whole part, so `-0.50` came out wrong.\n\nThe new version strips the sign first and applies it to the whole amount. It pads a one-digit fraction to tenths, raises `ValueError` for more than two decimal places, and rejects malformed text. Thousands separators, whole numbers and surrounding spaces still work. `ValueError` is still raised for text that isn't an amount, including cases like `\"1.\"` and `\"1.-5\"`, and a leading `+` is still accepted. `parse_amount` has only one caller, `csvio.py`, which needed no change.\n\nI added tests to `tests/test_money.py` for tenths, the sign cases, `\"1.234\"` and malformed input. interlock ran `checks/parse-repro.sh` and the full unit suite on the result, and both passed (23 tests). I recorded claims for all three criteria. `spec` rests on the unit tests I added plus the existing ones, and it still needs the independent verifier.",
+      "denials": 0,
+      "transcript": "/tmp/agent-ws/6af4653115/tally/.interlock/transcripts/att-cc578263bbfc478e.jsonl",
+      "moves": [
+        {
+          "signal": "G3",
+          "from": "running",
+          "to": "awaiting_verification",
+          "reason": "result accepted from attempt att-cc578263bbfc478e at epoch 1"
+        }
+      ],
+      "ended_because": "completed",
+      "end_detail": null,
+      "spent": {
+        "wall_ms": 21455,
+        "cost_usd": 0.0913202,
+        "premium_requests": null,
+        "turns": 6,
+        "model": "claude-sonnet-5-5"
+      },
+      "cost_usd": 0.0913202,
+      "premium_requests": null,
+      "host_session_id": "5fef0199-49d0-4880-98b1-6ccdc648d8da",
+      "reattached": false,
+      "stopped_strays": [],
+      "export": null
+    },
+    {
+      "role": "verifier",
+      "attempt_id": "att-caa9bacd6f654281",
+      "epoch": 1,
+      "exit": {
+        "exit": "completed"
+      },
+      "duration_ms": 16856,
+      "summary": "All three criteria hold on tree 739032e.\n\n- **repro**: pass (observed). interlock ran `checks/parse-repro.sh` on this tree and it printed `ok: 12.5 is 1250 cents`.\n- **spec**: pass (tested). My ad hoc script, run alongside the 23 unit tests, gave:\n  - `12.5` → 1250, `-0.50` → -50, `-3.25` → -325.\n  - `1.234` raises `ValueError`.\n  - `1,234.56` → 123456, `7` → 700, `\" 7 \"` → 700.\n  - Malformed text such as `abc`, `5.` and `1.2.3` raises `ValueError`.\n\n  One small behaviour change: non-ASCII digits such as Arabic-Indic ones were accepted before and are now rejected, which I don't count as a gap.\n- **regression**: pass (tested). The existing unit suite passes, 23 tests OK.",
+      "denials": 0,
+      "transcript": "/tmp/agent-ws/6af4653115/tally/.interlock/transcripts/att-caa9bacd6f654281.jsonl",
+      "moves": [
+        {
+          "signal": "G4",
+          "from": "awaiting_verification",
+          "to": "verified",
+          "reason": "every required criterion has current passing evidence"
+        },
+        {
+          "signal": "G7",
+          "from": "verified",
+          "to": "done",
+          "reason": "verified; the workflow needs no delivery"
+        }
+      ],
+      "ended_because": "completed",
+      "end_detail": null,
+      "spent": {
+        "wall_ms": 16856,
+        "cost_usd": 0.07840659999999999,
+        "premium_requests": null,
+        "turns": 4,
+        "model": "claude-sonnet-5-5"
+      },
+      "cost_usd": 0.07840659999999999,
+      "premium_requests": null,
+      "host_session_id": "34cc900d-2e61-4d3b-b1bc-9133f94cab75",
+      "reattached": false,
+      "stopped_strays": [],
+      "export": null
+    }
+  ],
+  "pin": null,
+  "spent": {
+    "wall_ms": 38311,
+    "cost_usd": 0.1697268,
+    "premium_requests": null,
+    "turns": 10
+  },
+  "exports": []
+}

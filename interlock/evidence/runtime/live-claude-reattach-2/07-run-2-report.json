@@ -1,0 +1,100 @@
+{
+  "task_id": "fix-add",
+  "host": "claude-code",
+  "final_state": "done",
+  "stopped_because": "done",
+  "reconciled": [],
+  "reattached": [
+    "att-d28b8d7fbcb54669"
+  ],
+  "interrupted": false,
+  "baseline": [],
+  "sessions": [
+    {
+      "role": "worker",
+      "attempt_id": "att-d28b8d7fbcb54669",
+      "epoch": 1,
+      "exit": {
+        "exit": "completed"
+      },
+      "duration_ms": 34639,
+      "summary": "Done! I fixed the bug in `calc.py` by changing the `add()` function from `return a - b` to `return a + b`. The function now correctly returns the sum instead of the difference. Both criterion checks passed (add(2, 3) returns 5 as expected), and I've recorded claims with evidence from the interlock runs.",
+      "denials": 0,
+      "transcript": "<scratch>/live-demo-2/.interlock/transcripts/att-d28b8d7fbcb54669.jsonl",
+      "moves": [
+        {
+          "signal": "G3",
+          "from": "running",
+          "to": "awaiting_verification",
+          "reason": "result accepted from attempt att-d28b8d7fbcb54669 at epoch 1"
+        }
+      ],
+      "ended_because": "completed",
+      "end_detail": null,
+      "spent": {
+        "wall_ms": 34639,
+        "cost_usd": 0.07610210000000002,
+        "premium_requests": null,
+        "turns": 15
+      },
+      "cost_usd": 0.07610210000000002,
+      "premium_requests": null,
+      "host_session_id": "b4f4b5f7-17ee-4e50-a1fc-6a3d7aa3c015",
+      "reattached": true,
+      "stopped_strays": [],
+      "export": null
+    },
+    {
+      "role": "verifier",
+      "attempt_id": "att-39aa318653194c0a",
+      "epoch": 1,
+      "exit": {
+        "exit": "completed"
+      },
+      "duration_ms": 22791,
+      "summary": "## Verification Complete\n\nI've successfully verified the fix by running both criterion checks. Here's the summary:\n\n### Assessment Results\n\n**fixed criterion** ✓\n- **Strength**: `tested`\n- **Result**: PASS\n- **Evidence**: `interlock check run --criterion fixed` (exit code 0)\n- **Note**: The check verified that add() now correctly returns a + b instead of a - b, confirming add(2, 3) = 5.\n\n**verified criterion** ✓\n- **Strength**: `observed`\n- **Result**: PASS\n- **Evidence**: `interlock check run --criterion verified` (exit code 0)\n- **Note**: Independent verification confirmed the behavior is correct on the fixed tree.\n\n### Conclusion\n\nThe fix is **verified**. The worker correctly changed the `add()` function in `calc.py` from `return a - b` to `return a + b`. Both required criteria are satisfied:\n- `fixed` criterion achieved `tested` strength (required minimum)\n- `verified` criterion achieved `observed` strength (required minimum)",
+      "denials": 0,
+      "transcript": "<scratch>/live-demo-2/.interlock/transcripts/att-39aa318653194c0a.jsonl",
+      "moves": [
+        {
+          "signal": "G4",
+          "from": "awaiting_verification",
+          "to": "verified",
+          "reason": "every required criterion has current passing evidence"
+        },
+        {
+          "signal": "G7",
+          "from": "verified",
+          "to": "done",
+          "reason": "verified; the workflow needs no delivery"
+        }
+      ],
+      "ended_because": "completed",
+      "end_detail": null,
+      "spent": {
+        "wall_ms": 22791,
+        "cost_usd": 0.050536199999999996,
+        "premium_requests": null,
+        "turns": 7
+      },
+      "cost_usd": 0.050536199999999996,
+      "premium_requests": null,
+      "host_session_id": "a2365237-03fa-45ad-84cf-2b55a006508f",
+      "reattached": false,
+      "stopped_strays": [],
+      "export": null
+    }
+  ],
+  "pin": {
+    "status": "match",
+    "pinned": "2.1.289",
+    "installed": "2.1.289"
+  },
+  "spent": {
+    "wall_ms": 57430,
+    "cost_usd": 0.1266383,
+    "premium_requests": null,
+    "turns": 22
+  },
+  "exports": []
+}

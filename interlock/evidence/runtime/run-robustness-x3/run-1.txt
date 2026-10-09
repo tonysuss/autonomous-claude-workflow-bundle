@@ -1,0 +1,17 @@
+    Finished `test` profile [unoptimized] target(s) in 0.22s
+     Running tests/run_robustness.rs (target/debug/deps/run_robustness-e7d5c8d1982631db)
+
+running 10 tests
+test a_host_version_that_differs_from_its_pin_blocks_the_run ... ok
+test a_session_that_died_with_its_supervisor_is_reconciled_and_retried ... ok
+test a_session_timeout_retries_until_the_attempts_are_spent ... ok
+test a_spent_cost_budget_fails_the_task ... ok
+test a_spent_wall_clock_budget_fails_the_task ... ok
+test a_supervisor_killed_mid_session_reattaches_and_carries_on ... ok
+test a_verifier_session_is_reattached_too ... ok
+test sigint_cancels_the_session_and_the_exported_work_resumes ... ok
+test sigterm_stops_a_run_the_same_way ... ok
+test task_cancel_from_another_terminal_stops_the_running_session ... ok
+
+test result: ok. 10 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 101.84s
+

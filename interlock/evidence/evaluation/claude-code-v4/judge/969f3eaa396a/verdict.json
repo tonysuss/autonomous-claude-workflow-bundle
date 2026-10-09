@@ -1,0 +1,33 @@
+{
+ "anon_id": "969f3eaa396a",
+ "task": "go-dotted-section",
+ "cases": [
+  {
+   "id": "existing_tests",
+   "pass": true,
+   "detail": "10 passed\n"
+  },
+  {
+   "id": "TestHiddenLookupDottedSection",
+   "pass": true,
+   "detail": ""
+  },
+  {
+   "id": "TestHiddenLookupPlainNames",
+   "pass": true,
+   "detail": ""
+  },
+  {
+   "id": "cli_get_dotted_section",
+   "pass": true,
+   "detail": "exit 0 'db1.example.org\\n'"
+  },
+  {
+   "id": "cli_get_plain_names",
+   "pass": true,
+   "detail": "server.port: 0 '8080\\n'; name: 0 'demo\\n'"
+  }
+ ],
+ "pass": true,
+ "condition_words": []
+}

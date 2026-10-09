@@ -1,0 +1,44 @@
+id = "py-split-remainder"
+repository = "."
+workflow = "bug-fix"
+environment = "linux-python3"
+intent = '''
+Splitting an expense loses cents. `split_evenly(100, 3)` in `tally/money.py` returns `[33, 33, 33]`, which adds up to 99, so the balances for a ledger with such an expense no longer sum to zero.
+
+Expected behaviour of `split_evenly(total, n)`:
+
+- The shares always add up to `total`, and no two shares differ by more than one cent.
+- The earlier shares (participants are in the order given) take the extra cents: `split_evenly(100, 3) == [34, 33, 33]`.
+- A negative total (a refund) mirrors the positive case: `split_evenly(-100, 3) == [-34, -33, -33]`.
+- `n` must be positive; otherwise `split_evenly` raises `ValueError`.
+
+`checks/split-repro.sh` reproduces the problem. The tests run with `python3 -m unittest discover -s tests -q`.
+'''
+
+[budget]
+max_attempts = 3
+
+[scope]
+paths = ["tally/money.py", "tests/**"]
+
+[[criterion]]
+id = "repro"
+statement = "Splitting 1.00 three ways gives [34, 33, 33] and the ledger's balances sum to zero"
+check = "sh checks/split-repro.sh"
+min_strength = "observed"
+producer = "independent"
+baseline = "fails"
+
+[[criterion]]
+id = "spec"
+statement = "split_evenly meets every rule in the task: shares sum to the total and differ by at most one cent, earlier shares take the extra cents, negative totals mirror positive ones, and n <= 0 raises ValueError"
+min_strength = "tested"
+producer = "independent"
+
+[[criterion]]
+id = "regression"
+statement = "The existing unit tests pass"
+check = "python3 -m unittest discover -s tests -q"
+min_strength = "tested"
+producer = "self"
+baseline = "passes"

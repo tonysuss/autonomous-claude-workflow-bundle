@@ -1,0 +1,82 @@
+{
+ "base_commit": "c934fc209d4ecd5395e423c165cb502527d39eac",
+ "criteria": [
+  {
+   "baseline": "it must fail on the input snapshot, reproducing the problem; interlock saw it fail there (run run-44ae7a4f3f87446d)",
+   "check": "sh checks/csv-format.sh",
+   "id": "balances-csv",
+   "needs": "observed from independent",
+   "statement": "`balances --format csv` prints the trip example as CSV, byte for byte",
+   "status": "passes (Observed)"
+  },
+  {
+   "baseline": null,
+   "check": null,
+   "id": "spec",
+   "needs": "observed from independent",
+   "statement": "Every rule in the task holds on the command line: settle CSV, quoting of names with commas, header-only output when there is nothing to list, text unchanged as the default, and exit status 2 for an unknown format",
+   "status": "passes (Observed)"
+  },
+  {
+   "baseline": "it must pass on the input snapshot, as a regression guard; interlock saw it pass there (run run-b0ce627df7914497)",
+   "check": "python3 -m unittest discover -s tests -q",
+   "id": "regression",
+   "needs": "tested from self",
+   "statement": "The existing unit tests pass",
+   "status": "passes (Tested)"
+  }
+ ],
+ "current_tree": "c1373b086c08df1d9aa4f6a2311d7a12d6efc50d",
+ "failures_to_fix": [],
+ "goal": "Add a `--format` option to `python3 -m tally balances` and `python3 -m tally settle`. It takes `text` (the default: today's output, unchanged) or `csv`.\n\n- `balances --format csv` prints the header `person,balance`, then one row per person in the same order as the text output, with the balance written the way the text output writes it (`36.00`, `-40.00`).\n- `settle --format csv` prints the header `from,to,amount`, then one row per transfer in the same order as the text output.\n- Fields are quoted the way Python's `csv` module quotes them by default (a name that contains a comma is wrapped in double quotes), and every line ends with `\\n`.\n- When there is nothing to list, the CSV output is the header line alone.\n- An unknown format is rejected by the argument parser, which exits with status 2.\n\n`checks/csv-format.sh` checks the `balances` case for `examples/trip.csv`. The tests run with `python3 -m unittest discover -s tests -q`.\n",
+ "grant": {
+  "action_classes": [
+   "read",
+   "local_reversible"
+  ],
+  "grant_ids": [],
+  "landing_authority": "none",
+  "tools": {
+   "allow": [
+    "read",
+    "shell"
+   ],
+   "deny": [
+    "edit",
+    "shell:git push",
+    "shell:git commit"
+   ]
+  }
+ },
+ "next_moves": [],
+ "previous_result": {
+  "attempt_id": "att-9cb2fcca62e841a5",
+  "changed_paths": [
+   "README.md",
+   "tally/cli.py",
+   "tally/report.py",
+   "tests/test_cli.py"
+  ],
+  "open_questions": [],
+  "output_tree": "c1373b086c08df1d9aa4f6a2311d7a12d6efc50d",
+  "summary": "I added `--format {text,csv}` to `balances` and `settle`, with `text` as the default. The CSV renderers are in `tally/report.py` and use Python's `csv` writer, so quoting and `\\n` line endings come from the module's defaults. I wired the option into `tally/cli.py`, added three tests to `tests/test_cli.py` and added a README line.\n\n- **Checks:** `checks/csv-format.sh` passes, and the 22 unit tests pass, including the new ones.\n- **Observed by hand:** `settle --format csv examples/trip.csv` prints the `from,to,amount` header and the two transfers.\n- **Covered by tests:** the `balances` CSV output, the `settle` CSV header and the exit status 2 for an unknown format.\n- **Not exercised:** the header-only output when there is nothing to list, and the quoting of a name with a comma. Both rely on the `csv` writer behaving as documented. My one empty-ledger attempt, `balances --format csv /dev/null`, was rejected for missing columns, so it never reached the formatter.\n\nI recorded claims for `balances-csv` (observed), `regression` (tested) and `spec` (observed, with the gaps above noted). `spec` and `balances-csv` still need the independent verifier."
+ },
+ "protected": [
+  "checks/csv-format.sh"
+ ],
+ "role": "verifier",
+ "scope": [
+  "tally/**",
+  "tests/**",
+  "README.md"
+ ],
+ "state": "done",
+ "task_id": "py-csv-format",
+ "verifier_bindings": [
+  {
+   "attempt": "att-fd810728907f4586 (verifier, completed)",
+   "bound": "launched by interlock"
+  }
+ ],
+ "workflow": "feature v1"
+}

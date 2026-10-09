@@ -1,0 +1,11 @@
+`kvconf get app.conf db.eu.host` now returns `db1.example.org`. The key is taken as the part after the last dot, so `db.eu.host` reads key `host` in section `db.eu`. A name with no dot is still a key in the unnamed section.
+
+`go test ./...` and `checks/dotted.sh` both pass.
+
+- **Fix:** `Lookup` in `config.go` now splits on the last dot instead of the first.
+- **Command:** `get` in `cmd/kvconf/main.go` now calls `Lookup`. I removed its own `splitName`, which had the same first-dot bug.
+- **Test:** I added `TestGetDottedSection` to `cmd/kvconf/main_test.go`. It reads `checks/dotted.conf` through `run`.
+
+I left `README.md` alone since it only mentions the `SECTION.KEY` form.
+
+STATUS: DONE

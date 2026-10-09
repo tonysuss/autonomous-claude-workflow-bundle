@@ -1,0 +1,40 @@
+[
+  {
+    "id": "asm-efd6304cb3414cd6",
+    "task_id": "duration-sum",
+    "criterion_id": "repro",
+    "attempt_id": "att-410623b63d22418d",
+    "strength": "observed",
+    "currency": {
+      "tree": "4688fba1015d33dedf241719d5caee3cfb7ffa3c",
+      "check_version": "1",
+      "environment": "",
+      "policy_digest": "sha256:7f0cfbdd2133e718b00269d4692205c8b63f045f7b438a92741cff095a689290"
+    },
+    "evidence_refs": [
+      "interlock check run --criterion repro"
+    ],
+    "note": "passed on submitted tree; 1h30m=5400, 2m10s=130, 45s=45",
+    "recorded_at": "2026-10-06T02:28:25.065039244Z",
+    "bound_via": "subagent"
+  },
+  {
+    "id": "asm-f53db097287a454f",
+    "task_id": "duration-sum",
+    "criterion_id": "regression",
+    "attempt_id": "att-410623b63d22418d",
+    "strength": "tested",
+    "currency": {
+      "tree": "4688fba1015d33dedf241719d5caee3cfb7ffa3c",
+      "check_version": "1",
+      "environment": "",
+      "policy_digest": "sha256:7f0cfbdd2133e718b00269d4692205c8b63f045f7b438a92741cff095a689290"
+    },
+    "evidence_refs": [
+      "interlock check run --criterion regression"
+    ],
+    "note": "4 unittest tests OK",
+    "recorded_at": "2026-10-06T02:28:25.151249125Z",
+    "bound_via": "subagent"
+  }
+]

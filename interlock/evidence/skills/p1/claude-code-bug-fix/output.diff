@@ -1,0 +1,28 @@
+diff --git a/durations.py b/durations.py
+index 969017d..be00706 100644
+--- a/durations.py
++++ b/durations.py
+@@ -13,7 +13,7 @@ def parse_duration(text):
+         elif ch in UNITS:
+             if not number:
+                 raise ValueError(f"missing number before {ch!r} in {text!r}")
+-            total = int(number) * UNITS[ch]
++            total += int(number) * UNITS[ch]
+             number = ""
+         else:
+             raise ValueError(f"unknown unit {ch!r} in {text!r}")
+diff --git a/tests/test_durations.py b/tests/test_durations.py
+index 2f1b429..b5f3ee0 100644
+--- a/tests/test_durations.py
++++ b/tests/test_durations.py
+@@ -10,6 +10,10 @@ class ParseDurationTest(unittest.TestCase):
+     def test_minutes(self):
+         self.assertEqual(parse_duration("5m"), 300)
+ 
++    def test_sums_multiple_units(self):
++        self.assertEqual(parse_duration("1h30m"), 5400)
++        self.assertEqual(parse_duration("2m10s"), 130)
++
+     def test_rejects_unknown_units(self):
+         with self.assertRaises(ValueError):
+             parse_duration("3d")

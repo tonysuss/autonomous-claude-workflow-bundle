@@ -1,0 +1,72 @@
+{
+ "task_id": "go-duration-days",
+ "role": "verifier",
+ "goal": "Retention periods in our configuration files are written in days, but `GetDuration` does not understand them: `retention = 30d` fails with `kvconf: store.retention: \"30d\" is not a duration`.\n\nMake `GetDuration` accept the unit `d`, for days of 24 hours, so that `30d` is 720 hours. Everything `GetDuration` accepts today must keep working as it does now.\n\n`checks/days.sh` checks the reported value. The tests run with `go test ./...`.\n",
+ "workflow": "feature v1",
+ "state": "done",
+ "scope": [
+  "getters.go",
+  "*_test.go",
+  "README.md"
+ ],
+ "protected": [
+  "checks/days.sh"
+ ],
+ "base_commit": "3e6d67d9640d38b817342e51c6fc7daf96c3d31c",
+ "current_tree": "81e8ff6fd5509aff10af9a4705b0ec54806bf8c4",
+ "criteria": [
+  {
+   "id": "repro",
+   "statement": "GetDuration reads `30d` as 720 hours",
+   "check": "sh checks/days.sh",
+   "baseline": "it must fail on the input snapshot, reproducing the problem; interlock saw it fail there (run run-4cac7d85e3934ddc)",
+   "needs": "observed from independent",
+   "status": "passes (Observed)"
+  },
+  {
+   "id": "spec",
+   "statement": "GetDuration accepts the unit d for days of 24 hours, and everything it accepted before still works as it did",
+   "check": null,
+   "baseline": null,
+   "needs": "tested from independent",
+   "status": "passes (Tested)"
+  },
+  {
+   "id": "regression",
+   "statement": "The existing Go tests pass",
+   "check": "go test ./...",
+   "baseline": "it must pass on the input snapshot, as a regression guard; interlock saw it pass there (run run-0b30a1c4c36340bf)",
+   "needs": "tested from self",
+   "status": "passes (Tested)"
+  }
+ ],
+ "previous_result": {
+  "attempt_id": "att-31f6299df022411c",
+  "summary": "Applied the scripted change.\n",
+  "changed_paths": [
+   "getters.go"
+  ],
+  "open_questions": []
+ },
+ "failures_to_fix": [],
+ "grant": {
+  "action_classes": [
+   "read",
+   "local_reversible"
+  ],
+  "tools": {
+   "allow": [
+    "read",
+    "shell"
+   ],
+   "deny": [
+    "edit",
+    "shell:git push",
+    "shell:git commit"
+   ]
+  },
+  "landing_authority": "none",
+  "grant_ids": []
+ },
+ "next_moves": []
+}

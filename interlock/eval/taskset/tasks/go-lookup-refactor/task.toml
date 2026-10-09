@@ -1,0 +1,41 @@
+id = "go-lookup-refactor"
+repository = "."
+workflow = "refactor"
+environment = "linux-go"
+intent = '''
+`getters.go` repeats the same section-and-key lookup in `Get`, `GetInt`, `GetBool` and `GetDuration`. Move it into one unexported method,
+
+```go
+func (c *Config) lookup(section, key string) (string, error)
+```
+
+and make all four getters use it, so that none of them reads `c.sections` directly any more.
+
+This is a pure refactor. The exported API, every returned value and every error message must stay exactly as they are now. The tests run with `go test ./...`.
+'''
+
+[budget]
+max_attempts = 3
+
+[scope]
+paths = ["getters.go", "*_test.go"]
+
+[[criterion]]
+id = "structure"
+statement = "Get, GetInt, GetBool and GetDuration all call one unexported method lookup(section, key string) (string, error), and none of them reads c.sections directly"
+min_strength = "static"
+producer = "independent"
+
+[[criterion]]
+id = "behaviour"
+statement = "The exported API, every returned value and every error message of the four getters are exactly as before the refactor"
+min_strength = "tested"
+producer = "independent"
+
+[[criterion]]
+id = "regression"
+statement = "The existing Go tests pass"
+check = "go test ./..."
+min_strength = "tested"
+producer = "self"
+baseline = "passes"

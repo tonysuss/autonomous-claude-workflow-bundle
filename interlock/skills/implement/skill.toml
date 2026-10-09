@@ -1,0 +1,6 @@
+name = "implement"
+description = "Use this skill whenever you are asked to fix a bug, add or change a feature, or refactor code, however small the change looks: load it before your first edit. It reproduces a bug first, builds a feature from a named data shape, pins behavior before a refactor, fixes the root cause wherever it occurs, and checks the result on the real surface before saying it is done. Works on its own; where the work is an interlock task, it works in the task's attempt and records the evidence."
+invocation = "model"
+requires = ["interlock-cli"]
+standalone = true
+pack = "core"

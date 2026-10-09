@@ -1,0 +1,47 @@
+[
+  {
+    "at": "2026-10-06T01:11:57.953689Z",
+    "attempt_id": null,
+    "from": "pending",
+    "reason": "dependencies done; input snapshot recorded",
+    "seq": 1,
+    "signal": "G1",
+    "to": "ready"
+  },
+  {
+    "at": "2026-10-06T01:11:58.014174Z",
+    "attempt_id": "att-c62b0f0e3239461f",
+    "from": "ready",
+    "reason": "attempt att-c62b0f0e3239461f opened at epoch 1",
+    "seq": 2,
+    "signal": "G2",
+    "to": "running"
+  },
+  {
+    "at": "2026-10-06T01:11:58.068536Z",
+    "attempt_id": "att-c62b0f0e3239461f",
+    "from": "running",
+    "reason": "result accepted from attempt att-c62b0f0e3239461f at epoch 1",
+    "seq": 3,
+    "signal": "G3",
+    "to": "awaiting_verification"
+  },
+  {
+    "at": "2026-10-06T01:11:58.347549Z",
+    "attempt_id": null,
+    "from": "awaiting_verification",
+    "reason": "every required criterion has current passing evidence",
+    "seq": 4,
+    "signal": "G4",
+    "to": "verified"
+  },
+  {
+    "at": "2026-10-06T01:11:58.404841Z",
+    "attempt_id": null,
+    "from": "verified",
+    "reason": "no landing authority is granted for this task",
+    "seq": 5,
+    "signal": "block",
+    "to": "blocked"
+  }
+]

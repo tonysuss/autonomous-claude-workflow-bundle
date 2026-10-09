@@ -1,0 +1,37 @@
+# python3 -I evidence/core/lifecycle-mutations/mutate_props.py . (from interlock/), October 6, 2026, on the sources of this commit.
+# Seeds 11, 22, 33, 44 and 55; "caught n/5" counts the seeds whose run of the_guards_hold_over_any_sequence_of_moves failed.
+unmutated: passes
+G6-short-prefix: caught 5/5; coverage test fails :: Test failed: assertion failed: `(left == right)`
+G6-no-evidence: caught 5/5; coverage test fails :: Test failed: assertion failed: `(left == right)`
+G4-not-all-pass: caught 5/5; coverage test fails :: Test failed: assertion failed: `(left == right)`
+G3-epoch: caught 5/5; coverage test fails :: Test failed: assertion failed: applies && !in_scope at crates/interlock-core/tests/lifecycle_props.rs:636.
+G3-scope: caught 5/5; coverage test fails :: Test failed: a result from w1 at epoch 1 applied at crates/interlock-core/tests/lifecycle_props.rs:621.
+R1-budget: caught 5/5; coverage test fails :: Test failed: assertion failed: `(left == right)`
+R3-budget: caught 5/5; coverage test fails :: Test failed: assertion failed: `(left == right)`
+G5-authority: caught 5/5; coverage test fails :: Test failed: assertion failed: `(left == right)`
+G5-evidence: caught 5/5; coverage test fails :: Test failed: assertion failed: `(left == right)`
+cancel-terminal: caught 5/5; coverage test fails :: Test failed: assertion failed: `(left == right)`
+G1-deps: caught 5/5; coverage test fails :: Test failed: assertion failed: `(left == right)`
+G7-integration: caught 5/5; coverage test fails :: Test failed: assertion failed: `(left == right)`
+R2-integrating-dropped: caught 5/5; coverage test fails :: Test failed: assertion failed: `(left == right)`
+G2-no-epoch-bump: caught 5/5; coverage test fails :: Test failed: assertion failed: `(left == right)`
+G2-budget: caught 0/5; coverage test passes :: 
+block-from-blocked: caught 5/5; coverage test fails :: Test failed: assertion failed: `(left == right)`
+unblock-wrong-state: caught 5/5; coverage test fails :: Test failed: assertion failed: `(left == right)`
+G6-wrong-state-ok: caught 5/5; coverage test fails :: Test failed: assertion failed: `(left == right)`
+G6-tree-unchecked: caught 5/5; coverage test fails :: Test failed: assertion failed: `(left == right)`
+G6-case-sensitive: caught 5/5; coverage test fails :: Test failed: assertion failed: `(left == right)`
+G6-refused-not-R2: caught 5/5; coverage test fails :: Test failed: assertion failed: `(left == right)`
+G3-current-attempt: caught 0/5; coverage test passes :: 
+G3-not-running: caught 5/5; coverage test fails :: Test failed: assertion failed: applies && !in_scope at crates/interlock-core/tests/lifecycle_props.rs:636.
+R2-verified-dropped: caught 5/5; coverage test fails :: Test failed: assertion failed: `(left == right)`
+G7-before-R2: caught 5/5; coverage test fails :: Test failed: assertion failed: `(left == right)`
+R1-fix-brief-keeps-attempt: caught 5/5; coverage test fails :: Test failed: assertion failed: `(left == right)`
+R3-keeps-attempt: caught 5/5; coverage test fails :: Test failed: assertion failed: `(left == right)`
+R3-from-ready: caught 5/5; coverage test fails :: Test failed: assertion failed: `(left == right)`
+fail-from-terminal: caught 5/5; coverage test fails :: Test failed: assertion failed: `(left == right)`
+block-forgets-where: caught 5/5; coverage test fails :: Test failed: assertion failed: `(left == right)`
+verifier-from-verified: caught 5/5; coverage test fails :: Test failed: assertion failed: awaiting && !capable at crates/interlock-core/tests/lifecycle_props.rs:596.
+new-tree-while-running: caught 5/5; coverage test fails :: Test failed: a new tree recorded while running at crates/interlock-core/tests/lifecycle_props.rs:831.
+G5-without-integration: caught 5/5; coverage test fails :: Test failed: assertion failed: `(left == right)`
+done

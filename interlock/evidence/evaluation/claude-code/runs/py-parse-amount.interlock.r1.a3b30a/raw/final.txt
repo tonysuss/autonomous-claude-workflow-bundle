@@ -1,0 +1,5 @@
+I fixed `parse_amount` in `tally/money.py`. One decimal digit now means tenths, so `"12.5"` gives 1250. The sign covers the whole amount, so `"-0.50"` gives -50. More than two decimal places, or any non-digit text, raises `ValueError`.
+
+I added three tests to `tests/test_money.py` for tenths, the sign cases and `"1.234"`. Both interlock checks passed on my files: `sh checks/parse-repro.sh` prints "ok: 12.5 is 1250 cents", and the full unit suite passes (22 tests). I recorded claims for `repro` (observed), `regression` (tested) and `spec` (tested). The independent verifier still has to confirm `repro` and `spec`.
+
+The parser also accepts a leading `+` now, which I didn't verify against the old behaviour. Existing tests cover thousands separators, whole numbers, surrounding spaces and non-amount text, and they still pass.

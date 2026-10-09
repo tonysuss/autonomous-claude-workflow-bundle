@@ -1,0 +1,77 @@
+{
+  "attempts": [
+    {
+      "epoch": 1,
+      "host": "claude-code",
+      "id": "att-1eec0a79aaa645d1",
+      "role": "worker",
+      "status": "submitted"
+    },
+    {
+      "epoch": 1,
+      "host": "claude-code",
+      "id": "att-12e9a17dbcd643f2",
+      "role": "verifier",
+      "status": "completed"
+    },
+    {
+      "epoch": 1,
+      "host": "claude-code",
+      "id": "att-65d23b0ef81a4964",
+      "role": "verifier",
+      "status": "completed"
+    }
+  ],
+  "evidence": {
+    "all_pass": false,
+    "any_fail": false,
+    "criteria": [
+      {
+        "criterion_id": "fixed",
+        "current_assessments": 2,
+        "current_claims": 1,
+        "current_runs": 3,
+        "evidence_id": "asm-31ab88ee9b0d44e1",
+        "source": "assessment",
+        "stale": 0,
+        "strength": "tested",
+        "verdict": "pass"
+      },
+      {
+        "criterion_id": "verified",
+        "current_assessments": 2,
+        "current_claims": 1,
+        "current_runs": 3,
+        "reason": "needs observed or stronger from an independent verifier; 1 worker claim(s) do not count here",
+        "stale": 0,
+        "verdict": "not_yet"
+      }
+    ]
+  },
+  "next_moves": [
+    {
+      "needs": [
+        "two verifier sessions ended without decisive evidence"
+      ],
+      "ready": false,
+      "signal": "unblock",
+      "to": "awaiting_verification"
+    }
+  ],
+  "task": {
+    "attempts_used": 1,
+    "blocked_reason": "two verifier sessions ended without decisive evidence",
+    "current_attempt": "att-1eec0a79aaa645d1",
+    "current_tree": "0c5823a7788f8f8faa394bc3e9ab0fcd2b82cf5a",
+    "id": "fix-add",
+    "integration_required": false,
+    "intent": "add() returns the difference instead of the sum",
+    "lease_epoch": 1,
+    "max_attempts": 3,
+    "state": "blocked",
+    "workflow": {
+      "name": "bug-fix",
+      "version": 1
+    }
+  }
+}

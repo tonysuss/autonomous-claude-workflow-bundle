@@ -1,0 +1,91 @@
+{
+ "run_id": "py-bisect-settle.plain.r1.687728",
+ "label": "main",
+ "task": "py-bisect-settle",
+ "kind": "investigation",
+ "language": "python",
+ "condition": "plain",
+ "repeat": 1,
+ "host": "claude-code",
+ "host_version": "2.1.289",
+ "model": "claude-sonnet-5-5",
+ "effort": "medium",
+ "fake_model": false,
+ "started_at": "2026-10-06T00:14:10+00:00",
+ "workdir": "/tmp/claude-0/-home-user-autonomous-claude-workflow-bundle/<redacted>/scratchpad/work/ws/ab205dded3/tally",
+ "base_commit": "fa8265ef7f533725d5021aa48437933a03d16638",
+ "sessions": [
+  {
+   "complete": true,
+   "final_text": "The regression was introduced by commit 6fb44a0, \"ledger: tidy settle loop\".\n\n**How I confirmed it:** I ran `checks/settle-repro.sh` against each commit before the repro commit. I exported each one to a scratch directory, so the repo and its files are unchanged. The script passes on `2efc4f9` and every older commit. It fails on `6fb44a0` and every newer one, so `6fb44a0` is the first bad commit.\n\nThe diff explains the failure. It removes the `if amount > 0` guard before `transfers.append`. It also changes the second `if creditors[j][0] == 0` into an `elif`. When a debtor and a creditor both reach zero in the same step, only the debtor index advances. The next pass then pairs a settled creditor with the next debtor and emits a 0.00 transfer.\n\nANSWER: 6fb44a053405cf209422a5ba505fa0bb929b18d4\n\nSTATUS: DONE",
+   "is_error": false,
+   "cost_usd": 0.07744820000000001,
+   "tokens": {
+    "input": 1089,
+    "output": 1018,
+    "cache_read": 186771,
+    "cache_write": 7222
+   },
+   "turns": 6,
+   "models": [
+    "claude-haiku-4-5-20251001",
+    "claude-sonnet-5-5"
+   ],
+   "model_requested": "claude-sonnet-5-5",
+   "denials": 0,
+   "events": 20,
+   "subtype": "success",
+   "role": "plain",
+   "exit_code": 0,
+   "killed": null,
+   "wall_s": 23.8,
+   "transcript": "raw/session-1.jsonl"
+  }
+ ],
+ "notes": [],
+ "claim": {
+  "claimed_done": true,
+  "source": "status-line",
+  "detail": "DONE"
+ },
+ "wall_s": 23.8,
+ "output": {
+  "tree": "2c12dff91e6b1c9c6b618733d7ecbe74a42aebad",
+  "delivered": true,
+  "changed_paths": [],
+  "scope_violations": []
+ },
+ "judge": {
+  "anon_id": "7e29a4684446",
+  "hidden_pass": true,
+  "cases": 2,
+  "failed": [],
+  "condition_words_in_judged_files": []
+ },
+ "metrics": {
+  "accepted": true,
+  "hidden_pass": true,
+  "claimed_done": true,
+  "unsupported_claim": false,
+  "missed_defects": 0,
+  "scope_violation": false,
+  "correct_but_not_claimed": false,
+  "recovery": null,
+  "human_interventions": 0,
+  "operator_needed": false,
+  "restarts": 0,
+  "sessions": 1,
+  "wall_s": 23.8,
+  "cost_usd": 0.0774,
+  "cost_complete": true,
+  "tokens": {
+   "input": 1089,
+   "output": 1018,
+   "cache_read": 186771,
+   "cache_write": 7222
+  },
+  "tokens_complete": true,
+  "hidden_material_seen": false
+ },
+ "budget_charge_usd": 0.0774
+}

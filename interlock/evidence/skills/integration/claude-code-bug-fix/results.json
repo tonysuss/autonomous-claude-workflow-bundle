@@ -1,0 +1,18 @@
+[
+  {
+    "id": "res-6ef4788175a044e0",
+    "task_id": "duration-sum",
+    "attempt_id": "att-885afad123d54fe1",
+    "epoch": 1,
+    "output_tree": "4688fba1015d33dedf241719d5caee3cfb7ffa3c",
+    "changed_paths": [
+      "durations.py",
+      "tests/test_durations.py"
+    ],
+    "summary": "Fixed parse_duration accumulating with += instead of overwriting (=) per unit; added multi-unit test. Repro and unittest checks pass.",
+    "open_questions": [],
+    "status": "accepted",
+    "superseded_reason": null,
+    "received_at": "2026-10-06T02:28:10.778795510Z"
+  }
+]

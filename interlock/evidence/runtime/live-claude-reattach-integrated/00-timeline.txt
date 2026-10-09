@@ -1,0 +1,8 @@
+2026-10-06T02:27:44Z starting supervisor 1
+2026-10-06T02:27:44Z supervisor 1 pid 14975
+2026-10-06T02:27:45Z worker session started, host pid 15030 (handoff recorded)
+2026-10-06T02:27:51Z kill -9 supervisor 1 (exit status 137)
+2026-10-06T02:27:52Z host pid 15030 is still running
+2026-10-06T02:27:52Z starting supervisor 2
+2026-10-06T02:28:50Z supervisor 2 exited with status 0
+2026-10-06T02:28:51Z done

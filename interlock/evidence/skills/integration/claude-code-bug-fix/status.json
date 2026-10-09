@@ -1,0 +1,79 @@
+{
+  "attempts": [
+    {
+      "binding": {
+        "agent_type": null,
+        "host_agent": null,
+        "host_session": "533a7202-b2b1-5f9c-8fb9-d9bcdfeb7c84",
+        "interactive": true,
+        "via": "session"
+      },
+      "bound": "bound to session 533a7202-b2b1-5f9c-8fb9-d9bcdfeb7c84",
+      "epoch": 1,
+      "host": "claude-code",
+      "id": "att-885afad123d54fe1",
+      "role": "worker",
+      "status": "completed"
+    },
+    {
+      "binding": {
+        "agent_type": "interlock:verifier",
+        "host_agent": "a54671e0874c90716",
+        "host_session": "533a7202-b2b1-5f9c-8fb9-d9bcdfeb7c84",
+        "interactive": true,
+        "via": "subagent"
+      },
+      "bound": "interlock's verifier subagent: session 533a7202-b2b1-5f9c-8fb9-d9bcdfeb7c84, agent a54671e0874c90716 (interlock:verifier)",
+      "epoch": 1,
+      "host": "claude-code",
+      "id": "att-410623b63d22418d",
+      "role": "verifier",
+      "status": "completed"
+    }
+  ],
+  "evidence": {
+    "all_pass": true,
+    "any_fail": false,
+    "criteria": [
+      {
+        "criterion_id": "repro",
+        "current_assessments": 1,
+        "current_claims": 1,
+        "current_runs": 2,
+        "evidence_id": "asm-efd6304cb3414cd6",
+        "source": "assessment",
+        "stale": 0,
+        "strength": "observed",
+        "verdict": "pass"
+      },
+      {
+        "criterion_id": "regression",
+        "current_assessments": 1,
+        "current_claims": 1,
+        "current_runs": 2,
+        "evidence_id": "asm-f53db097287a454f",
+        "source": "assessment",
+        "stale": 0,
+        "strength": "tested",
+        "verdict": "pass"
+      }
+    ]
+  },
+  "next_moves": [],
+  "task": {
+    "attempts_used": 1,
+    "blocked_reason": null,
+    "current_attempt": "att-885afad123d54fe1",
+    "current_tree": "4688fba1015d33dedf241719d5caee3cfb7ffa3c",
+    "id": "duration-sum",
+    "integration_required": false,
+    "intent": "parse_duration(\"1h30m\") in durations.py returns 1800 instead of 5400; multi-unit durations must sum all components.",
+    "lease_epoch": 1,
+    "max_attempts": 3,
+    "state": "done",
+    "workflow": {
+      "name": "bug-fix",
+      "version": 1
+    }
+  }
+}

@@ -1,0 +1,19 @@
+{
+  "id": "m06-push-lag-blocks",
+  "finding": "6: a lagging head right after interlock's own push blocks the task",
+  "undo": [
+    [
+      "crates/interlock-forge/src/deliver.rs",
+      "            if !lagging {",
+      "            if true || !lagging {"
+    ]
+  ],
+  "results": [
+    {
+      "test": "-p interlock-forge --test regressions -- a_lagging_head_after_interlocks_own_push_is_read_again_not_blocked",
+      "exit": 101,
+      "failed": true,
+      "tail": "    reconciled: [],\n    steps: [\n        \"G5: operation op-5f95ebcf521b4e2a will land only 9f53a3403ac660449f10080bd689acc738114a36\",\n        \"pushing 9f53a3403ac660449f10080bd689acc738114a36 to interlock/fix-add (operation op-148a4874e04a43aa)\",\n    ],\n}\n  left: Blocked\n right: Done\nstack backtrace:\n   0: __rustc::rust_begin_unwind\n   1: core::panicking::panic_fmt\n   2: core::panicking::assert_failed_inner\n   3: core::panicking::assert_failed::<interlock_schema::records::State, interlock_schema::records::State>\n   4: regressions::a_lagging_head_after_interlocks_own_push_is_read_again_not_blocked\n   5: regressions::a_lagging_head_after_interlocks_own_push_is_read_again_not_blocked::{closure#0}\n   6: <regressions::a_lagging_head_after_interlocks_own_push_is_read_again_not_blocked::{closure#0} as core::ops::function::FnOnce<()>>::call_once\nnote: Some details are omitted, run with `RUST_BACKTRACE=full` for a verbose backtrace.\n\n\nfailures:\n    a_lagging_head_after_interlocks_own_push_is_read_again_not_blocked\n\ntest result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 13 filtered out; finished in 1.17s\n\nerror: test failed, to rerun pass `-p interlock-forge --test regressions`"
+    }
+  ]
+}
